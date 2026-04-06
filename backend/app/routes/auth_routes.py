@@ -1,182 +1,144 @@
-from flask import Blueprint,redirect,request,jsonify
-from werkzeug.security import generate_password_hash,check_password_hash
+from flask import Blueprint, request, jsonify
+from werkzeug.security import generate_password_hash, check_password_hash
+import traceback # Importante para ver los errores reales en consola
+from ..config import db, Config
 
-from ..config import db,Config
-from ..services import create_access_token
+auth_routes = Blueprint('auth_routes', __name__)
 
-auth_routes=Blueprint('auth_routes',__name__)
-
-@auth_routes.route('/api/register',methods=['POST'])
+@auth_routes.route('/api/register', methods=['POST'])
 def register():
-    #OBTENER DATOS (JSON) DESDE EL FRONTEND
-    data=request.get_json()
-
-    #VALIDACION: SELECCIONAR CAMPOS REQUERIDOS PARA EL REGISTRO
-    required_fields=['user','doc','name','mail','number','password']
-
-    for field in required_fields:
-        if field not in data:
-            return jsonify({
-                'success':False,
-                'message':'Debe Ingresar Todos los Campos Requeridos'
-            })
-
-    #ORGANIZAR TODOS LO PARAMETROS
-    user_name=data.get('user').upper()
-    doc=data.get('doc')
-    name=data.get('name').upper()
-    mail=data.get('mail').lower()
-    number=data.get('number')
-    direction=data.get('dir')
-    password=data.get('password')
-    id_role=4 #ROL NRO.4 =CLIENTE
-
-    if direction:
-        direction=direction.upper()
-
     try:
+        data = request.get_json() or {}
+        
+        # 1. VALIDACIÓN DE CAMPOS REQUERIDOS (los que son NOT NULL en BD)
+        required = ['user', 'ci', 'name', 'mail', 'birth', 'password']
+        for field in required:
+            if not data.get(field):
+                return jsonify({'success': False, 'message': f'Falta el campo obligatorio: {field}'}), 400
+
+        # 2. LIMPIEZA Y CASTEO DE DATOS (para evitar errores de formato en BD)
+        user_name = str(data.get('user')).strip().upper()
+        name = str(data.get('name')).strip().upper()
+        mail = str(data.get('mail')).strip().lower()
+        birth = data.get('birth') # Ya viene como YYYY-MM-DD
+        password = data.get('password')
+        
+        # Casteo de BigInt: Si están vacíos causan error en BD
+        try:
+            ci = int(data.get('ci'))
+            # Si el teléfono viene vacío, lo volvemos None (NULL en BD) 
+            raw_number = data.get('number')
+            number = int(raw_number) if raw_number else None
+        except ValueError:
+            return jsonify({'success': False, 'message': 'El CI y Teléfono deben ser números válidos.'}), 400
+
+        # Dirección opcional
+        raw_dir = data.get('dir')
+        direction = str(raw_dir).strip().upper() if raw_dir else ''
+        
+        id_role = 5 # ROL CLIENTE
+
+        # 3. CONEXIÓN A BASE DE DATOS
         db.create_connection()
 
-        check_query=f"""
-            SELECT 1
-            FROM {Config.SCHEMA}.{Config.T_USER}
-            WHERE DOCUMENTO_IDENTIDAD=%s OR CORREO=%s 
-            OR USER_NAME=%s
+        # 4. VERIFICAR DUPLICADOS (CI, Correo o Usuario)
+        check_sql = f"""
+            SELECT 1 FROM {Config.SCHEMA}.t_persona p
+            LEFT JOIN {Config.SCHEMA}.t_usuario u ON p.id_persona = u.id_persona
+            WHERE p.ci = %s OR u.correo = %s OR u.nombre_usuario = %s
             LIMIT 1
         """
+        if db.execute_query(check_sql, (ci, mail, user_name), fetchone=True):
+            return jsonify({'success': False, 'message': 'El CI, Correo o Usuario ya existen en el sistema.'}), 409
 
-        check_params=(doc,mail,user_name)
-
-        result=db.execute_query(check_query,check_params,fetchone=True)
-
-        if result:
-            return jsonify({'success':False,'message':'El usuario ya se encuentra registrado.'})
-
-        #ENCRIPTAR CONTRASEÑA EN CASO DE QUE EL USUARIO SE PUEDA REGISTRAR
-        password_hash=generate_password_hash(password=password,method='pbkdf2:sha256')  
-
-        if direction:
-            insert_query=f"""
-                INSERT INTO {Config.SCHEMA}.{Config.T_USER} 
-                (USER_NAME,PASSWORD_HASH,DOCUMENTO_IDENTIDAD,NOMBRE_RAZON_SOCIAL,DIRECCION,CORREO,TELEFONO,ID_ROL)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-            """
-
-            insert_params=(user_name,password_hash,doc,name,direction,mail,number,id_role)
-        else:
-            insert_query=f"""
-                INSERT INTO {Config.SCHEMA}.{Config.T_USER} 
-                (USER_NAME,PASSWORD_HASH,DOCUMENTO_IDENTIDAD,NOMBRE_RAZON_SOCIAL,CORREO,TELEFONO,ID_ROL)
-                VALUES (%s,%s,%s,%s,%s,%s,%s)
-            """
-
-            insert_params=(user_name,password_hash,doc,name,mail,number,id_role)
+        # 5. INSERTAR EN t_persona (Crea la identidad física)
+        sql_p = f"""
+            INSERT INTO {Config.SCHEMA}.t_persona (nombre, telefono, fecha_nacimiento, direccion, tipo_persona, ci)
+            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id_persona
+        """
+        res_p = db.execute_query(sql_p, (name, number, birth, direction, 'CLIENTE', ci), fetchone=True, commit=True)
         
-        ra=db.execute_query(insert_query,insert_params,commit=True)
-        if ra<1:
-            print(f'Usuario Registrado Exitosamente, {ra} filas afectadas')
-            return jsonify({
-                'success':False,
-                'message':f'Hubo un problema al registrar el usuario'
-            })
-        
-        print(f'Usuario Registrado Exitosamente, {ra} filas afectadas')
-        return jsonify({
-            'success':True,
-            'message':f'Usuario Registrado Exitosamente'
-        })
+        if not res_p:
+            raise Exception("La base de datos no devolvió el ID de la persona.")
+            
+        new_persona_id = res_p[0]
 
-    
+        # 6. INSERTAR EN t_usuario (Crea el acceso al sistema)
+        pass_hash = generate_password_hash(password)
+        sql_u = f"""
+            INSERT INTO {Config.SCHEMA}.t_usuario (correo, nombre_usuario, "contraseña", id_persona, id_rol)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        db.execute_query(sql_u, (mail, user_name, pass_hash, new_persona_id, id_role), commit=True)
+
+        return jsonify({'success': True, 'message': '¡Cuenta creada exitosamente!'}), 201
+
     except Exception as e:
-        return jsonify({
-            'success':False,
-            'message':f'ERROR: {e}'
-        })
+        # Si algo explota, lo imprimimos en consola y mandamos un JSON seguro a React
+        print("\n--- ERROR EN REGISTRO ---")
+        traceback.print_exc()
+        print("-------------------------\n")
+        return jsonify({'success': False, 'message': f'Error en el servidor: {str(e)}'}), 500
     finally:
-        db.close_connection()
+        # Asegurarse de que cierre la conexión exista error o no
+        if 'db' in locals():
+            db.close_connection()
 
-    
-@auth_routes.route('/api/login',methods=['POST'])
+
+@auth_routes.route('/api/login', methods=['POST'])
 def login():
-    data=request.get_json()
-
-    user_input=data.get('user_input')
-    password=data.get('password')
-
-    if not user_input or not password:
-        return jsonify({
-            'success':False,
-            'message':'Debe Ingresar su Correo y Contraseña.'
-        })
+    from ..services import create_access_token 
     
     try:
-        #ESTABLECER CONEXION A LA BASE DE DATOS
+        data = request.get_json() or {}
+        user_input = data.get('user_input') # Correo o nombre_usuario
+        password = data.get('password')
+
+        if not user_input or not password:
+            return jsonify({'success': False, 'message': 'Debe ingresar sus credenciales.'}), 400
+
         db.create_connection()
 
+        # JOIN para validar y obtener los datos necesarios del usuario y la persona
         query = f"""
-            SELECT ID_USUARIO, USER_NAME, PASSWORD_HASH, NOMBRE_RAZON_SOCIAL, CORREO, ID_ROL, ESTADO_CUENTA
-            FROM {Config.SCHEMA}.{Config.T_USER}
-            WHERE CORREO = %s OR USER_NAME = %s
+            SELECT u.id_usuario, u.nombre_usuario, u."contraseña", p.nombre, u.correo, u.id_rol
+            FROM {Config.SCHEMA}.t_usuario u
+            INNER JOIN {Config.SCHEMA}.t_persona p ON u.id_persona = p.id_persona
+            WHERE u.correo = %s OR u.nombre_usuario = %s
             LIMIT 1
         """
-
-        params=(user_input.lower(),user_input.upper())
-
-        result=db.execute_query(query,params,fetchone=True)
+        # Comparar con lower() para correos y upper() para usuarios
+        result = db.execute_query(query, (user_input.strip().lower(), user_input.strip().upper()), fetchone=True)
 
         if not result:
-            return jsonify({
-                'success':False,
-                'message':'El usuario Ingresado no Existe.'
-            })
+            return jsonify({'success': False, 'message': 'Usuario o correo no encontrados.'}), 404
         
-        #EXTRAER DATOS DE LA DB
-        user_id=result[0]
-        user_name=result[1]
-        password_hash=result[2]
-        name=result[3]
-        mail=result[4]
-        role_id=result[5]
-        account_stat=result[6]
+        u_id, u_name, u_hash, p_name, p_mail, r_id = result
 
-        #INICIO DE SESION FALLIDO: CUENTA SUSPENDIDA
-        if account_stat!='ACTIVO':
-            return jsonify({
-                'success':False,
-                'message':'La cuenta se encuentra Inactiva o Suspendida.'
-            })
-        
-        #INICIO DE SESION FALLIDO: CONTRASEÑA INCORRECTA
-        if not check_password_hash(password_hash,password):
-            return jsonify({
-                'success':False,
-                'message':'Contraseña Incorrecta.'
-            })
+        # VALIDAR EL HASH DE LA CONTRASEÑA
+        if not check_password_hash(u_hash, password):
+            return jsonify({'success': False, 'message': 'Contraseña incorrecta.'}), 401
 
-        #INICIO DE SESION EXITOSO: GENERAR TOKEN JWT
-        token=create_access_token(
-            user_id=user_id,
-            user_name=user_name,
-            role=role_id,
-            name=name)
+        # GENERAR TOKEN JWT
+        token = create_access_token(user_id=u_id, user_name=u_name, role=r_id, name=p_name)
         
-        print(f"Login exitoso para el usuario: {user_name}")
         return jsonify({
-            'success':True,
-            'message':'Inicio de Sesion Exitoso',
-            'access_token':token,
-            'user':{
-                'id_usuario':user_id,
-                'nombre_razon_social':name,
-                'correo':mail,
-                'id_rol':role_id
+            'success': True,
+            'message': 'Inicio de sesión exitoso',
+            'access_token': token,
+            'user': {
+                'id': u_id,
+                'nombre': p_name,
+                'correo': p_mail,
+                'rol': r_id
             }
-        })
+        }), 200
 
     except Exception as e:
-        return jsonify({
-            'success':False,
-            'message':f'ERROR : {e}'
-        })
+        print("\n--- ERROR EN LOGIN ---")
+        traceback.print_exc()
+        print("----------------------\n")
+        return jsonify({'success': False, 'message': f'Error en el login: {str(e)}'}), 500
     finally:
-        db.close_connection()
+        if 'db' in locals():
+            db.close_connection()
