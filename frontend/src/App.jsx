@@ -28,6 +28,7 @@ function AnimatedRoutes() {
     <div className={`transition-opacity duration-300 ease-linear ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
       <Routes location={displayLocation}>
         {/* PÚBLICAS */}
+        {/*MIGUEL AUAD NO TENIA LA RAZON*/}
         <Route path="/" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
