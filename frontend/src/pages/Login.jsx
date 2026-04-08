@@ -106,10 +106,10 @@ export default function Login() {
               className="h-16 w-auto object-contain mx-auto mb-4 drop-shadow-md hover:scale-105 transition-transform cursor-pointer" 
             />
           </Link>
-          <h2 className="text-3xl font-black text-[#2A5C4D] tracking-tight">
+          <h2 className="animate-text-fast text-3xl font-black text-[#2A5C4D] tracking-tight">
             Bienvenido
           </h2>
-          <p className="text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
+          <p className="animate-text-fast delay-150 text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
             Acceso Clínica Alba
           </p>
         </div>

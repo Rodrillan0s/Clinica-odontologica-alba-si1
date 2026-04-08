@@ -49,7 +49,8 @@ export default function Register() {
     setLoading(true);
     
     try {
-      const response = await fetch(`${API_URL}/register`, {
+      // CORRECCIÓN: Agregado /api/ a la ruta
+      const response = await fetch(`${API_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -101,8 +102,8 @@ export default function Register() {
       {/* CAPA OSCURECEDORA */}
       <div className="absolute inset-0 bg-[#2A5C4D]/70 mix-blend-multiply"></div>
 
-      {/* TARJETA DEL FORMULARIO */}
-      <div className="bg-white/95 backdrop-blur-xl p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-2xl border border-white/50 relative overflow-hidden z-10 animate-fade-in-up">
+      {/* TARJETA DEL FORMULARIO (Se removió animate-fade-in-up para carga directa) */}
+      <div className="bg-white/95 backdrop-blur-xl p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-2xl border border-white/50 relative overflow-hidden z-10">
         
         {/* Barra superior de acento */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#148F77] to-[#2A5C4D]"></div>
@@ -126,10 +127,10 @@ export default function Register() {
               className="h-16 w-auto object-contain mx-auto mb-3 drop-shadow-md hover:scale-105 transition-transform" 
             />
           </Link>
-          <h2 className="text-3xl font-black text-[#2A5C4D] tracking-tight">
+          <h2 className="animate-text-fast text-3xl font-black text-[#2A5C4D] tracking-tight">
             Registro
           </h2>
-          <p className="text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
+          <p className="animate-text-fast delay-100 text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
             Clínica Alba
           </p>
         </div>
