@@ -1,125 +1,77 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-import traceback # Importante para ver los errores reales en consola
+import traceback
+import psycopg2
 from ..config import db, Config
+from ..services import create_access_token 
 
 auth_routes = Blueprint('auth_routes', __name__)
 
 @auth_routes.route('/api/register', methods=['POST'])
 def register():
     try:
-        data = request.get_json() or {}
-        
-        # 1. VALIDACIÓN DE CAMPOS REQUERIDOS (los que son NOT NULL en BD)
-        required = ['user', 'ci', 'name', 'mail', 'birth', 'password']
-        for field in required:
-            if not data.get(field):
-                return jsonify({'success': False, 'message': f'Falta el campo obligatorio: {field}'}), 400
-
-        # 2. LIMPIEZA Y CASTEO DE DATOS (para evitar errores de formato en BD)
-        user_name = str(data.get('user')).strip().upper()
-        name = str(data.get('name')).strip().upper()
-        mail = str(data.get('mail')).strip().lower()
-        birth = data.get('birth') # Ya viene como YYYY-MM-DD
+        data = request.get_json() or {}      
+        # EXTRACCIÓN DE DATOS
+        user_name = str(data.get('user', '')).strip()
+        name = str(data.get('name', '')).strip()
+        mail = str(data.get('mail', '')).strip()
+        birth = data.get('birth')
         password = data.get('password')
         
-        # Casteo de BigInt: Si están vacíos causan error en BD
+        raw_dir = data.get('dir')
+        direction = str(raw_dir).strip() if raw_dir else None
+        
         try:
             ci = int(data.get('ci'))
-            # Si el teléfono viene vacío, lo volvemos None (NULL en BD) 
             raw_number = data.get('number')
             number = int(raw_number) if raw_number else None
-        except ValueError:
+        except (ValueError, TypeError):
             return jsonify({'success': False, 'message': 'El CI y Teléfono deben ser números válidos.'}), 400
 
-        # Dirección opcional
-        raw_dir = data.get('dir')
-        direction = str(raw_dir).strip().upper() if raw_dir else ''
-        
-        id_role = 5 # ROL CLIENTE
+        if not all([user_name, ci, name, mail, birth, password]):
+            return jsonify({'success': False, 'message': 'Faltan campos obligatorios.'}), 400
 
-        # 3. CONEXIÓN A BASE DE DATOS
-        db.create_connection()
-
-        # 4. VERIFICAR DUPLICADOS (CI, Correo o Usuario)
-        check_sql = f"""
-            SELECT 1 FROM {Config.SCHEMA}.t_persona p
-            LEFT JOIN {Config.SCHEMA}.t_usuario u ON p.id_persona = u.id_persona
-            WHERE p.ci = %s OR u.correo = %s OR u.nombre_usuario = %s
-            LIMIT 1
-        """
-        if db.execute_query(check_sql, (ci, mail, user_name), fetchone=True):
-            return jsonify({'success': False, 'message': 'El CI, Correo o Usuario ya existen en el sistema.'}), 409
-
-        # 5. INSERTAR EN t_persona (Crea la identidad física)
-        sql_p = f"""
-            INSERT INTO {Config.SCHEMA}.t_persona (nombre, telefono, fecha_nacimiento, direccion, tipo_persona, ci)
-            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id_persona
-        """
-        res_p = db.execute_query(sql_p, (name, number, birth, direction, 'CLIENTE', ci), fetchone=True, commit=True)
-        
-        if not res_p:
-            raise Exception("La base de datos no devolvió el ID de la persona.")
-            
-        new_persona_id = res_p[0]
-
-        # 6. INSERTAR EN t_usuario (Crea el acceso al sistema)
         pass_hash = generate_password_hash(password)
-        sql_u = f"""
-            INSERT INTO {Config.SCHEMA}.t_usuario (correo, nombre_usuario, "contraseña", id_persona, id_rol)
-            VALUES (%s, %s, %s, %s, %s)
-        """
-        db.execute_query(sql_u, (mail, user_name, pass_hash, new_persona_id, id_role), commit=True)
+        db.create_connection() 
+        sql_call = f"CALL {Config.SCHEMA}.p_registrar_usuario(%s, %s, %s, %s, %s, %s, %s, %s)"
+        params = (user_name, ci, name, mail, number, birth, direction, pass_hash)
+        db.execute_query(sql_call, params, commit=True)
 
         return jsonify({'success': True, 'message': '¡Cuenta creada exitosamente!'}), 201
+    except psycopg2.Error as e:
+        error_msg = e.diag.message_primary if e.diag.message_primary else str(e)
+        return jsonify({'success': False, 'message': error_msg}), 409
 
     except Exception as e:
-        # Si algo explota, lo imprimimos en consola y mandamos un JSON seguro a React
         print("\n--- ERROR EN REGISTRO ---")
         traceback.print_exc()
         print("-------------------------\n")
         return jsonify({'success': False, 'message': f'Error en el servidor: {str(e)}'}), 500
+        
     finally:
-        # Asegurarse de que cierre la conexión exista error o no
         if 'db' in locals():
             db.close_connection()
 
 
 @auth_routes.route('/api/login', methods=['POST'])
 def login():
-    from ..services import create_access_token 
-    
     try:
         data = request.get_json() or {}
-        user_input = data.get('user_input') # Correo o nombre_usuario
+        user_input = data.get('user_input')
         password = data.get('password')
 
         if not user_input or not password:
             return jsonify({'success': False, 'message': 'Debe ingresar sus credenciales.'}), 400
 
         db.create_connection()
-
-        # JOIN para validar y obtener los datos necesarios del usuario y la persona
-        query = f"""
-            SELECT u.id_usuario, u.nombre_usuario, u."contraseña", p.nombre, u.correo, u.id_rol
-            FROM {Config.SCHEMA}.t_usuario u
-            INNER JOIN {Config.SCHEMA}.t_persona p ON u.id_persona = p.id_persona
-            WHERE u.correo = %s OR u.nombre_usuario = %s
-            LIMIT 1
-        """
-        # Comparar con lower() para correos y upper() para usuarios
-        result = db.execute_query(query, (user_input.strip().lower(), user_input.strip().upper()), fetchone=True)
-
-        if not result:
-            return jsonify({'success': False, 'message': 'Usuario o correo no encontrados.'}), 404
-        
+        call_sql = f"CALL {Config.SCHEMA}.p_login_usuario(%s, NULL, NULL, NULL, NULL, NULL, NULL)"
+        result = db.execute_query(call_sql, (user_input.strip(),), fetchone=True)
         u_id, u_name, u_hash, p_name, p_mail, r_id = result
 
-        # VALIDAR EL HASH DE LA CONTRASEÑA
         if not check_password_hash(u_hash, password):
             return jsonify({'success': False, 'message': 'Contraseña incorrecta.'}), 401
 
-        # GENERAR TOKEN JWT
+        # GENERAR JWT
         token = create_access_token(user_id=u_id, user_name=u_name, role=r_id, name=p_name)
         
         return jsonify({
@@ -134,11 +86,15 @@ def login():
             }
         }), 200
 
+    except psycopg2.Error as e:
+        error_msg = e.diag.message_primary if e.diag.message_primary else str(e)
+        return jsonify({'success': False, 'message': error_msg}), 404
+
     except Exception as e:
         print("\n--- ERROR EN LOGIN ---")
         traceback.print_exc()
         print("----------------------\n")
-        return jsonify({'success': False, 'message': f'Error en el login: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': f'Error:{str(e)}'}), 500     
     finally:
         if 'db' in locals():
             db.close_connection()
