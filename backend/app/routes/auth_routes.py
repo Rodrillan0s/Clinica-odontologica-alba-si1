@@ -98,3 +98,32 @@ def login():
     finally:
         if 'db' in locals():
             db.close_connection()
+
+
+@auth_routes.route('/api/stats', methods=['GET'])
+def get_stats():
+    try:
+        db.create_connection()
+        
+        # Consultas para obtener datos reales
+        # 1. Contar pacientes (tipo_persona = 'CLIENTE')
+        query_pacientes = f"SELECT COUNT(*) FROM {Config.SCHEMA}.t_persona WHERE tipo_persona = 'CLIENTE'"
+        # 2. Contar especialidades (roles o servicios)
+        query_especialidades = f"SELECT COUNT(*) FROM {Config.SCHEMA}.t_rol" 
+        
+        res_p = db.execute_query(query_pacientes, fetchone=True)
+        res_e = db.execute_query(query_especialidades, fetchone=True)
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'pacientes': res_p[0] if res_p else 0,
+                'especialidades': res_e[0] if res_e else 0,
+                'años': 100,
+                'calidad': '100%'
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db.close_connection()
