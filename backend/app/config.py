@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from .classes import PostgreSQL
 import os
-
+load_dotenv() 
 class Config:
      #CLAVE PARA LA CONFIGURACION DE FLASK
     SECRET_KEY=os.getenv('SECRET_KEY','')
@@ -17,10 +17,11 @@ class Config:
     DB_PASSWORD=os.getenv('DB_PASSWORD','')
 
     #ESQUEMA CONTENEDOR DE LA APLICACION
-    SCHEMA='agroenlace'
+    SCHEMA='clinica'
     
     #TABLAS A DISPOSICION EN LA BASE DE DATOS
-    T_USER='USUARIO'
+    T_USER='T_USUARIO'
+    T_CITAS='T_CITAS'
 
 db=PostgreSQL(
     Config.DB_HOST,
