@@ -9,7 +9,7 @@ citas_routes = Blueprint('citas_routes', __name__)
 def create_cita():
     data = request.get_json()
 
-    required_fields=['fecha_registro','id_paciente','id_odontologo','id_sala','cita_obs']
+    required_fields=['fecha_agendamiento','id_paciente','id_odontologo','id_sala','cita_obs']
 
     for field in required_fields:
         if field not in data:
@@ -18,7 +18,7 @@ def create_cita():
                 'message':'Debe Ingresar Todos los Campos Requeridos'
             })
     
-    fecha_registro=data.get('fecha_registro')
+    fecha_agendamiento=data.get('fecha_agendamiento')
     id_paciente=data.get('id_paciente')
     id_odontologo=data.get('id_odontologo')
     id_sala=data.get('id_sala')
@@ -26,18 +26,11 @@ def create_cita():
 
     try:
         db.create_connection()
-        query = f"""
-            INSERT INTO {Config.SCHEMA}.{Config.T_CITAS} 
-            (FECHA_REGISTRO,ID_PACIENTE,ID_ODONTOLOGO,ID_SALA,CITA_OBS)
-            VALUES (%s,%s,%s,%s,%s)
-        """
-        params=(fecha_registro,id_paciente,id_odontologo,id_sala,cita_obs)
-        result=db.execute_query(query,params,commit=True)
-        if result<1:
-            return jsonify({
-                'success':False,
-                'message':'Hubo un problema al registrar la cita'
-            })
+        query = f"CALL {Config.SCHEMA}.p_crear_cita(%s, %s, %s, %s, %s)"
+        params=(id_odontologo, id_paciente, fecha_agendamiento, id_sala, cita_obs)
+        
+        db.execute_query(query, params, commit=True)
+        
         return jsonify({
             'success':True,
             'message':'Cita creada exitosamente'
@@ -50,14 +43,9 @@ def create_cita():
     finally:
         db.close_connection()   
 
-
-
-
 @citas_routes.route('/api/citas', methods=['GET'])
 def get_citas():
     filters = request.args.to_dict()
-    
-  
     page = int(filters.get('page', 1))
     limit = int(filters.get('limit', 10))
     offset = (page - 1) * limit
@@ -97,10 +85,6 @@ def get_citas():
 def update_cita(id):
     data = request.get_json()
     return jsonify({'message': 'Cita actualizada exitosamente'}), 200
-
-@citas_routes.route('/api/citas/<int:id>', methods=['DELETE'])
-def delete_cita(id):
-    return jsonify({'message': 'Cita eliminada exitosamente'}), 200 
 
 @citas_routes.route('/api/citas/<int:id>', methods=['GET'])
 def get_cita(id):

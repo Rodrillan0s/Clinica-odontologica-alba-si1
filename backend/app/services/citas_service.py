@@ -15,7 +15,7 @@ def build_citas_query(filters, limit, offset, schema_name, table_name):
         query += " AND DATE(fecha_agendamiento) = %s"
         params.append(filters['fecha'])
         
-    # Filtro por Estado (e.g. 'PENDIENTE')
+    # Filtro por Estado
     if 'estado' in filters and filters['estado']:
         query += " AND estado_cita = %s"
         params.append(filters['estado'].upper())
