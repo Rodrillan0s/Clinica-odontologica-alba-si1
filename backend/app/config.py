@@ -1,13 +1,10 @@
 from dotenv import load_dotenv
 from .classes import PostgreSQL
 import os
-load_dotenv() 
+load_dotenv(override=True) 
 class Config:
-     #CLAVE PARA LA CONFIGURACION DE FLASK
-    SECRET_KEY=os.getenv('SECRET_KEY','')
-
-    #CLAVE SECRETA PARA CONFIGURACION DE ACCESS_TOKENS
-    TOKEN_SECRET_KEY=os.getenv('TOKEN_SECRET_KEY','')
+    SECRET_KEY = os.getenv('SECRET_KEY', '')
+    TOKEN_SECRET_KEY = os.getenv('TOKEN_SECRET_KEY', '')
 
     #CONFIGURACION BASE DE DATOS
     DB_HOST=os.getenv('DB_HOST','')
@@ -23,12 +20,10 @@ class Config:
     T_USER='T_USUARIO'
     T_CITAS='T_CITAS'
 
-db=PostgreSQL(
+db = PostgreSQL(
     Config.DB_HOST,
     Config.DB_PORT,
     Config.DB_NAME,
     Config.DB_USER,
     Config.DB_PASSWORD
 )
-
-#BRO
