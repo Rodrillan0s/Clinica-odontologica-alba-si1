@@ -7,6 +7,49 @@ from ..services import create_access_token
 
 auth_routes = Blueprint('auth_routes', __name__)
 
+@auth_routes.route('/api/verify-ci/<int:ci>', methods=['GET'])
+def verify_ci(ci):
+    try:
+        db.create_connection()
+        # Solo pedimos el nombre, id_usuario y tipo. Ya NO pedimos correo ni teléfono.
+        sql = f"""
+            SELECT p.nombre, u.id_usuario, p.tipo_persona 
+            FROM {Config.SCHEMA}.t_persona p
+            LEFT JOIN {Config.SCHEMA}.t_usuario u ON p.id_persona = u.id_persona
+            WHERE p.ci = %s
+        """
+        result = db.execute_query(sql, (ci,), fetchone=True)
+
+        if not result:
+            return jsonify({'success': True, 'exists': False}), 200
+
+        nombre, id_usuario, tipo_persona = result
+
+        if tipo_persona != 'CLIENTE':
+            return jsonify({'success': False, 'message': 'El CI pertenece al personal.'}), 403
+
+        if id_usuario is not None:
+            return jsonify({'success': False, 'message': 'Este CI ya tiene cuenta web. Inicie sesión.'}), 409
+        
+        # MAGIA DE SEGURIDAD: Enmascaramos el nombre (Ej: "Omar Saucedo" -> "O*** S******")
+        partes_nombre = nombre.split()
+        nombre_enmascarado = " ".join([palabra[0] + "*" * (len(palabra) - 1) for palabra in partes_nombre])
+
+        return jsonify({
+            'success': True,
+            'exists': True,
+            'data': {
+                'masked_name': nombre_enmascarado
+            },
+            'message': '¡Paciente encontrado! Por seguridad, ingresa tu Fecha de Nacimiento exacta para validar tu identidad.'
+        }), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error en el servidor: {str(e)}'}), 500
+    finally:
+        if 'db' in locals():
+            db.close_connection()
+
 @auth_routes.route('/api/register', methods=['POST'])
 def register():
     try:
@@ -64,14 +107,17 @@ def login():
             return jsonify({'success': False, 'message': 'Debe ingresar sus credenciales.'}), 400
 
         db.create_connection()
-        call_sql = f"CALL {Config.SCHEMA}.p_login_usuario(%s, NULL, NULL, NULL, NULL, NULL, NULL)"
+        # Agregamos un NULL extra (ahora son 7 INOUTs)
+        call_sql = f"CALL {Config.SCHEMA}.p_login_usuario(%s, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
         result = db.execute_query(call_sql, (user_input.strip(),), fetchone=True)
-        u_id, u_name, u_hash, p_name, p_mail, r_id = result
+        
+        # DESEMPAQUETADO CORRECTO: Ahora recibimos p_id
+        u_id, p_id, u_name, u_hash, p_name, p_mail, r_id = result
 
         if not check_password_hash(u_hash, password):
             return jsonify({'success': False, 'message': 'Contraseña incorrecta.'}), 401
 
-        # GENERAR JWT
+        # Generamos el token incluyendo el id_persona si lo necesitas
         token = create_access_token(user_id=u_id, user_name=u_name, role=r_id, name=p_name)
         
         return jsonify({
@@ -79,7 +125,8 @@ def login():
             'message': 'Inicio de sesión exitoso',
             'access_token': token,
             'user': {
-                'id': u_id,
+                'id_usuario': u_id,
+                'id_persona': p_id, # <--- ¡IMPORTANTE!
                 'nombre': p_name,
                 'correo': p_mail,
                 'rol': r_id
