@@ -84,10 +84,69 @@ def get_citas():
 @citas_routes.route('/api/citas/<int:id>', methods=['PUT'])
 def update_cita(id):
     data = request.get_json()
-    return jsonify({'message': 'Cita actualizada exitosamente'}), 200
+
+    required_fields = ['id_personal', 'id_paciente', 'fecha_agendamiento', 'id_sala', 'cita_obs']
+
+    for field in required_fields:
+        if field not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Debe Ingresar Todos los Campos Requeridos'
+            }), 400
+
+    id_personal = data.get('id_personal')
+    id_paciente = data.get('id_paciente')
+    fecha_agendamiento = data.get('fecha_agendamiento')
+    id_sala = data.get('id_sala')
+    cita_obs = data.get('cita_obs')
+
+    try:
+        db.create_connection()
+        query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s)"
+        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs)
+
+        db.execute_query(query, params, commit=True)
+
+        return jsonify({
+            'success': True,
+            'message': 'Cita actualizada exitosamente'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'ERROR : {e}'
+        }), 500
+    finally:
+        db.close_connection()
 
 @citas_routes.route('/api/citas/<int:id>', methods=['GET'])
 def get_cita(id):
-    return jsonify({'message': 'Cita obtenida exitosamente'}), 200
+    try:
+        db.create_connection()
+        query = f"""
+            SELECT id_personal, id_paciente, fecha_registro, fecha_agendamiento, estado_cita, id_sala, cita_obs
+            FROM {Config.SCHEMA}.{Config.T_CITAS}
+            WHERE id_cita = %s
+        """
+        result = db.execute_query(query, (id,), fetchone=True)
+
+        if not result:
+            return jsonify({'success': False, 'message': 'Cita no encontrada'}), 404
+
+        cita = {
+            "id_personal": result[0],
+            "id_paciente": result[1],
+            "fecha_registro": result[2],
+            "fecha_agendamiento": result[3],
+            "estado_cita": result[4],
+            "id_sala": result[5],
+            "cita_obs": result[6]
+        }
+
+        return jsonify({'success': True, 'data': cita}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener la cita: {e}'}), 500
+    finally:
+        db.close_connection()
 
    
