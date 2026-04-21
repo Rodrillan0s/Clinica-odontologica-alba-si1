@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
 from ..services.citas_service import build_citas_query  
-
+from datetime import timedelta,datetime
 from ..config import db,Config
+
 
 citas_routes = Blueprint('citas_routes', __name__)
 
@@ -149,4 +150,93 @@ def get_cita(id):
     finally:
         db.close_connection()
 
-   
+@citas_routes.route('/api/citas/odontologos-por-procedimiento/<int:id_procedimiento>', methods=['GET'])
+def get_odontologos_por_procedimiento(id_procedimiento):
+    try:
+        db.create_connection()
+        query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_odontologos_por_procedimiento(%s)"
+        results = db.execute_query(query, (id_procedimiento,), fetchall=True)
+
+        odontologos = [{
+            "id_personal": row[0],
+            "nombre": row[1]
+        } for row in (results or [])]
+
+        return jsonify({'success': True, 'data': odontologos}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {e}'}), 500
+    finally:
+        db.close_connection()
+
+@citas_routes.route('/api/procedimientos', methods=['GET'])
+def get_procedimientos():
+    try:
+        db.create_connection()
+        query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_todos_los_procedimientos()"
+        results = db.execute_query(query, fetchall=True)
+
+        procedimientos = [{
+            "id": row[0],
+            "descripcion": row[1]
+        } for row in (results or [])]
+
+        return jsonify({'success': True, 'data': procedimientos}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener procedimientos: {e}'}), 500
+    finally:
+        db.close_connection()    
+
+
+# Función para calcular los espacios libres
+def calcular_slots_libres(citas_ocupadas, inicio_jornada, fin_jornada, duracion=30):
+    slots = []
+    actual = inicio_jornada
+    
+    while actual + timedelta(minutes=duracion) <= fin_jornada:
+        fin_bloque = actual + timedelta(minutes=duracion)     
+        cita_choque = None
+        for inicio_ocup, fin_ocup in citas_ocupadas:
+            if actual < fin_ocup and fin_bloque > inicio_ocup:
+                cita_choque = fin_ocup
+                break  
+        if cita_choque:      
+            actual = cita_choque
+        else:      
+            slots.append({
+                "inicio": actual.strftime("%H:%M"), 
+                "fin": fin_bloque.strftime("%H:%M")
+            })
+            actual = fin_bloque
+            
+    return slots
+
+#http://127.0.0.1:5000/api/citas/disponibilidad?id_personal=1&id_sala=1&fecha=2026-04-17
+@citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
+def get_disponibilidad():
+    try:
+        id_personal = request.args.get('id_personal')
+        id_sala = request.args.get('id_sala')
+        fecha_str = request.args.get('fecha') 
+        
+        db.create_connection()
+        
+        query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_citas_ocupadas(%s, %s, %s, %s)"
+        results = db.execute_query(query, (id_personal, id_sala, f"{fecha_str} 00:00:00", f"{fecha_str} 23:59:59"), fetchall=True)
+        
+
+        citas_ocupadas = []
+        for row in (results or []):
+            citas_ocupadas.append((row[0], row[1]))
+        
+
+        inicio_jornada = datetime.strptime(f"{fecha_str} 08:00:00", "%Y-%m-%d %H:%M:%S")
+        fin_jornada = datetime.strptime(f"{fecha_str} 18:00:00", "%Y-%m-%d %H:%M:%S")
+        
+        disponibles = calcular_slots_libres(citas_ocupadas, inicio_jornada, fin_jornada)
+        
+        return jsonify({'success': True, 'data': disponibles}), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener disponibilidad: {e}'}), 500
+    finally:
+        db.close_connection()
