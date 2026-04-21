@@ -187,56 +187,32 @@ def get_procedimientos():
         db.close_connection()    
 
 
-# Función para calcular los espacios libres
-def calcular_slots_libres(citas_ocupadas, inicio_jornada, fin_jornada, duracion=30):
-    slots = []
-    actual = inicio_jornada
-    
-    while actual + timedelta(minutes=duracion) <= fin_jornada:
-        fin_bloque = actual + timedelta(minutes=duracion)     
-        cita_choque = None
-        for inicio_ocup, fin_ocup in citas_ocupadas:
-            if actual < fin_ocup and fin_bloque > inicio_ocup:
-                cita_choque = fin_ocup
-                break  
-        if cita_choque:      
-            actual = cita_choque
-        else:      
-            slots.append({
-                "inicio": actual.strftime("%H:%M"), 
-                "fin": fin_bloque.strftime("%H:%M")
-            })
-            actual = fin_bloque
-            
-    return slots
 
-#http://127.0.0.1:5000/api/citas/disponibilidad?id_personal=1&id_sala=1&fecha=2026-04-17
 @citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
 def get_disponibilidad():
     try:
+     
         id_personal = request.args.get('id_personal')
         id_sala = request.args.get('id_sala')
-        fecha_str = request.args.get('fecha') 
+        fecha_str = request.args.get('fecha')
         
+        if not all([id_personal, id_sala, fecha_str]):
+            return jsonify({'success': False, 'message': 'Faltan parámetros'}), 400
+
+       
         db.create_connection()
+        query = "SELECT * FROM clinica.fn_obtener_slots_libres(%s, %s, %s, 30)"
+        results = db.execute_query(query, (id_personal, id_sala, fecha_str), fetchall=True)
         
-        query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_citas_ocupadas(%s, %s, %s, %s)"
-        results = db.execute_query(query, (id_personal, id_sala, f"{fecha_str} 00:00:00", f"{fecha_str} 23:59:59"), fetchall=True)
         
-
-        citas_ocupadas = []
-        for row in (results or []):
-            citas_ocupadas.append((row[0], row[1]))
+        lista_resultados = results if results is not None else []
         
 
-        inicio_jornada = datetime.strptime(f"{fecha_str} 08:00:00", "%Y-%m-%d %H:%M:%S")
-        fin_jornada = datetime.strptime(f"{fecha_str} 18:00:00", "%Y-%m-%d %H:%M:%S")
+        data = [{'inicio': str(r[0])[:5], 'fin': str(r[1])[:5]} for r in lista_resultados]
         
-        disponibles = calcular_slots_libres(citas_ocupadas, inicio_jornada, fin_jornada)
-        
-        return jsonify({'success': True, 'data': disponibles}), 200
-        
+        return jsonify({'success': True, 'data': data}), 200
+
     except Exception as e:
-        return jsonify({'success': False, 'message': f'Error al obtener disponibilidad: {e}'}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         db.close_connection()
