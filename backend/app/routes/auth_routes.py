@@ -21,7 +21,7 @@ def forgot_password():
         
         if result and result[0]:
             u_id, u_name = result
-            link = f"http://localhost:5173/reset-password?token={token_plano}&id={u_id}"
+            link = f"{Config.FRONTEND_URL}/reset-password?token={token_plano}&id={u_id}"
             remitente = Config.MAIL_USERNAME or os.getenv('MAIL_USERNAME') or "toledoquirogaeddy@gmail.com"
 
             msg = Message(subject="Recuperación - Clínica Alba", sender=remitente, recipients=[email])

@@ -7,7 +7,7 @@ load_dotenv(override=True)
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', '')
     TOKEN_SECRET_KEY = os.getenv('TOKEN_SECRET_KEY', '')
-
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
     # CONFIGURACION BASE DE DATOS
     DB_HOST = os.getenv('DB_HOST','')
     DB_NAME = os.getenv('DB_NAME','')
