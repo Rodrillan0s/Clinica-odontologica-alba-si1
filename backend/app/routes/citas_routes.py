@@ -90,4 +90,22 @@ def update_cita(id):
 def get_cita(id):
     return jsonify({'message': 'Cita obtenida exitosamente'}), 200
 
+@citas_routes.route('/api/odontologos', methods=['GET'])
+def get_odontologos():
+    try:
+        # Buscamos en t_persona y t_usuario donde el rol sea 2 (ODONTOLOGO)
+        sql = f"""
+            SELECT p.id_persona, p.nombre 
+            FROM {Config.SCHEMA}.t_persona p
+            JOIN {Config.SCHEMA}.t_usuario u ON p.id_persona = u.id_persona
+            WHERE u.id_rol = 2
+        """
+        # Tu clase db ya tiene el execute_query optimizado
+        doctores = db.execute_query(sql, fetchall=True)
+        
+        # Formateamos para que React lo entienda fácil
+        lista = [{"id": d[0], "nombre": d[1]} for d in doctores]
+        return jsonify(lista), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
    

@@ -6,3 +6,7 @@ DB_PASSWORD=tWkKZGPuJWYtOsuAmcUMttAPhJbnkCxl
 
 SECRET_KEY=supersecret
 TOKEN_SECRET_KEY=token123
+
+
+MAIL_USERNAME=tu_correo@gmail.com
+MAIL_PASSWORD=tu_codigo_de_16_letras_de_google
