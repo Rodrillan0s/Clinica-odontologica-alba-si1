@@ -8,6 +8,8 @@ import Welcome from "./pages/Welcome";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Especialidad from './pages/Especialidad';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 export default function App() {
   useEffect(() => {
@@ -23,6 +25,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/especialidad/:id" element={<Especialidad />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* PRIVADAS */}
           <Route element={<ProtectedRoute />}>
