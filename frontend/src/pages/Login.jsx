@@ -146,7 +146,10 @@ export default function Login() {
               <label className={labelClass}>
                 Contraseña
               </label>
-              <Link to="#" className="text-[10px] font-bold text-[#148F77] uppercase hover:text-[#2A5C4D] hover:underline transition-colors">
+              <Link 
+                to="/forgot-password" 
+                className="text-[10px] font-bold text-[#148F77] uppercase hover:text-[#2A5C4D] hover:underline transition-colors"
+              >
                 ¿Olvidaste tu clave?
               </Link>
             </div>

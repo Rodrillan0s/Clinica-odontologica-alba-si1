@@ -91,6 +91,14 @@ export default function Register() {
       return;
     }
 
+    // --- NUEVA VALIDACIÓN DE SEGURIDAD (Obs 2) ---
+    const regexPassword = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+    if (!regexPassword.test(password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un símbolo especial.');
+      return;
+    }
+    // ---------------------------------------------
+
     const anioIngresado = parseInt(fechaNacimiento.split('-')[0]);
     const anioActual = new Date().getFullYear();
     
@@ -260,6 +268,8 @@ export default function Register() {
             <div>
               <label className={labelClass}>Contraseña *</label>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} bg-gray-50 border-gray-200`} />
+              {/* OPCIONAL: Pista de contraseña debajo del campo para que el usuario sepa qué poner */}
+              <p className="text-[9px] text-gray-400 mt-1 uppercase font-bold italic">Mín. 8 caracteres, 1 Mayúscula y 1 Símbolo</p>
             </div>
             <div>
               <label className={labelClass}>Confirmar Contraseña *</label>
@@ -269,13 +279,13 @@ export default function Register() {
 
           <button type="submit" disabled={loading || success || verifyingCI} className={`w-full py-4 mt-6 rounded-xl font-bold text-white shadow-xl transition-all duration-300 transform active:scale-[0.98] flex items-center justify-center tracking-wide ${loading || success || verifyingCI ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#148F77] hover:bg-[#0f6b59] hover:shadow-[#148F77]/30'}`}>
             {loading ? (
-               <span className="flex items-center gap-2">
-                 <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                 </svg>
-                 Procesando...
-               </span>
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Procesando...
+                </span>
             ) : "REGISTRARME"}
           </button>
         </form>
