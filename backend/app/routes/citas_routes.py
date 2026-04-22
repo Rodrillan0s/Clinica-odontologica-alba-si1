@@ -216,3 +216,4 @@ def get_disponibilidad():
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         db.close_connection()
+    #solo para pushear
