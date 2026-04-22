@@ -187,7 +187,7 @@ def get_procedimientos():
         db.close_connection()    
 
 
-
+#http://127.0.0.1:5000/api/citas/disponibilidad?id_personal=1&id_sala=1&fecha=2026-04-17
 @citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
 def get_disponibilidad():
     try:
