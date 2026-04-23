@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import logo from '../assets/LOGO.png'; // Logo de Clínica Alba
-import fondoWelcome from '../assets/Fondo_Welcome.jpg'; // Imagen de fondo unificada
+import logo from '../assets/LOGO.png';
+import fondoWelcome from '../assets/Fondo_Welcome.jpg'; 
 import { useAuthStore } from '../store/auth_store';
 
-// ÚNICA DECLARACIÓN DE LA URL
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Login() {
@@ -16,7 +15,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ACCION LOGIN DE ZUSTAND
+
   const { login } = useAuthStore();
 
   const handleLogin = async (e) => {
@@ -34,24 +33,18 @@ export default function Login() {
         }),
       });
 
-      // Capturador de errores por si Flask manda HTML (ej. servidor caído)
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Error de conexión con el servidor. Verifica que Flask esté encendido.");
       }
 
       const data = await response.json();
-
-      // VALIDACION SUCCESS BACKEND
       if (!data.success) {
         throw new Error(data.message || 'Credenciales incorrectas. Intente de nuevo.');
       }
 
       console.log('Login exitoso para:', data.user.nombre);
-      
-      // GUARDAMOS TOKEN Y DATOS DEL USUARIO
-      login(data.access_token, data.user);
-      
+      login(data.access_token, data.user);     
       // REDIRIGIMOS A '/home'
       navigate('/home'); 
       
@@ -107,10 +100,10 @@ export default function Login() {
             />
           </Link>
           <h2 className="animate-text-fast text-3xl font-black text-[#2A5C4D] tracking-tight">
-            Bienvenido
+            BIENVENIDO
           </h2>
           <p className="animate-text-fast delay-150 text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
-            Acceso Clínica Alba
+            Inicia sesión para acceder
           </p>
         </div>
 
@@ -136,7 +129,7 @@ export default function Login() {
               value={user}
               onChange={(e) => setUser(e.target.value)}
               className={inputClass}
-              placeholder="correo@ejemplo.com o tu usuario"
+              placeholder="Ingrese su usuario o correo"
             />
           </div>
 
@@ -150,7 +143,7 @@ export default function Login() {
                 to="/forgot-password" 
                 className="text-[10px] font-bold text-[#148F77] uppercase hover:text-[#2A5C4D] hover:underline transition-colors"
               >
-                ¿Olvidaste tu clave?
+                ¿Olvidaste tu contraseña?
               </Link>
             </div>
             <input
@@ -180,7 +173,7 @@ export default function Login() {
                 Autenticando...
               </span>
             ) : (
-              "INGRESAR AL SISTEMA"
+              "INGRESAR"
             )}
           </button>
         </form>
@@ -188,7 +181,7 @@ export default function Login() {
         {/* Pie de la tarjeta */}
         <div className="mt-8 pt-6 border-t border-gray-100 text-center">
           <p className="text-sm text-gray-500 font-medium">
-            ¿Aún no tienes cuenta?{' '}
+            ¿Aún no tienes una cuenta?{' '}
             <Link to="/register" className="text-[#148F77] font-bold hover:text-[#2A5C4D] transition-colors hover:underline">
               REGÍSTRATE AQUÍ
             </Link>

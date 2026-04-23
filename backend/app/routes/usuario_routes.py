@@ -22,19 +22,27 @@ def obtener_permisos_por_rol(id_rol):
 def listar_usuarios():
     try:
         db.create_connection()
+        # 1. Agregamos u.nombre_usuario al final del SELECT
         query = f"""
-            SELECT u.id_usuario, p.nombre, u.correo, r.tipo_rol, u.id_rol
+            SELECT u.id_usuario, p.nombre, u.correo, r.tipo_rol, u.id_rol, u.nombre_usuario
             FROM {Config.SCHEMA}.t_usuario u
             INNER JOIN {Config.SCHEMA}.t_persona p ON u.id_persona = p.id_persona
             INNER JOIN {Config.SCHEMA}.t_rol r ON u.id_rol = r.id_rol
             ORDER BY u.id_usuario ASC
         """
         usuarios = db.execute_query(query, fetchall=True)
+
+        # 2. Mapeamos la nueva columna (r[5]) al diccionario
         data = [{
-            'id_usuario': r[0], 'nombre': r[1], 'correo': r[2],
-            'rol_nombre': r[3], 'id_rol': r[4],
+            'id_usuario': r[0],
+            'nombre': r[1],
+            'correo': r[2],
+            'rol_nombre': r[3],
+            'id_rol': r[4],
+            'nombre_usuario': r[5], # <--- AQUÍ ESTÁ LA MAGIA
             'permisos': obtener_permisos_por_rol(r[4])
         } for r in (usuarios or [])]
+
         return jsonify({'success': True, 'data': data}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

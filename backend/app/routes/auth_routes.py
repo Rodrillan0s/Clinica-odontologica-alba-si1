@@ -77,7 +77,7 @@ def validar_password(password):
     if not any(char.isupper() for char in password):
         return False, "La contraseña debe incluir al menos una mayúscula."
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-        return False, "La contraseña debe incluir al menos un símbolo especial (!@#$%...)."
+        return False, "La contraseña debe incluir al menos un símbolo especial."
     return True, ""
 
 # VALIDACIÓN DE CI EN REGISTRO
@@ -224,3 +224,37 @@ def get_stats():
     finally:
         db.close_connection()
 
+@auth_routes.route('/api/usuarios/<int:id_usuario>/password', methods=['PUT'])
+def cambiar_password(id_usuario):
+    try:
+        data = request.get_json()
+        password_actual = data.get('password_actual')
+        nueva_password = data.get('nueva_password')
+
+        db.create_connection()
+        
+        # 1. Usamos "contraseña" con comillas dobles para asegurar la Ñ
+        query_get = f'SELECT "contraseña" FROM {Config.SCHEMA}.t_usuario WHERE id_usuario = %s'
+        res = db.execute_query(query_get, (id_usuario,), fetchone=True)
+        
+        if not res:
+            return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 404
+            
+        hash_bd = res[0]
+
+        # 2. Verificar que la contraseña actual ingresada es correcta
+        if not check_password_hash(hash_bd, password_actual):
+            return jsonify({'success': False, 'message': 'La contraseña actual es incorrecta'}), 401
+
+        # 3. Encriptar la nueva y guardarla (también con "contraseña")
+        nuevo_hash = generate_password_hash(nueva_password)
+        query_update = f'UPDATE {Config.SCHEMA}.t_usuario SET "contraseña" = %s WHERE id_usuario = %s'
+        db.execute_query(query_update, (nuevo_hash, id_usuario), commit=True)
+
+        return jsonify({'success': True, 'message': 'Contraseña actualizada correctamente'}), 200
+
+    except Exception as e:
+        print(f"Error en Seguridad: {str(e)}")
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
+    finally:
+        db.close_connection()

@@ -47,8 +47,8 @@ export default function ResetPassword() {
           setIsTokenValid(false);
         }
       } catch (err) {
-        console.error("Error validando:", err);
-        setError('Error de conexión con la Clínica Alba. Reintente en unos momentos.');
+        console.error("Error en la validación:", err);
+        setError('Error de conexión. Reintente en unos momentos.');
         setIsTokenValid(false);
       } finally {
         setIsVerifying(false);
@@ -58,7 +58,7 @@ export default function ResetPassword() {
     if (token && userId) {
       verifyToken();
     } else {
-      setError('Enlace incompleto. Solicite uno nuevo.');
+      setError('Enlace inválido. Solicite uno nuevo.');
       setIsVerifying(false);
     }
   }, [token, userId]);
@@ -114,7 +114,7 @@ export default function ResetPassword() {
         <div className="text-center mb-8">
           <img src={logo} alt="Logo" className="h-14 mx-auto mb-4" />
           <h2 className="text-2xl font-black text-[#2A5C4D]">
-            {success ? "¡Todo listo!" : "Nueva Contraseña"}
+            {success ? "¡Todo listo!" : "NUEVA CONTRASEÑA"}
           </h2>
         </div>
 
@@ -172,7 +172,7 @@ export default function ResetPassword() {
                     loading ? 'bg-gray-400' : 'bg-[#148F77] hover:bg-[#0f6b59] active:scale-95'
                   }`}
                 >
-                  {loading ? "PROCESANDO..." : "ACTUALIZAR CONTRASEÑA"}
+                  {loading ? "..." : "ACTUALIZAR CONTRASEÑA"}
                 </button>
               </form>
             </>

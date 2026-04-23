@@ -19,7 +19,6 @@ export default function Welcome() {
   });
   
   const navigate = useNavigate();
-  
   // Redireccionar si ya está logueado
   useEffect(() => {
     const token = localStorage.getItem('token'); 
@@ -199,7 +198,7 @@ export default function Welcome() {
           <p className="animate-text-fast delay-100 text-lg md:text-xl text-gray-100 font-medium mb-10 max-w-2xl mx-auto">
             Especialistas en transformar tu salud dental con tratamientos modernos, seguros y sin dolor.
           </p>
-          <Link to="/register" className="inline-flex items-center gap-2 bg-[#148F77] hover:bg-[#0f6b59] text-white text-lg font-bold py-4 px-10 rounded-full shadow-2xl transition-all hover:-translate-y-1">
+          <Link to="/login" className="inline-flex items-center gap-2 bg-[#148F77] hover:bg-[#0f6b59] text-white text-lg font-bold py-4 px-10 rounded-full shadow-2xl transition-all hover:-translate-y-1">
             ¡QUIERO AGENDAR MI CONSULTA!
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
           </Link>

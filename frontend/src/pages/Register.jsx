@@ -29,24 +29,20 @@ export default function Register() {
 
   const fechaHoy = new Date().toISOString().split("T")[0];
 
-  // ==========================================
+
   // 1. VERIFICACIÓN DE CI Y DATA MASKING
-  // ==========================================
   const handleVerifyCI = async () => {
-    // Evita buscar si el campo está vacío o incompleto
     if (!documentoIdentidad || documentoIdentidad.length < 5) {
       setIsExisting(false);
       setInfo('');
       return;
     }
-
     setVerifyingCI(true);
     setError('');
     setInfo('');
     setIsExisting(false);
 
     try {
-      // Manejo seguro de la URL (Por si hay doble barra o falta /api)
       const url = API_URL.endsWith('/api') 
         ? `${API_URL}/verify-ci/${documentoIdentidad}` 
         : `${API_URL}/api/verify-ci/${documentoIdentidad}`;
@@ -56,19 +52,13 @@ export default function Register() {
 
       if (!response.ok || !data.success) {
         setError(data.message || 'Error al verificar el CI.');
-        // Limpiamos los campos visuales si está bloqueado
         setNombre(''); 
         return;
       }
 
       if (data.exists && data.data) {
-        // ENMASCARAMIENTO DE DATOS: Ponemos el nombre con asteriscos
-        setNombre(data.data.masked_name || '');
-        
-        // Limpiamos la fecha de nacimiento por si había escrito algo
-        setFechaNacimiento('');
-        
-        // Bloqueamos la casilla del nombre y mostramos la alerta de seguridad
+        setNombre(data.data.masked_name || '');      
+        setFechaNacimiento('');        
         setIsExisting(true); 
         setInfo(data.message); 
       }
@@ -79,9 +69,7 @@ export default function Register() {
     }
   };
 
-  // ==========================================
-  // 2. REGISTRO FINAL (NUEVOS Y ANTIGUOS)
-  // ==========================================
+  // REGISTRO FINAL (NUEVOS Y ANTIGUOS)
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
@@ -90,7 +78,6 @@ export default function Register() {
       setError('Las contraseñas no coinciden.');
       return;
     }
-
     // --- NUEVA VALIDACIÓN DE SEGURIDAD (Obs 2) ---
     const regexPassword = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!regexPassword.test(password)) {
@@ -145,9 +132,7 @@ export default function Register() {
     }
   };
 
-  // ==========================================
   // ESTILOS REUTILIZABLES (TAILWIND)
-  // ==========================================
   const inputClass = "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#148F77] focus:border-transparent outline-none text-sm transition-all shadow-inner";
   const labelClass = "block text-[11px] font-bold text-[#2A5C4D] uppercase tracking-wider mb-1";
 
@@ -169,7 +154,7 @@ export default function Register() {
         {/* ENCABEZADO */}
         <div className="text-center mb-6">
           <Link to="/"><img src={logo} alt="Logo Clínica Alba" className="h-16 w-auto object-contain mx-auto mb-3 drop-shadow-md hover:scale-105 transition-transform" /></Link>
-          <h2 className="text-3xl font-black text-[#2A5C4D] tracking-tight">Registro</h2>
+          <h2 className="text-3xl font-black text-[#2A5C4D] tracking-tight">REGISTRO</h2>
         </div>
 
         {/* ALERTAS */}
@@ -190,7 +175,7 @@ export default function Register() {
         {success && (
           <div className="bg-[#E8F4F8] border border-[#148F77]/30 text-[#2A5C4D] px-4 py-3.5 rounded-lg mb-5 text-sm flex items-center shadow-sm">
              <svg className="w-5 h-5 mr-3 flex-shrink-0 text-[#148F77]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span className="font-medium tracking-wide">Cuenta configurada exitosamente. Redirigiendo...</span>
+            <span className="font-medium tracking-wide">Cuenta creada exitosamente. Se redirigirá en breve...</span>
           </div>
         )}
 
@@ -199,7 +184,7 @@ export default function Register() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className={labelClass}>Nombre de Usuario *</label>
-              <input type="text" required value={userName} onChange={(e) => setUserName(e.target.value)} className={`${inputClass} bg-gray-50 border-gray-200`} placeholder="Ej: luis_garcia" />
+              <input type="text" required value={userName} onChange={(e) => setUserName(e.target.value)} className={`${inputClass} bg-gray-50 border-gray-200`} placeholder=" nombre de usuario" />
             </div>
             
             <div className="relative">
@@ -211,7 +196,7 @@ export default function Register() {
                 onChange={(e) => setDocumentoIdentidad(e.target.value)} 
                 onBlur={handleVerifyCI} /* ESTE EVENTO ES LA CLAVE DE TODO */
                 className={`${inputClass} bg-gray-50 border-gray-200`} 
-                placeholder="Ingresa tu carnet" 
+                placeholder="Ingresa tu documento de identidad" 
               />
               {verifyingCI && (
                 <div className="absolute right-3 top-[34px]">
@@ -269,7 +254,7 @@ export default function Register() {
               <label className={labelClass}>Contraseña *</label>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} bg-gray-50 border-gray-200`} />
               {/* OPCIONAL: Pista de contraseña debajo del campo para que el usuario sepa qué poner */}
-              <p className="text-[9px] text-gray-400 mt-1 uppercase font-bold italic">Mín. 8 caracteres, 1 Mayúscula y 1 Símbolo</p>
+              <p className="text-[9px] text-gray-400 mt-1 uppercase font-bold italic">Recuerda tu contraseña, solo tú la conoces</p>
             </div>
             <div>
               <label className={labelClass}>Confirmar Contraseña *</label>
@@ -284,7 +269,7 @@ export default function Register() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Procesando...
+                  ...
                 </span>
             ) : "REGISTRARME"}
           </button>

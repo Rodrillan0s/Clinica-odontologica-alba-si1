@@ -10,3 +10,4 @@ TOKEN_SECRET_KEY=token123
 
 MAIL_USERNAME=toledoquirogaeddy@gmail.com
 MAIL_PASSWORD=gdcp iiyv xeqx jpup
+FRONTEND_URL=http://localhost:5173

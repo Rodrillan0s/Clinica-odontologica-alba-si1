@@ -55,8 +55,8 @@ export default function ForgotPassword() {
 
         <div className="text-center mb-8 mt-4">
           <img src={logo} alt="Logo" className="h-14 w-auto mx-auto mb-4" />
-          <h2 className="text-2xl font-black text-[#2A5C4D]">Recuperar Clave</h2>
-          <p className="text-[#148F77] text-[10px] font-bold uppercase mt-1 tracking-widest">Ingresa tu correo registrado</p>
+          <h2 className="text-2xl font-black text-[#2A5C4D]">RECUPERAR CONTRASEÑA</h2>
+          <p className="text-[#148F77] text-[12px] font-bold uppercase mt-1 tracking-widest">Te enviaremos un enlace para crear una nueva contraseña. Ingresa tu correo y revisa tu bandeja de entrada.</p>                     
         </div>
 
         {message.text && (
@@ -72,7 +72,7 @@ export default function ForgotPassword() {
           </div>
 
           <button type="submit" disabled={loading} className={`w-full py-4 rounded-xl font-bold text-white shadow-xl transition-all ${loading ? 'bg-gray-400' : 'bg-[#148F77] hover:bg-[#0f6b59]'}`}>
-            {loading ? "ENVIANDO..." : "ENVIAR INSTRUCCIONES"}
+            {loading ? "..." : "ENVIAR ENLACE"}
           </button>
         </form>
       </div>

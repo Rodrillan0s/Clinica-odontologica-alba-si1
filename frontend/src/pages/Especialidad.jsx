@@ -168,7 +168,7 @@ export default function Especialidad() {
             
             <div>
               <Link 
-                to="/register" 
+                to="/login" 
                 className="inline-flex items-center justify-center gap-2 bg-[#148F77] hover:bg-[#0f6b59] w-full sm:w-auto text-white text-base font-bold py-4 px-8 rounded-xl shadow-lg transition-all hover:-translate-y-1 active:scale-95"
               >
                 Agendar Cita Ahora
