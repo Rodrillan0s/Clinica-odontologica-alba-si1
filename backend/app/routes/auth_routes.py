@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 import traceback, psycopg2, re, secrets, os
 from ..config import db, Config
@@ -15,9 +15,9 @@ def forgot_password():
         email = data.get('email', '').strip()
         token_plano = secrets.token_urlsafe(32)
         token_hash = generate_password_hash(token_plano)
-        
+        ip_usuario = obtener_ip()
         sql = f"CALL {Config.SCHEMA}.p_solicitar_recuperacion(%s, %s, %s, NULL, NULL)"
-        result = db.execute_query(sql, (email, token_hash, request.remote_addr), fetchone=True, commit=True)
+        result = db.execute_query(sql, (email, token_hash, ip_usuario), fetchone=True, commit=True)
         
         if result and result[0]:
             u_id, u_name = result
@@ -203,6 +203,12 @@ def login():
     finally:
         db.close_connection()
 
+@auth_routes.route('/api/logout', methods=['POST'])
+def logout():
+    response = make_response(jsonify({'success': True, 'message': 'Sesión cerrada'}))
+    response.set_cookie('token', '', expires=0) # Borra la cookie
+    return response
+
 @auth_routes.route('/api/stats', methods=['GET'])
 def get_stats():
     try:
@@ -258,3 +264,10 @@ def cambiar_password(id_usuario):
         return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
     finally:
         db.close_connection()
+
+def obtener_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+        ip = request.headers.getlist("X-Forwarded-For")[0].split(',')[0]
+    else:
+        ip = request.remote_addr
+    return ip

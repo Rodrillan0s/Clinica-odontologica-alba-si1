@@ -1,20 +1,16 @@
 import { create } from 'zustand';
 
 export const useAuthStore = create((set) => ({
-  token: localStorage.getItem('token') || null,
+  // Ya no leemos 'token' de localStorage, solo el objeto user para la UI
   user: JSON.parse(localStorage.getItem('user')) || null,
 
-  // Acción para iniciar sesión
-  login: (token, user) => {
-    localStorage.setItem('token', token);
+  login: (user) => {
     localStorage.setItem('user', JSON.stringify(user));
-    set({ token, user });
+    set({ user });
   },
 
-  // Acción para cerrar sesión
   logout: () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
-    set({ token: null, user: null });
+    set({ user: null });
   }
 }));

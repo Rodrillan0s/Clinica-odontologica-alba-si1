@@ -6,21 +6,18 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Welcome from "./pages/Welcome";
 import Register from "./pages/Register";
-import Home from "./pages/Home";
+import Panel from "./pages/Panel"; 
 import Especialidad from './pages/Especialidad';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
 export default function App() {
-  useEffect(() => {
-    despertarBackend();
-  }, []);
+  useEffect(() => { despertarBackend(); }, []);
 
   return (
     <BrowserRouter>
       <div className="bg-[#D9F0FB] min-h-screen">
         <Routes>
-          {/* PÚBLICAS */}
           <Route path="/" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -28,9 +25,8 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* PRIVADAS */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/home" element={<Home />} />
+            <Route path="/panel" element={<Panel />} />
           </Route>
         </Routes>
       </div>

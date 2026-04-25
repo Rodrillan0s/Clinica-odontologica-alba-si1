@@ -15,14 +15,15 @@ export default function Welcome() {
     pacientes: '0',
     años: '12',
     calidad: '100%',
-    especialidades: '0'
+    especialidades: '6'
   });
   
   const navigate = useNavigate();
-  // Redireccionar si ya está logueado
+
+  // ACTUALIZACIÓN: Redireccionar a /panel si ya hay sesión activa
   useEffect(() => {
     const token = localStorage.getItem('token'); 
-    if (token) navigate('/home'); 
+    if (token) navigate('/panel'); 
   }, [navigate]);
 
   // Detector de scroll para la opacidad del Navbar
@@ -41,21 +42,19 @@ export default function Welcome() {
         const response = await fetch(`${API_URL}/stats`);        
         if (response.ok) {
           const data = await response.json();
-          
           if (data.success && data.stats) {
             setApiStats({
               pacientes: `+${data.stats.pacientes}`, 
-              calidad: data.stats.calidad,
+              calidad: data.stats.calidad || '100%',
+              años: data.stats.años || '12',
+              especialidades: data.stats.especialidades || '6'
             });
           }
-        } else {
-          console.error("Error del servidor al obtener stats:", response.status);
         }
       } catch (error) {
         console.error("Error de conexión al cargar estadísticas:", error);
       }
     };
-
     fetchStats();
   }, []);
 
@@ -95,18 +94,17 @@ export default function Welcome() {
     }
   ];
 
-  // Las estadísticas se alimentan del estado 'apiStats'
   const stats = [
-    { number: apiStats.pacientes, label: 'Pacientes', style: 'bg-gray-50 border border-gray-100 shadow-sm text-[#148F77] label-color-[#2A5C4D]' },
-    { number: 12, label: 'Años', style: 'bg-gray-50 border border-gray-100 shadow-sm mt-8 text-[#148F77] label-color-[#2A5C4D]' },
-    { number: apiStats.calidad, label: 'Calidad', style: 'bg-[#2A5C4D] shadow-lg transform -translate-y-8 text-white label-color-white/80' },
-    { number: 6, label: 'Especialidades', style: 'bg-gray-50 border border-gray-100 shadow-sm text-[#148F77] label-color-[#2A5C4D]' }
+    { number: apiStats.pacientes, label: 'Pacientes', style: 'bg-gray-50 border border-gray-100 shadow-sm text-[#148F77]' },
+    { number: apiStats.años, label: 'Años', style: 'bg-gray-50 border border-gray-100 shadow-sm mt-8 text-[#148F77]' },
+    { number: apiStats.calidad, label: 'Calidad', style: 'bg-[#2A5C4D] shadow-lg transform -translate-y-8 text-white' },
+    { number: apiStats.especialidades, label: 'Especialidades', style: 'bg-gray-50 border border-gray-100 shadow-sm text-[#148F77]' }
   ];
 
   return (
-    <div className="min-h-screen bg-white font-sans antialiased">
+    <div className="min-h-screen bg-white font-sans antialiased overflow-x-hidden">
       
-      {/* NAVBAR CON MENU DESPLEGABLE Y MÓVIL */}
+      {/* NAVBAR */}
       <nav className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-5'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           
@@ -141,132 +139,123 @@ export default function Welcome() {
             <button onClick={(e) => scrollToSection(e, 'nosotros')} className="hover:text-[#148F77] transition-colors outline-none">Nosotros</button>
           </div>
 
-          {/* Botones (Desktop & Tablet) */}
+          {/* Botones */}
           <div className="hidden sm:flex items-center gap-3">
             <Link to="/login" className={`text-sm font-bold transition-colors ${isScrolled ? 'text-[#2A5C4D]' : 'text-white'}`}>Iniciar Sesión</Link>
             <Link to="/register" className="bg-[#148F77] hover:bg-[#0f6b59] text-white text-sm font-bold py-2.5 px-6 rounded-lg shadow-lg transition-all active:scale-95">Agendar Cita</Link>
           </div>
 
-          {/* Botón Hamburguesa (Móvil) */}
+          {/* Móvil Toggle */}
           <button 
-            className={`md:hidden flex items-center p-2 rounded-lg transition-colors outline-none ${isScrolled ? 'text-[#2A5C4D]' : 'text-white'}`}
+            className={`md:hidden p-2 rounded-lg outline-none ${isScrolled ? 'text-[#2A5C4D]' : 'text-white'}`}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
-              {isMobileMenuOpen 
-                ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> 
-                : <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              }
+              {isMobileMenuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />}
             </svg>
           </button>
         </div>
 
-        {/* Menú Desplegable Móvil */}
+        {/* Menú Móvil */}
         {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-xl flex flex-col p-4 border-t border-gray-100">
+          <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-xl flex flex-col p-4 border-t border-gray-100 animate-fade-in">
             <button onClick={(e) => scrollToSection(e, 'inicio')} className="w-full text-left py-3 px-4 text-[#2A5C4D] font-bold border-b border-gray-100 outline-none">Inicio</button>
-            <div className="py-3 px-4 text-gray-500 font-bold border-b border-gray-100">Especialidades:</div>
+            <div className="py-3 px-4 text-gray-400 font-black text-[10px] uppercase tracking-widest border-b border-gray-100">Especialidades</div>
             {especialidadesList.map((item) => (
-              <Link key={item.path} to={`/especialidad/${item.path}`} onClick={() => setIsMobileMenuOpen(false)} className="py-2 px-8 text-sm text-gray-600 font-semibold border-b border-gray-50">
-                • {item.name}
+              <Link key={item.path} to={`/especialidad/${item.path}`} onClick={() => setIsMobileMenuOpen(false)} className="py-3 px-8 text-sm text-gray-600 font-semibold border-b border-gray-50">
+                {item.name}
               </Link>
             ))}
-            <button onClick={(e) => scrollToSection(e, 'nosotros')} className="w-full text-left py-3 px-4 text-[#2A5C4D] font-bold border-b border-gray-100 outline-none">Nosotros</button>
-            <div className="flex flex-col gap-3 mt-4 px-4">
-              <Link to="/login" className="text-center py-2 text-[#2A5C4D] font-bold">Iniciar Sesión</Link>
-              <Link to="/register" className="bg-[#148F77] text-white text-center font-bold py-3 rounded-lg">Agendar Cita</Link>
+            <button onClick={(e) => scrollToSection(e, 'nosotros')} className="w-full text-left py-4 px-4 text-[#2A5C4D] font-bold border-b border-gray-100 outline-none">Nosotros</button>
+            <div className="flex flex-col gap-3 mt-6 px-4">
+              <Link to="/login" className="text-center py-3 text-[#2A5C4D] font-bold border border-[#2A5C4D] rounded-xl">Iniciar Sesión</Link>
+              <Link to="/register" className="bg-[#148F77] text-white text-center font-bold py-4 rounded-xl shadow-lg">Agendar Cita</Link>
             </div>
           </div>
         )}
       </nav>
 
-      {/* ==========================================
-          HERO SECTION
-          ========================================== */}
+      {/* HERO */}
       <section id="inicio" className="relative h-screen flex items-center justify-center">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${fondoWelcome})` }}></div>
         <div className="absolute inset-0 bg-[#2A5C4D]/60 mix-blend-multiply"></div>
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-white"></div>
 
-        <div className="relative z-10 text-center px-4 max-w-4xl mt-16">
-          <span className="inline-block py-1 px-3 rounded-full bg-white/20 text-white backdrop-blur-sm text-xs font-bold tracking-widest uppercase mb-6">
+        <div className="relative z-10 text-center px-4 max-w-4xl mt-16 animate-fade-in-up">
+          <span className="inline-block py-1 px-4 rounded-full bg-white/20 text-white backdrop-blur-sm text-[10px] font-black tracking-[0.2em] uppercase mb-6 border border-white/10">
             Tecnología y Calidad en Santa Cruz
           </span>
-          <h1 className="animate-text-fast text-5xl md:text-7xl font-black text-white tracking-tight drop-shadow-lg mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight drop-shadow-2xl mb-6 leading-tight">
             Tu mejor sonrisa <br className="hidden md:block"/> comienza aquí.
           </h1>
-          <p className="animate-text-fast delay-100 text-lg md:text-xl text-gray-100 font-medium mb-10 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-100 font-medium mb-10 max-w-2xl mx-auto opacity-90">
             Especialistas en transformar tu salud dental con tratamientos modernos, seguros y sin dolor.
           </p>
-          <Link to="/login" className="inline-flex items-center gap-2 bg-[#148F77] hover:bg-[#0f6b59] text-white text-lg font-bold py-4 px-10 rounded-full shadow-2xl transition-all hover:-translate-y-1">
-            ¡QUIERO AGENDAR MI CONSULTA!
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+          <Link to="/login" className="inline-flex items-center gap-3 bg-[#148F77] hover:bg-[#0f6b59] text-white text-lg font-black py-5 px-12 rounded-full shadow-2xl transition-all hover:-translate-y-1 active:scale-95">
+            AGENDAR MI CONSULTA
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-5 h-5"><path d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
           </Link>
         </div>
       </section>
 
-      {/* ==========================================
-          CINTILLO INFORMATIVO
-          ========================================== */}
+      {/* INFO CARDS */}
       <div className="relative z-20 -mt-16 max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="bg-white rounded-2xl shadow-2xl flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x border border-gray-100 overflow-hidden">
           {infoCards.map((card, idx) => (
-            <div key={idx} className="flex-1 p-6 flex items-start gap-4 hover:bg-gray-50 transition-colors">
-              <div className="p-3 bg-[#E8F4F8] rounded-full text-[#148F77] shrink-0">
+            <div key={idx} className="flex-1 p-8 flex items-start gap-4 hover:bg-gray-50 transition-colors">
+              <div className="p-3.5 bg-emerald-50 rounded-2xl text-[#148F77] shrink-0 shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                   {card.icon}
                 </svg>
               </div>
               <div>
-                <h3 className="text-[#2A5C4D] font-black text-sm uppercase mb-1">{card.title}</h3>
-                <p className="text-gray-500 text-sm">{card.text}</p>
+                <h3 className="text-[#2A5C4D] font-black text-[11px] uppercase tracking-widest mb-1">{card.title}</h3>
+                <p className="text-gray-500 text-sm font-medium leading-relaxed">{card.text}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ==========================================
-          SECCIÓN NOSOTROS
-          ========================================== */}
+      {/* SECCIÓN NOSOTROS */}
       <section id="nosotros" className="w-full bg-white pt-24 pb-16">
         <div className="relative w-full h-[50vh] min-h-[400px] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-cover bg-center bg-fixed" style={{ backgroundImage: `url(${fondoNosotros})` }}></div>
           <div className="absolute inset-0 bg-[#2A5C4D]/80 mix-blend-multiply"></div>
           <div className="relative z-10 text-center px-4 max-w-5xl">
-            <span className="inline-block py-1 px-3 border border-white/30 rounded-full text-white/90 text-xs font-bold tracking-[0.2em] uppercase mb-4 shadow-sm backdrop-blur-sm">
+            <span className="inline-block py-1.5 px-4 border border-white/30 rounded-full text-white/90 text-[10px] font-black tracking-[0.3em] uppercase mb-4 backdrop-blur-sm">
               Conoce a Clínica Alba
             </span>
-            <h2 className="text-4xl md:text-6xl font-black text-white leading-tight">
+            <h2 className="text-4xl md:text-6xl font-black text-white leading-tight italic tracking-tighter">
               Porque nuestro único fin es <br className="hidden md:block"/> hacerte sonreír.
             </h2>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 mt-20 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+        <div className="max-w-7xl mx-auto px-6 mt-24 grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
           <div>
-            <h3 className="text-3xl md:text-4xl font-black text-[#2A5C4D] mb-6">Excelencia odontológica <br/> con calidez humana.</h3>
-            <p className="text-gray-500 text-lg leading-relaxed mb-6">
-              En <strong className="text-[#148F77]">Clínica Alba</strong> cuidamos personas. Con más de 10 años de trayectoria, unimos tecnología y empatía para brindarte la mejor experiencia.
+            <h3 className="text-3xl md:text-4xl font-black text-[#2A5C4D] mb-8 tracking-tighter">Excelencia odontológica <br/> con calidez humana.</h3>
+            <p className="text-gray-500 text-lg leading-relaxed mb-8">
+              En <strong className="text-[#148F77]">Clínica Alba</strong> no solo tratamos dientes, cuidamos personas. Con más de 10 años de trayectoria, unimos tecnología de punta y empatía para brindarte la mejor experiencia de salud.
             </p>
-            <ul className="space-y-4 mt-8 font-medium">
-              {['Equipamiento 3D.', 'Materiales premium.', 'Sin dolor.', 'Especialistas certificados.'].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-gray-700">
-                  <div className="w-6 h-6 rounded-full bg-[#E8F4F8] flex items-center justify-center text-[#148F77]">✓</div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+              {['Equipamiento 3D.', 'Materiales premium.', 'Tratamientos sin dolor.', 'Especialistas certificados.'].map((item, i) => (
+                <li key={i} className="flex items-center gap-3 text-gray-700 font-bold text-sm uppercase tracking-tight">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[#148F77] text-xs">✓</div>
                   {item}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Estadísticas generadas dinámicamente desde el backend */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* STATS */}
+          <div className="grid grid-cols-2 gap-6">
             {stats.map((stat, idx) => {
               const isDark = stat.style.includes('bg-[#2A5C4D]');
               return (
-                <div key={idx} className={`p-8 rounded-2xl ${stat.style} flex flex-col justify-center`}>
-                  <h4 className={`text-5xl font-black mb-2 ${isDark ? 'text-white' : 'text-[#148F77]'}`}>{stat.number}</h4>
-                  <p className={`font-bold text-sm uppercase ${isDark ? 'text-white/80' : 'text-[#2A5C4D]'}`}>{stat.label}</p>
+                <div key={idx} className={`p-10 rounded-[3rem] ${stat.style} flex flex-col justify-center items-center text-center transition-transform hover:scale-105`}>
+                  <h4 className={`text-5xl font-black mb-2 tracking-tighter ${isDark ? 'text-white' : 'text-[#148F77]'}`}>{stat.number}</h4>
+                  <p className={`font-black text-[10px] uppercase tracking-widest ${isDark ? 'text-white/60' : 'text-[#2A5C4D]/60'}`}>{stat.label}</p>
                 </div>
               );
             })}
@@ -274,15 +263,15 @@ export default function Welcome() {
         </div>
       </section>
 
-      {/* ==========================================
-          FOOTER SENCILLO
-          ========================================== */}
-      <footer className="bg-[#2A5C4D] py-8 text-center border-t border-white/10">
-        <p className="text-white/80 text-sm">
-          © {new Date().getFullYear()} Clínica Alba. Todos los derechos reservados.
-        </p>
+      {/* FOOTER */}
+      <footer className="bg-[#2A5C4D] py-12 text-center border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6">
+            <img src={logo} alt="Alba" className="h-8 mx-auto mb-6 grayscale brightness-200 opacity-50" />
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.4em]">
+                © {new Date().getFullYear()} Clínica Alba Santa Cruz. Todos los derechos reservados.
+            </p>
+        </div>
       </footer>
-
     </div>
   );
 }
