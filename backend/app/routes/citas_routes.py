@@ -230,10 +230,9 @@ def get_odontologos():
         """
         # Tu clase db ya tiene el execute_query optimizado
         doctores = db.execute_query(sql, fetchall=True)
-        
         # Formateamos para que React lo entienda fácil
         lista = [{"id": d[0], "nombre": d[1]} for d in doctores]
         return jsonify(lista), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
