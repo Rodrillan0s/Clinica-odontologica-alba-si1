@@ -13,7 +13,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Obtenemos la acción 'login' de nuestro store refactorizado
   const { login } = useAuthStore();
 
   const handleLogin = async (e) => {
@@ -25,31 +24,31 @@ export default function Login() {
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // IMPORTANTE: Le decimos al navegador que acepte y guarde la cookie del servidor
         credentials: 'include', 
         body: JSON.stringify({ 
-          user_input: user, 
+          user_input: user.trim(), 
           password: password 
         }),
       });
 
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Error de conexión con el servidor. Verifica el Backend.");
+      // Verificamos si el servidor respondió con un error de red o de ruta (404/500)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error del servidor (${response.status})`);
       }
 
       const data = await response.json();
       
-      if (!data.success) {
+      if (data.success) {
+        /* IMPORTANTE PARA LA BITÁCORA:
+          data.user debe contener { id_usuario, nombre, rol, id_sesion }
+          Al llamar a login(data.user), el store de Zustand guardará la sesión activa.
+        */
+        login(data.user); 
+        navigate('/panel'); 
+      } else {
         throw new Error(data.message || 'Credenciales incorrectas.');
       }
-
-      // CAMBIO CLAVE: Ya no mandamos el access_token al store.
-      // El navegador ya lo tiene guardado en la cookie gracias a 'credentials: include'.
-      login(data.user); 
-      
-      // REDIRIGIMOS AL PANEL
-      navigate('/panel'); 
       
     } catch (err) {
       setError(err.message);
@@ -64,11 +63,9 @@ export default function Login() {
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 py-10 font-sans antialiased">
       
-      {/* IMAGEN DE FONDO */}
       <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm" style={{ backgroundImage: `url(${fondoWelcome})` }}></div>
       <div className="absolute inset-0 bg-[#2A5C4D]/70 mix-blend-multiply"></div>
 
-      {/* TARJETA DE LOGIN */}
       <div className="bg-white/95 backdrop-blur-xl p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-md border border-white/50 relative overflow-hidden z-10 animate-fade-in-up">
         
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#148F77] to-[#2A5C4D]"></div>
@@ -88,7 +85,7 @@ export default function Login() {
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center animate-shake">
-            <span className="font-medium">{error}</span>
+            <span className="font-bold text-[10px] uppercase">⚠️ {error}</span>
           </div>
         )}
 

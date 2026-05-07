@@ -12,6 +12,7 @@ export default function AdminUI({ dataMaster, onRefresh }) {
   const [loading, setLoading] = useState(false);
   const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
 
+  // Obtenemos el usuario actual del store para la auditoría
   const user = useAuthStore(state => state.user);
 
   const notify = (mensaje, tipo = "success") => {
@@ -36,7 +37,10 @@ export default function AdminUI({ dataMaster, onRefresh }) {
           body: JSON.stringify({
               nombre_usuario: formEdit.nombre_usuario,
               correo: formEdit.correo,
-              id_rol: Number(formEdit.id_rol)
+              id_rol: Number(formEdit.id_rol),
+              // --- DATOS DE AUDITORÍA ---
+              id_operador: user.id_usuario,
+              id_sesion: user.id_sesion
           })
       }).then(r => r.json());
       
@@ -63,7 +67,16 @@ export default function AdminUI({ dataMaster, onRefresh }) {
   const handleEliminar = async () => {
     if (!usuarioAEliminar) return;
     try {
-        const res = await fetch(`${API_URL}/usuarios/${usuarioAEliminar}`, { method: 'DELETE' }).then(r => r.json());
+        const res = await fetch(`${API_URL}/usuarios/${usuarioAEliminar}`, { 
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                // --- DATOS DE AUDITORÍA ---
+                id_operador: user.id_usuario,
+                id_sesion: user.id_sesion
+            })
+        }).then(r => r.json());
+
         if (res.success) {
             notify("Registro eliminado correctamente");
             onRefresh();
@@ -85,6 +98,7 @@ export default function AdminUI({ dataMaster, onRefresh }) {
 
   return (
     <div className="animate-fade-in pb-20 relative">
+        {/* TOAST DE NOTIFICACIÓN */}
         {toast.mensaje && (
             <div className={`fixed top-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-2xl font-black text-[10px] uppercase tracking-widest animate-fade-in-up border-b-4 ${
                 toast.tipo === 'error' ? 'bg-red-500 text-white border-red-700' : 'bg-[#148F77] text-white border-emerald-900'
@@ -93,6 +107,7 @@ export default function AdminUI({ dataMaster, onRefresh }) {
             </div>
         )}
 
+        {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
         {usuarioAEliminar && (
             <div className="fixed inset-0 bg-[#2A5C4D]/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in">
                 <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl overflow-hidden animate-fade-in-up text-center p-10 border-t-8 border-red-500">
@@ -109,6 +124,7 @@ export default function AdminUI({ dataMaster, onRefresh }) {
             </div>
         )}
 
+        {/* CABECERA Y BUSCADOR */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
             <div>
                 <h2 className="text-3xl font-black text-[#2A5C4D] tracking-tighter italic">Gestión de Acceso</h2>
@@ -133,6 +149,7 @@ export default function AdminUI({ dataMaster, onRefresh }) {
             </div>
         </div>
         
+        {/* TABLA DE USUARIOS */}
         <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
             <table className="w-full text-left">
                 <thead className="bg-gray-50/50 text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">
@@ -253,7 +270,7 @@ export default function AdminUI({ dataMaster, onRefresh }) {
                                 )}
                             </td>
                         </tr>
-                    );})}
+                        );})}
                 </tbody>
             </table>
         </div>

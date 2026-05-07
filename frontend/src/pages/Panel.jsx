@@ -11,6 +11,7 @@ import AdminUI from '../components/UIs/Admin';
 import CambioPasswordUI from '../components/UIs/CambioPassword';
 import AgendarCitas from '../components/UIs/AgendarCitas';
 import ModuloPacientes from '../components/UIs/ModuloPacientes';
+import Bitacora from '../components/UIs/Bitacora';
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = { ADMINISTRADOR: 1, ODONTOLOGO: 2, ASISTENTE: 3, RECEPCIONISTA: 4, CLIENTE: 5, PACIENTE: 6 };
@@ -66,10 +67,8 @@ export default function Panel() {
     return () => controller.abort();
   }, []);
 
-  // VALIDACIÓN DE ROL: Forzamos que sea un número para evitar fallos de tipo
   const userRolId = user?.rol ? Number(user.rol) : null;
 
-  // Si aún no tenemos los datos del usuario del store, mostramos un loader
   if (!userRolId && dataMaster.loading) {
       return <div className="h-screen w-full flex items-center justify-center bg-[#F4F9F9] text-[#148F77] font-bold">Cargando sesión...</div>;
   }
@@ -93,20 +92,32 @@ export default function Panel() {
         </header>
         
         <div className="flex-1 overflow-y-auto p-10">
+          
+          {/* PANEL DE CONTROL / DASHBOARDS */}
           {activeMenu === 'Panel de Control' && (
-            userRolId === ROLES.ADMINISTRADOR ? <DashboardAdmin /> :
+            userRolId === ROLES.ADMINISTRADOR ? 
+              /* PASAMOS setView PARA QUE EL BOTÓN NARANJA FUNCIONE */
+              <DashboardAdmin setView={(v) => setActiveMenu(v === 'bitacora' ? 'Bitácora' : 'Panel de Control')} /> :
             userRolId === ROLES.ODONTOLOGO ? <DashboardOdontologo openModal={() => setShowModalCita(true)} /> :
             userRolId === ROLES.RECEPCIONISTA ? <DashboardRecepcionista openModal={() => setShowModalCita(true)} /> :
             <DashboardPaciente openModal={() => setShowModalCita(true)} />
           )}
 
+          {/* GESTIÓN DE USUARIOS */}
           {activeMenu === 'Usuarios y Roles' && userRolId === ROLES.ADMINISTRADOR && (
               <AdminUI dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
           )}
+
+          {/* NUEVA VISTA: BITÁCORA (AUDITORÍA) */}
+          {activeMenu === 'Bitácora' && userRolId === ROLES.ADMINISTRADOR && (
+              <Bitacora />
+          )}
+
           {activeMenu === 'Pacientes' && <ModuloPacientes />}
           {activeMenu === 'Cambiar contraseña' && <CambioPasswordUI />}
 
-          {!['Panel de Control', 'Usuarios y Roles', 'Cambiar contraseña', 'Pacientes'].includes(activeMenu) && (
+          {/* ESTADO DE DESARROLLO */}
+          {!['Panel de Control', 'Usuarios y Roles', 'Cambiar contraseña', 'Pacientes', 'Bitácora'].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
                 <p className="text-6xl mb-4">⚙️</p>
                 <p className="font-black uppercase tracking-[0.3em] text-xs">Módulo en Desarrollo</p>

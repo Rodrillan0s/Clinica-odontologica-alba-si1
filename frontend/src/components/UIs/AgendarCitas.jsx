@@ -119,12 +119,16 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
     setLoading(true);
     setErrorMessage('');
 
+    // --- PAYLOAD CON DATOS DE AUDITORÍA ---
     const payload = {
         fecha_agendamiento: `${formData.fecha_base} ${formData.hora_seleccionada}:00`,
         id_paciente: Number(formData.id_paciente),
         id_odontologo: Number(formData.id_odontologo),
         id_sala: Number(formData.id_sala),
-        cita_obs: formData.cita_obs
+        cita_obs: formData.cita_obs,
+        // Inyectamos el ID del usuario y la sesión desde las props
+        id_usuario: user?.id_usuario,
+        id_sesion: user?.id_sesion
     };
 
     try {
