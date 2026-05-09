@@ -117,7 +117,8 @@ def login():
 @auth_routes.route('/api/logout', methods=['POST'])
 def logout():
     try:
-        data = request.get_json() or {}
+        # silent=True evita el error 400/500 si el body viene vacío
+        data = request.get_json(silent=True) or {}
         id_sesion = data.get('id_sesion')
         id_usuario = data.get('id_usuario')
 
@@ -130,6 +131,7 @@ def logout():
         response.set_cookie('access_token', '', expires=0, httponly=True)
         return response
     except Exception as e:
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 

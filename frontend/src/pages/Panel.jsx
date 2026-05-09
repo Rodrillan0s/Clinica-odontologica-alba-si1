@@ -10,12 +10,12 @@ import DashboardOdontologo from "../components/dashboards/DashboardOdontologo";
 import DashboardRecepcionista from "../components/dashboards/DashboardRecepcionista";
 import DashboardPaciente from "../components/dashboards/DashboardPaciente";
 
-import CambioPasswordUI from '../components/UIs/CambioPassword';
-import AgendarCitas from '../components/UIs/AgendarCitas';
-import AgendaCitas from '../components/UIs/AgendaCitas';
-import ModuloPacientes from '../components/UIs/ModuloPacientes';
-import Bitacora from '../components/UIs/Bitacora';
-import ModuloUsuarios from '../components/UIs/ModuloUsuarios';
+import CambioPasswordUI from "../components/UIs/CambioPassword";
+import AgendarCitas from "../components/UIs/AgendarCitas";
+import AgendaCitas from "../components/UIs/AgendaCitas";
+import ModuloPacientes from "../components/UIs/ModuloPacientes";
+import Bitacora from "../components/UIs/Bitacora";
+import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -28,7 +28,6 @@ const ROLES = {
 };
 
 export default function Panel() {
-
   const user = useAuthStore((state) => state.user);
   const clearStore = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
@@ -50,11 +49,11 @@ export default function Panel() {
   // =========================
   const fetchConfig = (signal) => ({
     signal,
-    credentials: 'include',
+    credentials: "include",
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('token')}`
-    }
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
   });
 
   // =========================
@@ -63,16 +62,20 @@ export default function Panel() {
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/logout`, {
-        method: 'POST',
-        credentials: 'include',
+        method: "POST",
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          id_sesion: user?.id_sesion,
+          id_usuario: user?.id_usuario,
+        }),
       });
     } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       clearStore();
       navigate("/login");
     }
@@ -84,20 +87,30 @@ export default function Panel() {
   const fetchTodo = async (signal) => {
     try {
       const config = fetchConfig(signal);
+      const rolActual = user?.rol ? Number(user.rol) : null;
+      const esAdmin = rolActual === 1;
 
-      const [resProc, resDoc, resUsu, resSalas, resPacientes] = await Promise.all([
-        fetch(`${API_URL}/procedimientos`, config).then(r => r.json()),
-        fetch(`${API_URL}/odontologos`, config).then(r => r.json()),
-        fetch(`${API_URL}/usuarios?t=${Date.now()}`, config).then(r => r.json()),
-        fetch(`${API_URL}/salas`, config).then(r => r.json()),
-        fetch(`${API_URL}/pacientes`, config).then(r => r.json()),
-      ]);
+      // /api/usuarios solo está disponible para administradores
+      const fetchUsuarios = esAdmin
+        ? fetch(`${API_URL}/usuarios?t=${Date.now()}`, config).then((r) =>
+            r.json(),
+          )
+        : Promise.resolve({ success: true, data: [] });
+
+      const [resProc, resDoc, resUsu, resSalas, resPacientes] =
+        await Promise.all([
+          fetch(`${API_URL}/procedimientos`, config).then((r) => r.json()),
+          fetch(`${API_URL}/odontologos`, config).then((r) => r.json()),
+          fetchUsuarios,
+          fetch(`${API_URL}/salas`, config).then((r) => r.json()),
+          fetch(`${API_URL}/pacientes`, config).then((r) => r.json()),
+        ]);
 
       const listaUsuarios = resUsu.success ? resUsu.data : [];
 
       setDataMaster({
         procedimientos: resProc.success ? resProc.data : [],
-        odontologos: Array.isArray(resDoc) ? resDoc : (resDoc.data || []),
+        odontologos: Array.isArray(resDoc) ? resDoc : resDoc.data || [],
         usuarios: listaUsuarios,
         pacientes: resPacientes.success ? resPacientes.data : [],
         salas: resSalas.success ? resSalas.data : [],
@@ -132,7 +145,6 @@ export default function Panel() {
 
   return (
     <div className="flex h-screen bg-[#F4F9F9] font-sans antialiased overflow-hidden text-gray-800">
-
       <Sidebar
         user={user}
         dataMaster={dataMaster}
@@ -145,33 +157,35 @@ export default function Panel() {
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white h-20 px-10 flex items-center border-b border-gray-50 shadow-sm">
           <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest italic">
-            Clínica Alba / <span className="text-[#148F77] font-black">{activeMenu}</span>
+            Clínica Alba /{" "}
+            <span className="text-[#148F77] font-black">{activeMenu}</span>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-10">
-
           {/* PANEL DE CONTROL / DASHBOARDS */}
           {activeMenu === "Panel de Control" &&
             (userRolId === ROLES.ADMINISTRADOR ? (
               <DashboardAdmin
                 setView={(v) =>
-                  setActiveMenu(v === "bitacora" ? "Bitácora" : "Panel de Control")
+                  setActiveMenu(
+                    v === "bitacora" ? "Bitácora" : "Panel de Control",
+                  )
                 }
               />
             ) : userRolId === ROLES.ODONTOLOGO ? (
               <DashboardOdontologo openModal={() => setShowModalCita(true)} />
             ) : userRolId === ROLES.RECEPCIONISTA ? (
-              <DashboardRecepcionista openModal={() => setShowModalCita(true)} />
+              <DashboardRecepcionista
+                openModal={() => setShowModalCita(true)}
+              />
             ) : (
               <DashboardPaciente openModal={() => setShowModalCita(true)} />
             ))}
 
           {/* GESTIÓN DE USUARIOS */}
           {activeMenu === "Usuarios y Roles" &&
-            userRolId === ROLES.ADMINISTRADOR && (
-              <ModuloUsuarios />
-            )}
+            userRolId === ROLES.ADMINISTRADOR && <ModuloUsuarios />}
 
           {/* BITÁCORA */}
           {activeMenu === "Bitácora" && userRolId === ROLES.ADMINISTRADOR && (
@@ -195,13 +209,21 @@ export default function Panel() {
           )}
 
           {/* MÓDULO EN DESARROLLO */}
-          {!["Panel de Control", "Usuarios y Roles", "Cambiar contraseña", "Pacientes", "Bitácora", "Citas"].includes(activeMenu) && (
+          {![
+            "Panel de Control",
+            "Usuarios y Roles",
+            "Cambiar contraseña",
+            "Pacientes",
+            "Bitácora",
+            "Citas",
+          ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-6xl mb-4">⚙️</p>
-              <p className="font-black uppercase tracking-[0.3em] text-xs">Módulo en Desarrollo</p>
+              <p className="font-black uppercase tracking-[0.3em] text-xs">
+                Módulo en Desarrollo
+              </p>
             </div>
           )}
-
         </div>
       </main>
 
@@ -224,7 +246,6 @@ export default function Panel() {
           user={user}
         />
       )}
-
     </div>
   );
 }
