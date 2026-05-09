@@ -53,20 +53,37 @@ def get_citas():
 
     try:
         db.create_connection()            
-        query, params = build_citas_query(filters, limit, offset, Config.SCHEMA, Config.T_CITAS)    
+        # Llamada a la nueva función f_obtener_citas con 12 parámetros
+        query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        params = (
+            filters.get('id_personal'),
+            filters.get('id_paciente'),
+            filters.get('fecha_agen_desde'),
+            filters.get('fecha_agen_hasta'),
+            filters.get('fecha_reg_desde'),
+            filters.get('fecha_reg_hasta'),
+            filters.get('fecha_fin_desde'),
+            filters.get('fecha_fin_hasta'),
+            filters.get('id_sala'),
+            filters.get('estado'),
+            limit,
+            offset
+        )
         results = db.execute_query(query, params, fetchall=True)
 
         citas_list = []
         if results:
             for row in results:
                 citas_list.append({
-                    "id_personal": row[0],
-                    "id_paciente": row[1],
-                    "fecha_registro": row[2],
-                    "fecha_agendamiento": row[3],
-                    "estado_cita": row[4],
-                    "id_sala": row[5],
-                    "cita_obs": row[6]  
+                    "id_cita": row[0],
+                    "id_personal": row[1],
+                    "id_paciente": row[2],
+                    "fecha_registro": row[3],
+                    "fecha_agendamiento": row[4],
+                    "fecha_finalizacion": row[5],
+                    "estado_cita": row[6],
+                    "id_sala": row[7],
+                    "cita_obs": row[8]  
                 })
                 
         response = {
@@ -100,11 +117,13 @@ def update_cita(id):
     fecha_agendamiento = data.get('fecha_agendamiento')
     id_sala = data.get('id_sala')
     cita_obs = data.get('cita_obs')
+    estado_cita = data.get('estado_cita') 
+    fecha_finalizacion = data.get('fecha_finalizacion') 
 
     try:
         db.create_connection()
-        query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s)"
-        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs)
+        query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s, %s, %s)"
+        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs, estado_cita, fecha_finalizacion)
 
         db.execute_query(query, params, commit=True)
 
