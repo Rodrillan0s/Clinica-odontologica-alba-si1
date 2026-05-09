@@ -86,8 +86,8 @@ export default function ModuloUsuarios() {
   const filtered = usuarios.filter(u => {
 
     const matchSearch =
-      u.usuario.toLowerCase().includes(search.toLowerCase()) ||
-      u.correo.toLowerCase().includes(search.toLowerCase());
+      (u.nombre_usuario || u.usuario || "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.correo || "").toLowerCase().includes(search.toLowerCase());
 
     const matchRol = filterRol ? u.rol === filterRol : true;
 

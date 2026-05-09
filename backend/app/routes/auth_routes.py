@@ -14,7 +14,6 @@ auth_routes = Blueprint('auth_routes', __name__)
 
 def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
     try:
-        # Preparamos la IP dentro de un objeto JSON para la columna metadata
         import json
         meta = json.dumps({"ip": obtener_ip()})
 
@@ -23,7 +22,6 @@ def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
             (modulo, accion, descripcion, id_usuario, id_sesion, metadata)
             VALUES (%s, %s, %s, %s, %s, %s)
         """
-        # Cambiamos ip_direccion por metadata en el INSERT
         params = (modulo, accion, descripcion, id_usuario, id_sesion, meta)
         db.execute_query(sql, params, commit=True)
         
@@ -97,7 +95,7 @@ def login():
             id_sesion=id_sesion_actual
         )
 
-        token = create_access_token(u_id, u_name, p_id, r_id, p_name)   
+        token = create_access_token(u_id, u_name, p_id, r_id, p_name)
         return jsonify({
             'success': True,
             'message': 'Bienvenido a Clínica Alba',
@@ -115,8 +113,6 @@ def login():
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
-    finally:
-        db.close_connection()
 
 @auth_routes.route('/api/logout', methods=['POST'])
 def logout():
@@ -126,7 +122,6 @@ def logout():
         id_usuario = data.get('id_usuario')
 
         if id_sesion:
-        
             sql = f"UPDATE {Config.SCHEMA}.t_sesiones SET estado = 'FINALIZADA', fecha_fin = NOW() WHERE id_sesion = %s"
             db.execute_query(sql, (id_sesion,), commit=True)
             log_evento('LOGOUT', 'LOGOUT', 'Sesión cerrada por el usuario', id_usuario=id_usuario, id_sesion=id_sesion)
@@ -136,8 +131,7 @@ def logout():
         return response
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+
 
 # =========================================================
 # RECUPERACIÓN DE CONTRASEÑA
@@ -152,7 +146,6 @@ def forgot_password():
         token_hash = generate_password_hash(token_plano)
         ip_usuario = obtener_ip()
 
-       
         sql = f"CALL {Config.SCHEMA}.p_solicitar_recuperacion(%s, %s, %s, NULL, NULL)"
         result = db.execute_query(sql, (email, token_hash, ip_usuario), fetchone=True, commit=True)
         
@@ -168,11 +161,9 @@ def forgot_password():
         return jsonify({'success': True, 'message': 'Instrucciones enviadas al correo.'}), 200
     except Exception as e:
         traceback.print_exc()
-        # Capturamos el mensaje de la DB (como el Rate Limit)
         error_msg = str(e).split('CONTEXT:')[0] if 'CONTEXT:' in str(e) else str(e)
         return jsonify({'success': False, 'message': error_msg}), 500
-    finally:
-        db.close_connection()
+
 
 @auth_routes.route('/api/reset-password', methods=['POST'])
 def reset_password():
@@ -183,7 +174,6 @@ def reset_password():
         es_valida, msg_error = validar_password(new_password)
         if not es_valida: return jsonify({'success': False, 'message': msg_error}), 400
 
-     
         sql_check = f"SELECT id_token, token_hash FROM {Config.SCHEMA}.t_token_recuperacion WHERE id_usuario = %s AND usado = FALSE"
         tokens = db.execute_query(sql_check, (u_id,), fetchall=True)
         
@@ -200,8 +190,7 @@ def reset_password():
         return jsonify({'success': True, 'message': 'Contraseña actualizada. Ya puede iniciar sesión.'}), 200
     except Exception as e: 
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+
 
 # =========================================================
 # REGISTRO Y VALIDACIÓN
@@ -210,7 +199,6 @@ def reset_password():
 @auth_routes.route('/api/verify-ci/<int:ci>', methods=['GET'])
 def verify_ci(ci):
     try:
-    
         sql = f"SELECT nombre, tipo_persona FROM {Config.SCHEMA}.t_persona WHERE ci = %s"
         result = db.execute_query(sql, (ci,), fetchone=True)
         
@@ -218,14 +206,12 @@ def verify_ci(ci):
             return jsonify({'success': True, 'exists': False}), 200
             
         nombre, tipo = result
-        # Enmascarar nombre por privacidad
         nombre_m = " ".join([p[0] + "*" * (len(p)-1) for p in nombre.split()])
 
         return jsonify({'success': True, 'exists': True, 'data': {'masked_name': nombre_m}})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+
 
 @auth_routes.route('/api/register', methods=['POST'])
 def register():
@@ -248,8 +234,7 @@ def register():
         return jsonify({'success': True, 'message': '¡Registro exitoso!'}), 201
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+
 
 # =========================================================
 # ESTADÍSTICAS Y SEGURIDAD DE PERFIL
@@ -263,14 +248,12 @@ def get_stats():
         return jsonify({'success': True, 'stats': {'pacientes': p[0], 'especialidades': e[0]}})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+
 
 @auth_routes.route('/api/usuarios/<int:id_usuario>/password', methods=['PUT'])
 def cambiar_password(id_usuario):
     try:
         data = request.get_json()
-
         
         query = f'SELECT "contraseña" FROM {Config.SCHEMA}.t_usuario WHERE id_usuario = %s'
         res = db.execute_query(query, (id_usuario,), fetchone=True)
@@ -287,5 +270,3 @@ def cambiar_password(id_usuario):
         return jsonify({'success': True, 'message': 'Contraseña actualizada.'}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()

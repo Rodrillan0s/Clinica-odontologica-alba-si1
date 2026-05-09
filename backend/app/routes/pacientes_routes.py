@@ -39,8 +39,6 @@ def registrar_paciente():
                 'message': 'Debe ingresar nombre y apellido'
             }), 400
 
-     
-
         sql_call = f"""
             CALL clinica.p_registrar_paciente(
                 %s::varchar,
@@ -80,21 +78,26 @@ def registrar_paciente():
             'message': str(e)
         }), 500
 
-    finally:
-        db.close_connection()
-
 
 @paciente_routes.route('/api/pacientes', methods=['GET'])
 def listar_pacientes():
     try:
-        
+        nombre_busqueda = request.args.get('nombre', '').strip()
+
         query = f"""
-            SELECT id_paciente,nombre
-            FROM clinica.t_paciente a
-            inner join clinica.t_persona b on id_persona = id_paciente
+            SELECT a.id_paciente, b.nombre
+            FROM {Config.SCHEMA}.t_paciente a
+            INNER JOIN {Config.SCHEMA}.t_persona b ON b.id_persona = a.id_paciente
         """
 
-        result = db.execute_query(query, fetchall=True)
+        params = None
+        if nombre_busqueda:
+            query += " WHERE b.nombre ILIKE %s"
+            params = (f"%{nombre_busqueda}%",)
+
+        query += " ORDER BY b.nombre ASC"
+
+        result = db.execute_query(query, params, fetchall=True)
 
         pacientes = []
 
@@ -115,6 +118,3 @@ def listar_pacientes():
             "success": False,
             "message": str(e)
         }), 500
-
-    finally:
-        db.close_connection()

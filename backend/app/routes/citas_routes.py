@@ -80,8 +80,8 @@ def create_cita():
             'success': False,
             'message': f'Error al registrar la cita: {str(e)}'
         }), 500
-    finally:
-        db.close_connection()
+    
+       
 
 @citas_routes.route('/api/citas', methods=['GET'])
 def get_citas():
@@ -91,34 +91,70 @@ def get_citas():
     offset = (page - 1) * limit
 
     try:
-                   
-        query, params = build_citas_query(filters, limit, offset, Config.SCHEMA, Config.T_CITAS)    
+        # Mapeo del filtro de estado: puede llegar como ID int o string del nombre
+        estado_raw = filters.get('estado')
+        id_estado = None
+        if estado_raw:
+            # Si ya es un número, úsalo directamente
+            if estado_raw.isdigit():
+                id_estado = int(estado_raw)
+            else:
+                # Si viene como string, convertir al ID correspondiente
+                estado_map = {
+                    'PROGRAMADA': 1, 'Programada': 1,
+                    'CANCELADA': 2, 'Cancelada': 2,
+                    'REPROGRAMADA': 3, 'Reprogramada': 3,
+                    'COMPLETADA': 4, 'Completada': 4,
+                    'FINALIZADA': 4,  # compatibilidad con nombre anterior
+                    'NO_ASISTIO': 5, 'No Asistió': 5,
+                }
+                id_estado = estado_map.get(estado_raw)
+
+        # Llamada a la función f_obtener_citas con 12 parámetros
+        query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        params = (
+            filters.get('id_personal'),
+            filters.get('id_paciente'),
+            filters.get('fecha_agen_desde'),
+            filters.get('fecha_agen_hasta'),
+            filters.get('fecha_reg_desde'),
+            filters.get('fecha_reg_hasta'),
+            filters.get('fecha_fin_desde'),
+            filters.get('fecha_fin_hasta'),
+            filters.get('id_sala'),
+            id_estado,
+            limit,
+            offset
+        )
         results = db.execute_query(query, params, fetchall=True)
 
         citas_list = []
         if results:
             for row in results:
                 citas_list.append({
-                    "id_personal": row[0],
-                    "id_paciente": row[1],
-                    "fecha_registro": row[2],
-                    "fecha_agendamiento": row[3],
-                    "estado_cita": row[4],
-                    "id_sala": row[5],
-                    "cita_obs": row[6]  
+                    "id_cita":            row[0],
+                    "id_personal":        row[1],
+                    "id_paciente":        row[2],
+                    "fecha_registro":     row[3].isoformat() if row[3] else None,
+                    "fecha_agendamiento": row[4].isoformat() if row[4] else None,
+                    "fecha_finalizacion": row[5].isoformat() if row[5] else None,
+                    "id_estado_cita":     row[6],   # integer FK
+                    "nombre_estado":      row[7],   # varchar desde t_cita_estado
+                    "id_sala":            row[8],
+                    "cita_obs":           row[9]
                 })
-                
+
         response = {
             "data": citas_list,
             "page": page,
             "limit": limit
         }
 
-        return jsonify(response), 200    
+        return jsonify(response), 200
     except Exception as e:
         return jsonify({'message': f'Error al obtener las citas: {e}'}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 
 @citas_routes.route('/api/citas/<int:id>', methods=['PUT'])
@@ -139,15 +175,28 @@ def update_cita(id):
     fecha_agendamiento = data.get('fecha_agendamiento')
     id_sala = data.get('id_sala')
     cita_obs = data.get('cita_obs')
-    
+
     # Datos para bitácora
     id_u = data.get('id_usuario')
     id_s = data.get('id_sesion')
+    fecha_finalizacion = data.get('fecha_finalizacion')
+
+   
+    id_estado_cita = data.get('id_estado_cita') or data.get('estado_cita')
+
+    if isinstance(id_estado_cita, str):
+        estado_map = {
+            'PROGRAMADA': 1, 'Programada': 1,
+            'CANCELADA': 2, 'Cancelada': 2,
+            'REPROGRAMADA': 3, 'Reprogramada': 3,
+            'COMPLETADA': 4, 'Completada': 4, 'FINALIZADA': 4,
+            'NO_ASISTIO': 5, 'No Asistió': 5,
+        }
+        id_estado_cita = estado_map.get(id_estado_cita, id_estado_cita)
 
     try:
-        
-        query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s)"
-        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs)
+        query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s, %s, %s)"
+        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs, id_estado_cita, fecha_finalizacion)
 
         db.execute_query(query, params, commit=True)
 
@@ -163,38 +212,37 @@ def update_cita(id):
             'success': False,
             'message': f'ERROR : {e}'
         }), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/citas/<int:id>', methods=['GET'])
 def get_cita(id):
     try:
         
-        query = f"""
-            SELECT id_personal, id_paciente, fecha_registro, fecha_agendamiento, estado_cita, id_sala, cita_obs
-            FROM {Config.SCHEMA}.{Config.T_CITAS}
-            WHERE id_cita = %s
-        """
+        query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_detalle_cita(%s)"
         result = db.execute_query(query, (id,), fetchone=True)
 
         if not result:
             return jsonify({'success': False, 'message': 'Cita no encontrada'}), 404
 
         cita = {
-            "id_personal": result[0],
-            "id_paciente": result[1],
-            "fecha_registro": result[2],
-            "fecha_agendamiento": result[3],
-            "estado_cita": result[4],
-            "id_sala": result[5],
-            "cita_obs": result[6]
+            "id_cita":            result[0],
+            "nombre_personal":    result[1],
+            "nombre_paciente":    result[2],
+            "fecha_registro":     result[3].isoformat() if result[3] else None,
+            "fecha_agendamiento": result[4].isoformat() if result[4] else None,
+            "fecha_finalizacion": result[5].isoformat() if result[5] else None,
+            "id_estado_cita":     result[6],
+            "nombre_estado":      result[7],
+            "nombre_sala":        result[8],
+            "cita_obs":           result[9]
         }
 
         return jsonify({'success': True, 'data': cita}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener la cita: {e}'}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/citas/odontologos-por-procedimiento/<int:id_procedimiento>', methods=['GET'])
 def get_odontologos_por_procedimiento(id_procedimiento):
@@ -211,8 +259,8 @@ def get_odontologos_por_procedimiento(id_procedimiento):
         return jsonify({'success': True, 'data': odontologos}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {e}'}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/procedimientos', methods=['GET'])
 def get_procedimientos():
@@ -229,8 +277,8 @@ def get_procedimientos():
         return jsonify({'success': True, 'data': procedimientos}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener procedimientos: {e}'}), 500
-    finally:
-        db.close_connection()    
+    
+            
 
 @citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
 def get_disponibilidad():
@@ -253,13 +301,12 @@ def get_disponibilidad():
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/odontologos', methods=['GET'])
 def get_odontologos():
     try:
-
         sql = f"""
             SELECT pers.id_personal, per.nombre
             FROM {Config.SCHEMA}.t_personal pers
@@ -272,3 +319,21 @@ def get_odontologos():
         return jsonify(lista), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@citas_routes.route('/api/salas', methods=['GET'])
+def get_salas():
+    try:
+        query = f"SELECT id_sala, nombre, tipo_sala, estado_sala FROM {Config.SCHEMA}.t_sala"
+        results = db.execute_query(query, fetchall=True)
+
+        salas = [{
+            "id_sala": row[0],
+            "nombre": row[1],
+            "tipo_sala": row[2],
+            "estado_sala": row[3]
+        } for row in (results or [])]
+
+        return jsonify({'success': True, 'data': salas}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener salas: {e}'}), 500
