@@ -174,7 +174,7 @@ def permission_required(*permisos_requeridos):
 
                 return jsonify({
                     "success": False,
-                    "message": "No autorizado"
+                    "message": "No tiene permisos para realizar esta accion"
                 }), 403
 
             return f(*args, **kwargs)
