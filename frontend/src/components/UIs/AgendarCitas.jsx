@@ -70,7 +70,9 @@ export default function AgendarCitas({
   useEffect(() => {
     const fetchOdontologos = async () => {
       try {
-        const res = await fetch(`${API_URL}/odontologos`);
+        const res = await fetch(`${API_URL}/odontologos`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
         const data = await res.json();
         setOdontologosFiltrados(Array.isArray(data) ? data : data.data || []);
       } catch (err) {
@@ -96,12 +98,16 @@ export default function AgendarCitas({
       if (!idProc) {
         const res = await fetch(`${API_URL}/odontologos`, {
           signal: abortDoc.current.signal,
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         }).then((r) => r.json());
         setOdontologosFiltrados(Array.isArray(res) ? res : res.data || []);
       } else {
         const res = await fetch(
           `${API_URL}/citas/odontologos-por-procedimiento/${idProc}`,
-          { signal: abortDoc.current.signal },
+          { 
+            signal: abortDoc.current.signal,
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          }
         ).then((r) => r.json());
         if (res.success) setOdontologosFiltrados(res.data);
       }
@@ -131,7 +137,10 @@ export default function AgendarCitas({
         try {
           const res = await fetch(
             `${API_URL}/citas/disponibilidad?id_personal=${formData.id_odontologo}&id_sala=${formData.id_sala}&fecha=${formData.fecha_base}`,
-            { signal: abortSlots.current.signal },
+            { 
+              signal: abortSlots.current.signal,
+              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+            }
           ).then((r) => r.json());
           if (res.success) {
             let horariosFiltrados = res.data;
@@ -195,7 +204,10 @@ export default function AgendarCitas({
     try {
       const res = await fetch(`${API_URL}/citas`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
         body: JSON.stringify(payload),
       });
       const data = await res.json();

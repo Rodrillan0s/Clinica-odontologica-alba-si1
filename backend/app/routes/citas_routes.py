@@ -3,7 +3,7 @@ from ..services.citas_service import build_citas_query
 from datetime import timedelta, datetime
 from ..config import db, Config
 import json, traceback
-
+from ..classes.security import permission_required
 citas_routes = Blueprint('citas_routes', __name__)
 
 
@@ -31,6 +31,7 @@ def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
 
 
 @citas_routes.route('/api/citas', methods=['POST'])
+@permission_required("crear_cita")
 def create_cita():
     data = request.get_json() or {} 
     # 1. Validación de campos obligatorios para el negocio
@@ -82,8 +83,8 @@ def create_cita():
         }), 500
     
        
-
 @citas_routes.route('/api/citas', methods=['GET'])
+@permission_required("visualizar_citas")
 def get_citas():
     filters = request.args.to_dict()
     page = int(filters.get('page', 1))
@@ -157,7 +158,9 @@ def get_citas():
         
 
 
+
 @citas_routes.route('/api/citas/<int:id>', methods=['PUT'])
+@permission_required("modificar_cita")
 def update_cita(id):
     data = request.get_json()
 
@@ -215,7 +218,9 @@ def update_cita(id):
     
         
 
+
 @citas_routes.route('/api/citas/<int:id>', methods=['GET'])
+@permission_required("modificar_cita")
 def get_cita(id):
     try:
         
