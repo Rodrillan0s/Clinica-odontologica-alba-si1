@@ -89,7 +89,7 @@ def registrar_paciente():
 def listar_pacientes():
     try:
         nombre_busqueda = request.args.get('nombre', '').strip()
-        db.create_connection()
+       
 
         query = f"""
             SELECT a.id_paciente, b.nombre
@@ -126,5 +126,4 @@ def listar_pacientes():
             "message": str(e)
         }), 500
 
-    finally:
-        db.close_connection()
+    

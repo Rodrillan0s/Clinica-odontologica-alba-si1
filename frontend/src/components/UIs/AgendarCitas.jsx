@@ -21,7 +21,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
 
   const pacientesResult =
     dataMaster?.pacientes?.filter((p) =>
-      p.nombre.toLowerCase().includes(pacienteSearch.toLowerCase()),
+      p.nombre?.toLowerCase().includes(pacienteSearch.toLowerCase()),
     ) || [];
 
   const [formData, setFormData] = useState({

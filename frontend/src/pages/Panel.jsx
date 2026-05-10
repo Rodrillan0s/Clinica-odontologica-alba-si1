@@ -82,7 +82,7 @@ export default function Panel() {
       const config = {
         signal,
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
       };
 
       const resProc = await fetch(`${API_URL}/procedimientos`, config).then(
@@ -99,14 +99,16 @@ export default function Panel() {
         r.json(),
       );
 
+      const resPacientes = await fetch(`${API_URL}/pacientes`, config).then((r) =>
+        r.json(),
+      );
+
       const listaUsuarios = resUsu.success ? resUsu.data : [];
       setDataMaster({
         procedimientos: resProc.success ? resProc.data : [],
         odontologos: Array.isArray(resDoc) ? resDoc : resDoc.data || [],
         usuarios: listaUsuarios,
-        pacientes: listaUsuarios.filter(
-          (u) => u.id_rol === 5 || u.id_rol === 6,
-        ),
+        pacientes: resPacientes.success ? resPacientes.data : [],
         salas: resSalas.success ? resSalas.data : [],
         loading: false,
       });
@@ -145,7 +147,6 @@ export default function Panel() {
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
         userRolId={userRolId}
-        logout={handleLogout}
         logout={handleLogout}
       />
 

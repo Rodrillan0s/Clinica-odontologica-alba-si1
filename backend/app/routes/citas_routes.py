@@ -80,8 +80,8 @@ def create_cita():
             'success': False,
             'message': f'Error al registrar la cita: {str(e)}'
         }), 500
-    finally:
-        db.close_connection()
+    
+       
 
 @citas_routes.route('/api/citas', methods=['GET'])
 def get_citas():
@@ -91,7 +91,7 @@ def get_citas():
     offset = (page - 1) * limit
 
     try:
-        db.create_connection()            
+                    
         # Llamada a la nueva función f_obtener_citas con 12 parámetros
         query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         params = (
@@ -134,8 +134,8 @@ def get_citas():
         return jsonify(response), 200    
     except Exception as e:
         return jsonify({'message': f'Error al obtener las citas: {e}'}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 
 @citas_routes.route('/api/citas/<int:id>', methods=['PUT'])
@@ -164,7 +164,7 @@ def update_cita(id):
     fecha_finalizacion = data.get('fecha_finalizacion') 
 
     try:
-        db.create_connection()
+        
         query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s, %s, %s)"
         params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs, estado_cita, fecha_finalizacion)
 
@@ -182,13 +182,13 @@ def update_cita(id):
             'success': False,
             'message': f'ERROR : {e}'
         }), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/citas/<int:id>', methods=['GET'])
 def get_cita(id):
     try:
-        db.create_connection()
+        
         query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_detalle_cita(%s)"
         result = db.execute_query(query, (id,), fetchone=True)
 
@@ -210,8 +210,8 @@ def get_cita(id):
         return jsonify({'success': True, 'data': cita}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener la cita: {e}'}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/citas/odontologos-por-procedimiento/<int:id_procedimiento>', methods=['GET'])
 def get_odontologos_por_procedimiento(id_procedimiento):
@@ -228,8 +228,8 @@ def get_odontologos_por_procedimiento(id_procedimiento):
         return jsonify({'success': True, 'data': odontologos}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {e}'}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/procedimientos', methods=['GET'])
 def get_procedimientos():
@@ -246,8 +246,8 @@ def get_procedimientos():
         return jsonify({'success': True, 'data': procedimientos}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener procedimientos: {e}'}), 500
-    finally:
-        db.close_connection()    
+    
+            
 
 @citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
 def get_disponibilidad():
@@ -270,8 +270,8 @@ def get_disponibilidad():
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/odontologos', methods=['GET'])
 def get_odontologos():
@@ -289,13 +289,13 @@ def get_odontologos():
         return jsonify(lista), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 @citas_routes.route('/api/salas', methods=['GET'])
 def get_salas():
     try:
-        db.create_connection()
+        
         query = f"SELECT id_sala, nombre, tipo_sala, estado_sala FROM {Config.SCHEMA}.t_sala"
         results = db.execute_query(query, fetchall=True)
 
@@ -309,8 +309,8 @@ def get_salas():
         return jsonify({'success': True, 'data': salas}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener salas: {e}'}), 500
-    finally:
-        db.close_connection()
+    
+        
 
 
 

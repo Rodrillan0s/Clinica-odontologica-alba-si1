@@ -23,7 +23,7 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
 
   const pacientesFiltrados =
     dataMaster?.pacientes?.filter((p) =>
-      p.nombre.toLowerCase().includes(pacienteSearch.toLowerCase()),
+      p.nombre?.toLowerCase().includes(pacienteSearch.toLowerCase()),
     ) || [];
 
   useEffect(() => {
