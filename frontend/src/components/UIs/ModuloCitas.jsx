@@ -5,20 +5,11 @@ export default function ModuloCitas({ openModal, openAgendaModal }) {
       description: "Programar una nueva cita para un paciente.",
       action: "registrar",
     },
-    {
-      title: "Modificar Cita",
-      description: "Reprogramar o cambiar detalles de una cita.",
-      action: "modificar",
-    },
+
     {
       title: "Consultar Cita",
       description: "Ver el calendario y buscar citas existentes.",
       action: "consultar",
-    },
-    {
-      title: "Eliminar Cita",
-      description: "Cancelar y eliminar una cita del sistema.",
-      action: "eliminar",
     },
   ];
 
@@ -38,9 +29,9 @@ export default function ModuloCitas({ openModal, openAgendaModal }) {
           <button
             key={index}
             onClick={() => {
-              if (item.action === 'registrar' && openModal) {
+              if (item.action === "registrar" && openModal) {
                 openModal();
-              } else if (item.action === 'consultar' && openAgendaModal) {
+              } else if (item.action === "consultar" && openAgendaModal) {
                 openAgendaModal();
               } else {
                 console.log("Acción seleccionada:", item.action);
