@@ -19,6 +19,7 @@ export default function DetallesCitas({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [showReprogramarModal, setShowReprogramarModal] = useState(false);
+  const [reprogramarData, setReprogramarData] = useState(null); // datos pre-llenados para AgendarCitas
 
   const [formData, setFormData] = useState({
     id_personal: "",
@@ -166,16 +167,16 @@ export default function DetallesCitas({
     const fecha_agendamiento = `${formData.fecha_base} ${formData.hora_seleccionada}:00`;
 
     const payload = {
-      id_personal: formData.id_personal,
-      id_paciente: formData.id_paciente,
+      id_personal:       formData.id_personal,
+      id_paciente:       formData.id_paciente,
       fecha_agendamiento: fecha_agendamiento,
-      id_sala: formData.id_sala,
-      cita_obs: formData.cita_obs,
-      estado_cita: formData.estado_cita,
+      id_sala:           formData.id_sala,
+      cita_obs:          formData.cita_obs,
+      id_estado_cita:    formData.estado_cita,   // integer ID del enum
       fecha_finalizacion:
-        formData.estado_cita === "FINALIZADA" ? new Date().toISOString() : null,
+        formData.estado_cita == ESTADO_CITA.COMPLETADA ? new Date().toISOString() : null,
       id_usuario: user?.id_usuario || null,
-      id_sesion: user?.id_sesion || null,
+      id_sesion:  user?.id_sesion  || null,
     };
 
     try {
@@ -190,12 +191,12 @@ export default function DetallesCitas({
         fetchCita();
 
         if (originalCita) {
-          originalCita.id_personal = formData.id_personal;
-          originalCita.id_paciente = formData.id_paciente;
-          originalCita.id_sala = formData.id_sala;
+          originalCita.id_personal        = formData.id_personal;
+          originalCita.id_paciente        = formData.id_paciente;
+          originalCita.id_sala            = formData.id_sala;
           originalCita.fecha_agendamiento = fecha_agendamiento;
-          originalCita.estado_cita = formData.estado_cita;
-          originalCita.cita_obs = formData.cita_obs;
+          originalCita.id_estado_cita     = formData.estado_cita;
+          originalCita.cita_obs           = formData.cita_obs;
         }
       } else {
         setSaveError(data.message || "Error al actualizar la cita.");
@@ -211,18 +212,16 @@ export default function DetallesCitas({
     setSaving(true);
     setSaveError("");
 
-    // Payload for status update
-    // Usamos los IDs de originalCita o cita para asegurar que no sean undefined
     const payload = {
-      id_personal: originalCita?.id_personal || cita?.id_personal,
-      id_paciente: originalCita?.id_paciente || cita?.id_paciente,
+      id_personal:        originalCita?.id_personal || cita?.id_personal,
+      id_paciente:        originalCita?.id_paciente || cita?.id_paciente,
       fecha_agendamiento: cita?.fecha_agendamiento,
-      id_sala: originalCita?.id_sala || cita?.id_sala,
-      cita_obs: cita?.cita_obs,
-      estado_cita: newStatus,
+      id_sala:            originalCita?.id_sala || cita?.id_sala,
+      cita_obs:           cita?.cita_obs,
+      id_estado_cita:     newStatus,   // integer ID del enum
       fecha_finalizacion: setFinalization ? new Date().toISOString() : null,
-      id_usuario: user?.id_usuario || null,
-      id_sesion: user?.id_sesion || null,
+      id_usuario:         user?.id_usuario || null,
+      id_sesion:          user?.id_sesion  || null,
     };
 
     try {
@@ -233,13 +232,9 @@ export default function DetallesCitas({
       });
       const data = await res.json();
       if (data.success) {
-        if (newStatus === "REPROGRAMADA") {
-          setShowReprogramarModal(true);
-        } else {
-          onClose(); // Close details after finalizing or canceling
-        }
+        onClose();
       } else {
-        setSaveError(data.message || `Error al cambiar estado a ${newStatus}`);
+        setSaveError(data.message || `Error al cambiar estado`);
       }
     } catch (err) {
       setSaveError("Error de conexión.");
@@ -247,6 +242,35 @@ export default function DetallesCitas({
       setSaving(false);
     }
   };
+
+  const handleReprogramar = () => {
+    // originalCita viene del listado y tiene los IDs numéricos (id_paciente, id_personal, id_sala)
+    // cita viene del fetch de detalle y tiene nombres pero no siempre los IDs
+    const idSource = originalCita;   // para IDs
+    const dataSource = cita || originalCita; // para fecha y obs
+
+    let fechaBase = "";
+    if (dataSource?.fecha_agendamiento) {
+      fechaBase = dataSource.fecha_agendamiento.split("T")[0];
+    }
+
+    setReprogramarData({
+      id_paciente: idSource?.id_paciente,
+      id_personal: idSource?.id_personal,
+      id_sala:     idSource?.id_sala,
+      cita_obs:    dataSource?.cita_obs || "",
+      fecha_base:  fechaBase,
+    });
+    setShowReprogramarModal(true);
+  };
+
+  // Se llama DESPUÉS de que AgendarCitas crea la nueva cita exitosamente
+  const handleReprogramarSuccess = async () => {
+    setShowReprogramarModal(false);
+    // Ahora sí marcamos la cita original como REPROGRAMADA
+    await handleStatusUpdate(ESTADO_CITA.REPROGRAMADA, false);
+  };
+
 
   const pacientesResult = dataMaster?.pacientes || [];
 
@@ -596,7 +620,7 @@ export default function DetallesCitas({
                     {saving ? "..." : "Cancelar"}
                   </button>
                   <button
-                    onClick={() => handleStatusUpdate("REPROGRAMADA")}
+                    onClick={handleReprogramar}
                     disabled={saving}
                     className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
                   >
@@ -624,18 +648,19 @@ export default function DetallesCitas({
         </div>
       </div>
 
-      {showReprogramarModal && (
+      {showReprogramarModal && reprogramarData && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <AgendarCitas
             onClose={() => {
               setShowReprogramarModal(false);
-              onClose();
+              setReprogramarData(null);
             }}
             user={user}
             dataMaster={dataMaster}
             isStaff={true}
-            initialData={cita}
+            initialData={reprogramarData}
             onRefresh={() => {}}
+            onSuccess={handleReprogramarSuccess}
           />
         </div>
       )}

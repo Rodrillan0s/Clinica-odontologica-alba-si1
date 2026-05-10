@@ -4,7 +4,7 @@ import FormularioPaciente from "../../pages/RegisterPatient";
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = { ODONTOLOGO: 2 };
 
-export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRefresh, initialData }) {
+export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRefresh, initialData, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -27,7 +27,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRef
     ) || [];
 
   const [formData, setFormData] = useState({
-    fecha_base: "",
+    fecha_base: initialData?.fecha_base || "",
     hora_seleccionada: "",
     id_paciente: initialData?.id_paciente || (isStaff ? "" : user?.id_persona || user?.id_usuario || ""),
     id_odontologo: initialData?.id_personal || (isOdontologo
@@ -186,7 +186,14 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRef
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.success) setIsSuccess(true);
+      if (data.success) {
+        if (onSuccess) {
+          // Si viene del flujo de Reprogramar, llamar al callback especial
+          onSuccess();
+        } else {
+          setIsSuccess(true);
+        }
+      }
       else setErrorMessage(data.message);
     } catch {
       setErrorMessage("Error de conexión local.");

@@ -118,8 +118,8 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
                 className="w-full bg-white border-2 border-gray-100 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 focus:outline-none focus:border-[#148F77] focus:ring-0 transition-colors appearance-none cursor-pointer"
               >
                 <option value="">Todos los odontólogos</option>
-                {dataMaster?.odontologos?.map((od) => (
-                  <option key={od.id_persona} value={od.id_persona}>
+                {dataMaster?.odontologos?.map((od, idx) => (
+                  <option key={od.id || od.id_persona || idx} value={od.id || od.id_persona}>
                     {od.nombre}
                   </option>
                 ))}
