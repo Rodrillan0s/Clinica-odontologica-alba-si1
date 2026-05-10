@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/auth_store';
 
 import Sidebar from '../components/layout/Sidebar';
 import DashboardAdmin from '../components/dashboards/DashboardAdmin';
-import DashboardGestorCitas from '../components/dashboards/DashboardGestorCitas';
+import ModuloCitas from '../components/UIs/ModuloCitas';
 import DashboardOdontologo from '../components/dashboards/DashboardOdontologo';
 import DashboardRecepcionista from '../components/dashboards/DashboardRecepcionista';
 import DashboardPaciente from '../components/dashboards/DashboardPaciente';
@@ -120,7 +120,7 @@ export default function Panel() {
 
           {activeMenu === 'Pacientes' && <ModuloPacientes />}
           {activeMenu === 'Cambiar contraseña' && <CambioPasswordUI />}
-          {activeMenu === 'Gestor de citas' && <DashboardGestorCitas openModal={() => setShowModalCita(true)} openAgendaModal={() => setShowAgendaModal(true)} />}
+          {activeMenu === 'Gestor de citas' && <ModuloCitas openModal={() => setShowModalCita(true)} openAgendaModal={() => setShowAgendaModal(true)} />}
 
           {/* ESTADO DE DESARROLLO */}
           {!['Panel de Control', 'Usuarios y Roles', 'Cambiar contraseña', 'Pacientes', 'Bitácora', 'Gestor de citas'].includes(activeMenu) && (

@@ -85,8 +85,6 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
     }
   };
 
-
-
   useEffect(() => {
     if (!formData.id_odontologo || !formData.id_sala || !formData.fecha_base) {
       setSlotsDisponibles([]);
@@ -265,7 +263,8 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
                               onMouseDown={() => {
                                 setFormData((prev) => ({
                                   ...prev,
-                                  id_paciente: p.id_persona || p.id_usuario || p.id,
+                                  id_paciente:
+                                    p.id_persona || p.id_usuario || p.id,
                                 }));
                                 setSelectedPacienteName(p.nombre);
                                 setPacienteSearch("");
@@ -288,7 +287,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
 
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                  1. Tratamiento
+                  Tratamiento
                 </label>
                 <select
                   className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
@@ -307,7 +306,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                    2. Especialista
+                    Especialista
                   </label>
                   <select
                     required
@@ -339,7 +338,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                    3. Sala
+                    Sala
                   </label>
                   <select
                     required
@@ -364,7 +363,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
 
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                  4. Fecha
+                  Fecha
                 </label>
                 <input
                   type="date"
@@ -397,7 +396,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
 
               <div className="bg-gray-50 rounded-[2rem] p-6 border border-dashed border-gray-200 min-h-[130px]">
                 <p className="text-[9px] font-black text-gray-400 uppercase mb-4 tracking-widest">
-                  5. Horarios Disponibles:
+                  Horarios Disponibles:
                 </p>
                 {loadingSlots ? (
                   <div className="flex justify-center py-4 space-x-2">

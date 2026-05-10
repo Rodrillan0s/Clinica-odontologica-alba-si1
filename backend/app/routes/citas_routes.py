@@ -189,24 +189,22 @@ def update_cita(id):
 def get_cita(id):
     try:
         db.create_connection()
-        query = f"""
-            SELECT id_personal, id_paciente, fecha_registro, fecha_agendamiento, estado_cita, id_sala, cita_obs
-            FROM {Config.SCHEMA}.{Config.T_CITAS}
-            WHERE id_cita = %s
-        """
+        query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_detalle_cita(%s)"
         result = db.execute_query(query, (id,), fetchone=True)
 
         if not result:
             return jsonify({'success': False, 'message': 'Cita no encontrada'}), 404
 
         cita = {
-            "id_personal": result[0],
-            "id_paciente": result[1],
-            "fecha_registro": result[2],
-            "fecha_agendamiento": result[3],
-            "estado_cita": result[4],
-            "id_sala": result[5],
-            "cita_obs": result[6]
+            "id_cita": result[0],
+            "nombre_personal": result[1],
+            "nombre_paciente": result[2],
+            "fecha_registro": result[3],
+            "fecha_agendamiento": result[4],
+            "fecha_finalizacion": result[5],
+            "estado_cita": result[6],
+            "nombre_sala": result[7],
+            "cita_obs": result[8]
         }
 
         return jsonify({'success': True, 'data': cita}), 200

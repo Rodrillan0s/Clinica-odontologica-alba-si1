@@ -1,4 +1,4 @@
-export default function DashboardGestorCitas({ openModal, openAgendaModal }) {
+export default function ModuloCitas({ openModal, openAgendaModal }) {
   const actions = [
     {
       title: "Registrar Cita",

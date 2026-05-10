@@ -99,7 +99,7 @@ export default function AgendaCitas({ onClose, dataMaster }) {
   return (
     <div className="fixed inset-0 bg-[#2A5C4D]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
       <div className="bg-white rounded-[3rem] w-full max-w-6xl shadow-2xl overflow-hidden animate-fade-in-up max-h-[95vh] flex flex-col">
-        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
           <div>
             <p className="text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
               Listado de citas registradas
@@ -113,7 +113,8 @@ export default function AgendaCitas({ onClose, dataMaster }) {
           </button>
         </div>
 
-        <div className="px-8 pt-6 pb-2 space-y-4">
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-8 pt-6 pb-2 space-y-4">
           {/* Fila 1: Filtros principales */}
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="w-full sm:w-1/4">
@@ -280,7 +281,7 @@ export default function AgendaCitas({ onClose, dataMaster }) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 pt-4">
+        <div className="p-8 pt-4">
           {errorMessage && (
             <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase rounded-r-xl">
               ⚠️ {errorMessage}
@@ -302,22 +303,22 @@ export default function AgendaCitas({ onClose, dataMaster }) {
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="border-b-2 border-gray-100">
-                    <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Fecha Agendada
                     </th>
-                    <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Paciente
                     </th>
-                    <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Especialista
                     </th>
-                    <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Sala
                     </th>
-                    <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Observaciones
                     </th>
-                    <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Estado
                     </th>
                   </tr>
@@ -328,13 +329,13 @@ export default function AgendaCitas({ onClose, dataMaster }) {
                       key={cita.id_cita}
                       className="border-b border-gray-50 hover:bg-emerald-50/30 transition-colors"
                     >
-                      <td className="py-4 px-4">
+                      <td className="py-2 px-4">
                         <div className="text-sm font-bold text-gray-800">
                           {new Date(
                             cita.fecha_agendamiento,
                           ).toLocaleDateString()}
                         </div>
-                        <div className="text-xs font-bold text-[#148F77]">
+                        <div className="text-[10px] font-bold text-[#148F77]">
                           {new Date(cita.fecha_agendamiento).toLocaleTimeString(
                             [],
                             { hour: "2-digit", minute: "2-digit" },
@@ -342,22 +343,22 @@ export default function AgendaCitas({ onClose, dataMaster }) {
                         </div>
                       </td>
                       <td
-                        className="py-4 px-4 text-sm font-bold text-gray-700 truncate max-w-[150px]"
+                        className="py-2 px-4 text-sm font-bold text-gray-700 truncate max-w-[150px]"
                         title={getPacienteName(cita.id_paciente)}
                       >
                         {getPacienteName(cita.id_paciente)}
                       </td>
                       <td
-                        className="py-4 px-4 text-sm font-medium text-gray-600 truncate max-w-[150px]"
+                        className="py-2 px-4 text-sm font-medium text-gray-600 truncate max-w-[150px]"
                         title={getOdontologoName(cita.id_personal)}
                       >
                         {getOdontologoName(cita.id_personal)}
                       </td>
-                      <td className="py-4 px-4 text-xs font-medium text-gray-500">
+                      <td className="py-2 px-4 text-xs font-medium text-gray-500">
                         {getSalaName(cita.id_sala)}
                       </td>
                       <td
-                        className="py-4 px-4 text-xs font-medium text-gray-500 truncate max-w-[200px]"
+                        className="py-2 px-4 text-xs font-medium text-gray-500 truncate max-w-[200px]"
                         title={cita.cita_obs || "Sin observaciones"}
                       >
                         {cita.cita_obs || (
@@ -366,7 +367,7 @@ export default function AgendaCitas({ onClose, dataMaster }) {
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-2 px-4">
                         <span
                           className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
                             cita.estado_cita === "PROGRAMADA"
@@ -419,6 +420,7 @@ export default function AgendaCitas({ onClose, dataMaster }) {
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
