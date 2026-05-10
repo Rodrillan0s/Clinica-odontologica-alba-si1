@@ -293,3 +293,26 @@ def get_odontologos():
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         db.close_connection()
+
+@citas_routes.route('/api/salas', methods=['GET'])
+def get_salas():
+    try:
+        db.create_connection()
+        query = f"SELECT id_sala, nombre, tipo_sala, estado_sala FROM {Config.SCHEMA}.t_sala"
+        results = db.execute_query(query, fetchall=True)
+
+        salas = [{
+            "id_sala": row[0],
+            "nombre": row[1],
+            "tipo_sala": row[2],
+            "estado_sala": row[3]
+        } for row in (results or [])]
+
+        return jsonify({'success': True, 'data': salas}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener salas: {e}'}), 500
+    finally:
+        db.close_connection()
+
+
+

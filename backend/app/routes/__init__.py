@@ -2,3 +2,4 @@ from .main_routes import main_routes
 from .auth_routes import auth_routes
 from .citas_routes import citas_routes
 from .usuario_routes import usuario_routes
+from .pacientes_routes import paciente_routes

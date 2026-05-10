@@ -88,15 +88,23 @@ def registrar_paciente():
 @paciente_routes.route('/api/pacientes', methods=['GET'])
 def listar_pacientes():
     try:
+        nombre_busqueda = request.args.get('nombre', '').strip()
         db.create_connection()
 
         query = f"""
-            SELECT id_paciente,nombre
-            FROM clinica.t_paciente a
-            inner join clinica.t_persona b on id_persona = id_paciente
+            SELECT a.id_paciente, b.nombre
+            FROM {Config.SCHEMA}.t_paciente a
+            INNER JOIN {Config.SCHEMA}.t_persona b ON b.id_persona = a.id_paciente
         """
+        
+        params = None
+        if nombre_busqueda:
+            query += " WHERE b.nombre ILIKE %s"
+            params = (f"%{nombre_busqueda}%",)
+            
+        query += " ORDER BY b.nombre ASC"
 
-        result = db.execute_query(query, fetchall=True)
+        result = db.execute_query(query, params, fetchall=True)
 
         pacientes = []
 

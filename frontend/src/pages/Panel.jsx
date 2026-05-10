@@ -4,12 +4,14 @@ import { useAuthStore } from '../store/auth_store';
 
 import Sidebar from '../components/layout/Sidebar';
 import DashboardAdmin from '../components/dashboards/DashboardAdmin';
+import DashboardGestorCitas from '../components/dashboards/DashboardGestorCitas';
 import DashboardOdontologo from '../components/dashboards/DashboardOdontologo';
 import DashboardRecepcionista from '../components/dashboards/DashboardRecepcionista';
 import DashboardPaciente from '../components/dashboards/DashboardPaciente';
 import AdminUI from '../components/UIs/Admin';
 import CambioPasswordUI from '../components/UIs/CambioPassword';
 import AgendarCitas from '../components/UIs/AgendarCitas';
+import AgendaCitas from '../components/UIs/AgendaCitas';
 import ModuloPacientes from '../components/UIs/ModuloPacientes';
 import Bitacora from '../components/UIs/Bitacora';
 
@@ -23,8 +25,9 @@ export default function Panel() {
 
   const [activeMenu, setActiveMenu] = useState('Panel de Control');
   const [showModalCita, setShowModalCita] = useState(false);
+  const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [dataMaster, setDataMaster] = useState({ 
-    procedimientos: [], odontologos: [], usuarios: [], pacientes: [], loading: true 
+    procedimientos: [], odontologos: [], usuarios: [], pacientes: [], salas: [], loading: true 
   });
 
   const handleLogout = async () => {
@@ -47,6 +50,7 @@ export default function Panel() {
       const resProc = await fetch(`${API_URL}/procedimientos`, config).then(r => r.json());
       const resDoc = await fetch(`${API_URL}/odontologos`, config).then(r => r.json());
       const resUsu = await fetch(`${API_URL}/usuarios?t=${Date.now()}`, config).then(r => r.json());
+      const resSalas = await fetch(`${API_URL}/salas`, config).then(r => r.json());
       
       const listaUsuarios = resUsu.success ? resUsu.data : [];
       setDataMaster({
@@ -54,6 +58,7 @@ export default function Panel() {
         odontologos: Array.isArray(resDoc) ? resDoc : (resDoc.data || []),
         usuarios: listaUsuarios,
         pacientes: listaUsuarios.filter(u => u.id_rol === 5 || u.id_rol === 6),
+        salas: resSalas.success ? resSalas.data : [],
         loading: false
       });
     } catch (err) {
@@ -115,9 +120,10 @@ export default function Panel() {
 
           {activeMenu === 'Pacientes' && <ModuloPacientes />}
           {activeMenu === 'Cambiar contraseña' && <CambioPasswordUI />}
+          {activeMenu === 'Gestor de citas' && <DashboardGestorCitas openModal={() => setShowModalCita(true)} openAgendaModal={() => setShowAgendaModal(true)} />}
 
           {/* ESTADO DE DESARROLLO */}
-          {!['Panel de Control', 'Usuarios y Roles', 'Cambiar contraseña', 'Pacientes', 'Bitácora'].includes(activeMenu) && (
+          {!['Panel de Control', 'Usuarios y Roles', 'Cambiar contraseña', 'Pacientes', 'Bitácora', 'Gestor de citas'].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
                 <p className="text-6xl mb-4">⚙️</p>
                 <p className="font-black uppercase tracking-[0.3em] text-xs">Módulo en Desarrollo</p>
@@ -128,6 +134,10 @@ export default function Panel() {
 
       {showModalCita && (
           <AgendarCitas onClose={() => setShowModalCita(false)} user={user} dataMaster={dataMaster} isStaff={userRolId < 5} />
+      )}
+
+      {showAgendaModal && (
+          <AgendaCitas onClose={() => setShowAgendaModal(false)} dataMaster={dataMaster} />
       )}
     </div>
   );

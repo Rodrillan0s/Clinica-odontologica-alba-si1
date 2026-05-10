@@ -21,6 +21,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, user, dataMaster, u
     { text: "Usuarios y Roles", roles: [1] },
     { text: "Gestión Clínica", roles: [1,2,3] },
     { text: "Agenda General", roles: [1,2,3,4] },
+    { text: "Gestor de citas", roles: [1,2,3,4] },
     { text: "Pacientes", roles: [1,2,4] },
     { text: "Mis Citas", roles: [5,6] },
     { text: "Cambiar contraseña", roles: [1,2,3,4,5,6] }
