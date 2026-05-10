@@ -50,29 +50,131 @@ export default function FormularioPaciente({
 
     const newErrors = {};
 
+    // NOMBRE
+    if (
+      formData.nombre &&
+      formData.nombre.trim().split(' ').length < 2
+    ) {
+
+      newErrors.nombre =
+        'Debe ingresar nombre y apellido';
+
+    }
+
+    // CI
     if (
       formData.ci &&
       isNaN(Number(formData.ci))
     ) {
 
       newErrors.ci =
-        'Este campo debe ser numérico';
+        'El CI debe ser numérico';
 
     }
 
+    // TELÉFONO
     if (
       formData.telefono &&
       isNaN(Number(formData.telefono))
     ) {
 
       newErrors.telefono =
-        'Este campo debe ser numérico';
+        'El teléfono debe ser numérico';
+
+    }
+
+    // FECHA
+    if (formData.fecha_nacimiento) {
+
+      const fechaNacimiento =
+        new Date(formData.fecha_nacimiento);
+
+      const hoy = new Date();
+
+      // FECHA FUTURA
+      if (fechaNacimiento > hoy) {
+
+        newErrors.fecha_nacimiento =
+          'La fecha no puede ser futura';
+
+      }
+
+      // FECHA MUY ANTIGUA
+      const anio =
+        fechaNacimiento.getFullYear();
+
+      if (anio < 1900) {
+
+        newErrors.fecha_nacimiento =
+          'Ingrese una fecha válida';
+
+      }
+
+      // EDAD IRREAL
+      const edad =
+        hoy.getFullYear() - anio;
+
+      if (edad > 120) {
+
+        newErrors.fecha_nacimiento =
+          'Edad no válida';
+
+      }
 
     }
 
     setErrors(newErrors);
 
-    return Object.keys(newErrors).length === 0;
+    return (
+      Object.keys(newErrors).length === 0
+    );
+
+  };
+
+  const traducirError = (mensaje) => {
+
+    const texto = mensaje.toLowerCase();
+
+    // CI DUPLICADO
+    if (
+      texto.includes('ci') &&
+      (
+        texto.includes('duplicate') ||
+        texto.includes('duplicado') ||
+        texto.includes('unique') ||
+        texto.includes('existe')
+      )
+    ) {
+
+      return 'El CI ya se encuentra registrado';
+
+    }
+
+    // TELÉFONO DUPLICADO
+    if (
+      texto.includes('telefono') &&
+      (
+        texto.includes('duplicate') ||
+        texto.includes('duplicado') ||
+        texto.includes('unique') ||
+        texto.includes('existe')
+      )
+    ) {
+
+      return 'El teléfono ya se encuentra registrado';
+
+    }
+
+    // NOMBRE
+    if (
+      texto.includes('nombre')
+    ) {
+
+      return 'Nombre inválido';
+
+    }
+
+    return 'Ocurrió un error al registrar el paciente';
 
   };
 
@@ -108,7 +210,10 @@ export default function FormularioPaciente({
 
       const data = await res.json();
 
-      if (!res.ok || data.success === false) {
+      if (
+        !res.ok ||
+        data.success === false
+      ) {
 
         throw new Error(
           data.message ||
@@ -136,8 +241,10 @@ export default function FormularioPaciente({
       setTipoMensaje('error');
 
       setMensaje(
-        error.message ||
-        'Error de conexión con el servidor'
+        traducirError(
+          error.message ||
+          'Error de conexión'
+        )
       );
 
     } finally {
@@ -237,6 +344,19 @@ export default function FormularioPaciente({
             "
           />
 
+          {errors.nombre && (
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.nombre}
+            </p>
+
+          )}
+
         </div>
 
         {/* CI */}
@@ -285,6 +405,11 @@ export default function FormularioPaciente({
             value={formData.fecha_nacimiento}
             onChange={handleChange}
             required
+            max={
+              new Date()
+                .toISOString()
+                .split('T')[0]
+            }
             className="
               w-full
               p-3
@@ -297,6 +422,19 @@ export default function FormularioPaciente({
               focus:ring-[#148F77]
             "
           />
+
+          {errors.fecha_nacimiento && (
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.fecha_nacimiento}
+            </p>
+
+          )}
 
         </div>
 

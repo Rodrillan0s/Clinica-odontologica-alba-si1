@@ -22,6 +22,9 @@ export default function EditPatient({
   const [mensaje, setMensaje] = useState('');
   const [tipoMensaje, setTipoMensaje] = useState('');
 
+  // ERRORES
+  const [errors, setErrors] = useState({});
+
   useEffect(() => {
 
     if (paciente) {
@@ -48,6 +51,94 @@ export default function EditPatient({
       [name]: value
     }));
 
+    // LIMPIAR ERROR
+    setErrors((prev) => ({
+      ...prev,
+      [name]: ''
+    }));
+
+  };
+
+  const validate = () => {
+
+    const nuevosErrores = {};
+
+    // NOMBRE
+    if (
+      formData.nombre &&
+      formData.nombre.trim().split(' ').length < 2
+    ) {
+
+      nuevosErrores.nombre =
+        'Debe ingresar nombre y apellido';
+
+    }
+
+    // CI
+    if (
+      formData.ci &&
+      isNaN(Number(formData.ci))
+    ) {
+
+      nuevosErrores.ci =
+        'El CI debe ser numérico';
+
+    }
+
+    // TELÉFONO
+    if (
+      formData.telefono &&
+      isNaN(Number(formData.telefono))
+    ) {
+
+      nuevosErrores.telefono =
+        'El teléfono debe ser numérico';
+
+    }
+
+    // FECHA
+    if (formData.fecha_nacimiento) {
+
+      const fechaNacimiento =
+        new Date(formData.fecha_nacimiento);
+
+      const hoy = new Date();
+
+      // FUTURA
+      if (fechaNacimiento > hoy) {
+
+        nuevosErrores.fecha_nacimiento =
+          'La fecha no puede ser futura';
+
+      }
+
+      // MUY ANTIGUA
+      const anio = fechaNacimiento.getFullYear();
+
+      if (anio < 1900) {
+
+        nuevosErrores.fecha_nacimiento =
+          'Ingrese una fecha válida';
+
+      }
+
+      // EDAD NEGATIVA O IRREAL
+      const edad =
+        hoy.getFullYear() - anio;
+
+      if (edad > 120) {
+
+        nuevosErrores.fecha_nacimiento =
+          'Edad no válida';
+
+      }
+
+    }
+
+    setErrors(nuevosErrores);
+
+    return Object.keys(nuevosErrores).length === 0;
+
   };
 
   const handleSubmit = async (e) => {
@@ -56,6 +147,8 @@ export default function EditPatient({
 
     setMensaje('');
     setTipoMensaje('');
+
+    if (!validate()) return;
 
     try {
 
@@ -68,71 +161,100 @@ export default function EditPatient({
         cambios.nombre = formData.nombre;
       }
 
-      if (String(formData.ci) !== String(paciente.ci)) {
+      if (
+        String(formData.ci) !==
+        String(paciente.ci)
+      ) {
+
         cambios.ci = formData.ci;
+
       }
 
       if (
         formData.fecha_nacimiento !==
         paciente.fecha_nacimiento
       ) {
+
         cambios.fecha_nacimiento =
           formData.fecha_nacimiento;
+
       }
 
       if (
         formData.direccion !==
         paciente.direccion
       ) {
-        cambios.direccion = formData.direccion;
+
+        cambios.direccion =
+          formData.direccion;
+
       }
 
       if (
         String(formData.telefono) !==
         String(paciente.telefono)
       ) {
-        cambios.telefono = formData.telefono;
+
+        cambios.telefono =
+          formData.telefono;
+
       }
 
       // SI NO HAY CAMBIOS
-      if (Object.keys(cambios).length === 0) {
+      if (
+        Object.keys(cambios).length === 0
+      ) {
 
         setTipoMensaje('error');
 
-        setMensaje('No se realizaron cambios');
+        setMensaje(
+          'No se realizaron cambios'
+        );
 
         setLoading(false);
 
         return;
+
       }
 
       const res = await fetch(
         `${API_URL}/pacientes/${paciente.id}`,
         {
           method: 'PUT',
+
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type':
+              'application/json'
           },
+
           body: JSON.stringify(cambios)
         }
       );
 
       const data = await res.json();
 
-      if (!res.ok || data.success === false) {
+      if (
+        !res.ok ||
+        data.success === false
+      ) {
 
         throw new Error(
-          data.message || 'Error al modificar paciente'
+          data.message ||
+          'Error al modificar paciente'
         );
 
       }
 
       setTipoMensaje('success');
 
-      setMensaje('Paciente modificado correctamente');
+      setMensaje(
+        'Paciente modificado correctamente'
+      );
 
       setTimeout(() => {
+
         onSuccess();
+
       }, 1200);
 
     } catch (err) {
@@ -140,7 +262,8 @@ export default function EditPatient({
       setTipoMensaje('error');
 
       setMensaje(
-        err.message || 'Ocurrió un error inesperado'
+        err.message ||
+        'Ocurrió un error inesperado'
       );
 
     } finally {
@@ -242,6 +365,19 @@ export default function EditPatient({
             "
           />
 
+          {errors.nombre && (
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.nombre}
+            </p>
+
+          )}
+
         </div>
 
         {/* CI */}
@@ -257,7 +393,7 @@ export default function EditPatient({
           </label>
 
           <input
-            type="number"
+            type="text"
             name="ci"
             value={formData.ci}
             onChange={handleChange}
@@ -273,6 +409,19 @@ export default function EditPatient({
               focus:ring-[#148F77]
             "
           />
+
+          {errors.ci && (
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.ci}
+            </p>
+
+          )}
 
         </div>
 
@@ -293,6 +442,7 @@ export default function EditPatient({
             name="fecha_nacimiento"
             value={formData.fecha_nacimiento}
             onChange={handleChange}
+            max={new Date().toISOString().split('T')[0]}
             className="
               w-full
               border
@@ -305,6 +455,19 @@ export default function EditPatient({
               focus:ring-[#148F77]
             "
           />
+
+          {errors.fecha_nacimiento && (
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.fecha_nacimiento}
+            </p>
+
+          )}
 
         </div>
 
@@ -353,7 +516,7 @@ export default function EditPatient({
           </label>
 
           <input
-            type="number"
+            type="text"
             name="telefono"
             value={formData.telefono}
             onChange={handleChange}
@@ -369,6 +532,19 @@ export default function EditPatient({
               focus:ring-[#148F77]
             "
           />
+
+          {errors.telefono && (
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.telefono}
+            </p>
+
+          )}
 
         </div>
 
