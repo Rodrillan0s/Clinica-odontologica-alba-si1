@@ -1,7 +1,12 @@
 import { useState } from "react";
 import AgendaPersonal from "./AgendaPersonal";
 
-export default function ModuloCitas({ openModal, openAgendaModal, dataMaster }) {
+export default function ModuloCitas({
+  openModal,
+  openAgendaModal,
+  dataMaster,
+  user,
+}) {
   const [showAgendaPersonal, setShowAgendaPersonal] = useState(false);
 
   const actions = [
@@ -18,7 +23,7 @@ export default function ModuloCitas({ openModal, openAgendaModal, dataMaster }) 
   ];
 
   return (
-    <div className="animate-fade-in-up w-full max-w-5xl mx-auto relative">
+    <div className="animate-fade-in-up w-full relative">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-3xl font-black text-[#2A5C4D] tracking-tight italic">
@@ -74,9 +79,10 @@ export default function ModuloCitas({ openModal, openAgendaModal, dataMaster }) 
             >
               ✕
             </button>
-            <AgendaPersonal 
-              onClose={() => setShowAgendaPersonal(false)} 
-              dataMaster={dataMaster} 
+            <AgendaPersonal
+              onClose={() => setShowAgendaPersonal(false)}
+              dataMaster={dataMaster}
+              user={user}
             />
           </div>
         </div>

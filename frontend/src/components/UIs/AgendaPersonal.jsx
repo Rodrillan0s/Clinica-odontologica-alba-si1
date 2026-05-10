@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import DetallesCitas from "./DetallesCitas";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function AgendaPersonal({ onClose, dataMaster }) {
+export default function AgendaPersonal({ onClose, dataMaster, user }) {
   const [loading, setLoading] = useState(false);
   const [selectedOdontologo, setSelectedOdontologo] = useState("");
   const [selectedDate, setSelectedDate] = useState(
@@ -10,37 +11,38 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
   );
   const [citas, setCitas] = useState([]);
   const [error, setError] = useState(null);
+  const [selectedCitaDetalle, setSelectedCitaDetalle] = useState(null);
+
+  const fetchCitas = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let url = `${API_URL}/citas?page=1&limit=100&estado=Programada`;
+      if (selectedOdontologo) {
+        url += `&id_personal=${selectedOdontologo}`;
+      }
+      if (selectedDate) {
+        url += `&fecha_agen_desde=${selectedDate}&fecha_agen_hasta=${selectedDate}`;
+      }
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.success !== false) {
+        setCitas(data.data || []);
+      } else {
+        setError(data.message || "Error al cargar las citas.");
+      }
+    } catch (err) {
+      setError("Error de conexión al cargar las citas.");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedOdontologo, selectedDate]);
 
   useEffect(() => {
-    const fetchCitas = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        let url = `${API_URL}/citas?page=1&limit=100&estado=Programada`;
-        if (selectedOdontologo) {
-          url += `&id_personal=${selectedOdontologo}`;
-        }
-        if (selectedDate) {
-          url += `&fecha_agen_desde=${selectedDate}&fecha_agen_hasta=${selectedDate}`;
-        }
-
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.success !== false) {
-          setCitas(data.data || []);
-        } else {
-          setError(data.message || "Error al cargar las citas.");
-        }
-      } catch (err) {
-        setError("Error de conexión al cargar las citas.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCitas();
-  }, [selectedOdontologo, selectedDate]);
+  }, [fetchCitas]);
 
   const getPacienteName = (id) => {
     if (!dataMaster?.pacientes) return id;
@@ -224,7 +226,7 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
                     </div>
                   </div>
 
-                  <div className="flex-shrink-0 sm:w-28 flex justify-start sm:justify-end mt-2 sm:mt-0">
+                  <div className="flex-shrink-0 sm:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-end gap-2 mt-2 sm:mt-0">
                     <span
                       className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md text-center ${
                         cita.estado_cita?.toUpperCase() === "PROGRAMADA"
@@ -236,6 +238,12 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
                     >
                       {cita.estado_cita}
                     </span>
+                    <button
+                      onClick={() => setSelectedCitaDetalle(cita)}
+                      className="px-4 py-1.5 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm whitespace-nowrap"
+                    >
+                      Detalles
+                    </button>
                   </div>
                 </div>
               ))}
@@ -243,6 +251,19 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
           )}
         </div>
       </div>
+
+      {selectedCitaDetalle && (
+        <DetallesCitas 
+          idCita={selectedCitaDetalle.id_cita} 
+          originalCita={selectedCitaDetalle}
+          user={user}
+          dataMaster={dataMaster}
+          onClose={() => {
+            setSelectedCitaDetalle(null);
+            fetchCitas(); 
+          }} 
+        />
+      )}
     </div>
   );
 }

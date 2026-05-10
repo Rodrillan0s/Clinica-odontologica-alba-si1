@@ -193,11 +193,12 @@ export default function Panel() {
 
           {activeMenu === "Pacientes" && <ModuloPacientes />}
           {activeMenu === "Cambiar contraseña" && <CambioPasswordUI />}
-          {activeMenu === "Gestor de citas" && (
+          {activeMenu === "Citas" && (
             <ModuloCitas
               openModal={() => setShowModalCita(true)}
               openAgendaModal={() => setShowAgendaModal(true)}
               dataMaster={dataMaster}
+              user={user}
             />
           )}
 
@@ -208,7 +209,7 @@ export default function Panel() {
             "Cambiar contraseña",
             "Pacientes",
             "Bitácora",
-            "Gestor de citas",
+            "Citas",
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-6xl mb-4">⚙️</p>
