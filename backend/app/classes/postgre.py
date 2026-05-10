@@ -1,44 +1,55 @@
 import psycopg2
+from psycopg2 import pool
 
 class PostgreSQL():
     def __init__(self, db_host, db_port, db_name, db_user, db_password):
         self.db_host, self.db_port, self.db_name = db_host, db_port, db_name
         self.db_user, self.db_password = db_user, db_password
-        self.conn = None
+
+        self.pool = psycopg2.pool.SimpleConnectionPool(
+            1,
+            20,
+            host=self.db_host,
+            port=self.db_port,
+            dbname=self.db_name,
+            user=self.db_user,
+            password=self.db_password
+        )
 
     def create_connection(self):
-        if self.conn and not self.conn.closed: return
-        try:
-            self.conn = psycopg2.connect(
-                host=self.db_host, port=self.db_port, 
-                dbname=self.db_name, user=self.db_user, password=self.db_password
-            )
-            print('--- CONEXION EXITOSA ---')
-        except Exception as e: print(f'ERROR DB: {e}')
+        return self.pool.getconn()
 
     def execute_query(self, query, params=None, fetchall=False, fetchone=False, commit=False):
-        self.create_connection()
-        cur = self.conn.cursor() # Cursor local para evitar que choquen peticiones
+        conn = self.create_connection()
+        cur = conn.cursor()
+
         try:
             cur.execute(query, params)
-            if commit: self.conn.commit()
-            
-            # Si no hay resultados (como en un CALL), devolvemos algo vacío
+
+            if commit:
+                conn.commit()
+
             if cur.description is None:
-                cur.close()
                 return [] if fetchall else None
 
-            res = cur.fetchall() if fetchall else (cur.fetchone() if fetchone else cur.rowcount)
-            cur.close()
-            return res
+            if fetchall:
+                return cur.fetchall()
+            elif fetchone:
+                return cur.fetchone()
+            else:
+                return cur.rowcount
+
         except Exception as e:
-            if self.conn: self.conn.rollback()
-            cur.close()
-            print(f'ERROR QUERY: {e}')
+            conn.rollback()
             raise e
 
+        finally:
+            cur.close()
+            self.pool.putconn(conn)
+
     def close_connection(self, commit=False):
-        if self.conn:
-            if commit: self.conn.commit()
-            self.conn.close()
-            print('CONEXION CERRADA')
+        #self.pool.closeall()
+        pass
+   
+
+    

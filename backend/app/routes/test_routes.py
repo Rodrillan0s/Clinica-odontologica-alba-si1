@@ -20,8 +20,7 @@ def list_tables():
     """
     try:
         # 1. Intentar establecer conexión
-        db.create_connection()
-
+        
         # 2. Consultar el nombre de la base de datos actual (Diagnóstico)
         db_name_query = "SELECT current_database();"
         db_name_result = db.execute_query(db_name_query, fetchone=True)

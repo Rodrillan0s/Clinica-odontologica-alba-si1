@@ -1,18 +1,19 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
-import traceback, psycopg2, json
+import json
 from ..config import db, Config
-
+from ..classes.security import admin_required, Security
 usuario_routes = Blueprint('usuario_routes', __name__)
 
 # =========================================================
-# FUNCIONES DE APOYO (BITÁCORA E IP)
+# BITÁCORA + IP
 # =========================================================
 
 def obtener_ip():
     if request.headers.getlist("X-Forwarded-For"):
         return request.headers.getlist("X-Forwarded-For")[0].split(',')[0]
     return request.remote_addr
+
 
 def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
     try:
@@ -22,209 +23,246 @@ def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
             (modulo, accion, descripcion, id_usuario, id_sesion, metadata)
             VALUES (%s, %s, %s, %s, %s, %s)
         """
-        params = (modulo, accion, descripcion, id_usuario, id_sesion, meta)
-        db.execute_query(sql, params, commit=True)
+        db.execute_query(sql, (modulo, accion, descripcion, id_usuario, id_sesion, meta), commit=True)
     except Exception as e:
-        print(f"Error en Bitácora (Usuarios): {e}")
+        print(f"Error Bitácora: {e}")
 
-def obtener_permisos_por_rol(id_rol):
-    roles_permisos = {
-        1: ["ALL"], 
-        2: ["PACIENTE_READ", "CITA_UPDATE"], 
-        3: ["PACIENTE_CREATE"],
-        4: ["PACIENTE_CREATE", "PACIENTE_READ", "PACIENTE_UPDATE", "CITA_CREATE", "CITA_READ"],
-        5: ["CITA_READ", "PERFIL_UPDATE"], 
-        6: ["CITA_READ", "PERFIL_UPDATE"]
-    }
-    return roles_permisos.get(id_rol, [])
 
 # =========================================================
-# RUTAS DE GESTIÓN DE USUARIOS
+# LISTAR USUARIOS
 # =========================================================
 
-# 1. LISTAR USUARIOS
 @usuario_routes.route('/api/usuarios', methods=['GET'])
+@admin_required
 def listar_usuarios():
     try:
-        db.create_connection()
-        query = f"""
-            SELECT u.id_usuario, p.nombre, u.correo, r.tipo_rol, u.id_rol, u.nombre_usuario
-            FROM {Config.SCHEMA}.t_usuario u
-            INNER JOIN {Config.SCHEMA}.t_persona p ON u.id_persona = p.id_persona
-            INNER JOIN {Config.SCHEMA}.t_rol r ON u.id_rol = r.id_rol
+        query = """
+            SELECT 
+                u.id_usuario,
+                u.nombre_usuario,
+                u.correo,
+                r.tipo_rol
+            FROM clinica.t_usuario u
+            INNER JOIN clinica.t_rol r ON u.id_rol = r.id_rol
+            WHERE u.estado = 'ACTIVO'
             ORDER BY u.id_usuario ASC
         """
-        usuarios = db.execute_query(query, fetchall=True)
+
+        rows = db.execute_query(query, fetchall=True)
 
         data = [{
-            'id_usuario': r[0],
-            'nombre': r[1],
-            'correo': r[2],
-            'rol_nombre': r[3],
-            'id_rol': r[4],
-            'nombre_usuario': r[5],
-            'permisos': obtener_permisos_por_rol(r[4])
-        } for r in (usuarios or [])]
+            "id_usuario": r[0],
+            "display": f"{r[1]} ({r[2]})", 
+            "usuario": r[1],
+            "correo": r[2],
+            "rol": r[3]
+        } for r in (rows or [])]
 
-        return jsonify({'success': True, 'data': data}), 200
+        return jsonify({"success": True, "data": data}), 200
+
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+        return jsonify({"success": False, "message": str(e)}), 500
+# =========================================================
+# CREAR USUARIO (ADMIN)
+# =========================================================
 
-# 2. MODIFICAR USUARIO (Perfil/Datos)
-@usuario_routes.route('/api/usuarios/<int:id_usuario>', methods=['PUT'])
-def modificar_usuario(id_usuario):
+@usuario_routes.route('/api/usuarios', methods=['POST'])
+@admin_required
+def crear_usuario():
     try:
         data = request.get_json() or {}
-        
-        # Datos del operador (quien hace el cambio)
-        id_operador = data.get('id_operador')
-        id_sesion = data.get('id_sesion')
 
-        nombre_user = data.get('nombre_usuario') 
-        correo = data.get('correo')
+        user_name = data.get('user')
+        ci = data.get('ci')
+        name = data.get('name')
+        mail = data.get('mail')
+        number = data.get('number')
+        birth = data.get('birth')
+        dir = data.get('dir')
+        password = data.get('password')
         id_rol = data.get('id_rol')
 
-        db.create_connection()
-        campos_update = []
+        if not all([user_name, ci, name, mail, password, id_rol]):
+            return jsonify({"success": False, "message": "Datos incompletos"}), 400
+
+        pass_hash = generate_password_hash(password)
+
+        sql = f"""
+            CALL {Config.SCHEMA}.p_crear_usuario_admin(
+                %s,%s,%s,%s,%s,%s,%s,%s,%s
+            )
+        """
+
+        params = (
+            user_name, ci, name, mail,
+            number, birth, dir,
+            pass_hash, id_rol
+        )
+
+        db.execute_query(sql, params, commit=True)
+
+        log_evento("USUARIOS", "CREATE", f"Usuario creado: {user_name}")
+
+        return jsonify({"success": True, "message": "Usuario creado"}), 201
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# =========================================================
+# ACTUALIZAR USUARIO
+# =========================================================
+
+@usuario_routes.route('/api/usuarios/<int:id_usuario>', methods=['PUT'])
+@admin_required
+def actualizar_usuario(id_usuario):
+    try:
+        data = request.get_json() or {}
+
+        campos = []
         valores = []
 
-        if nombre_user is not None:
-            campos_update.append("nombre_usuario = %s"); valores.append(nombre_user)
-        if correo is not None:
-            campos_update.append("correo = %s"); valores.append(correo)
-        if id_rol is not None:
-            campos_update.append("id_rol = %s"); valores.append(id_rol)
+        if data.get('user'):
+            campos.append("nombre_usuario = %s")
+            valores.append(data['user'])
 
-        if not campos_update:
-            return jsonify({'success': False, 'message': 'No hay datos para actualizar.'}), 400
+        if data.get('correo'):
+            campos.append("correo = %s")
+            valores.append(data['correo'])
 
-        query = f"UPDATE {Config.SCHEMA}.t_usuario SET {', '.join(campos_update)} WHERE id_usuario = %s"
+        if data.get('id_rol'):
+            campos.append("id_rol = %s")
+            valores.append(data['id_rol'])
+
+        if not campos:
+            return jsonify({"success": False, "message": "Nada para actualizar"}), 400
+
+        query = f"""
+            UPDATE clinica.t_usuario
+            SET {', '.join(campos)}
+            WHERE id_usuario = %s
+        """
+
         valores.append(id_usuario)
+
         db.execute_query(query, tuple(valores), commit=True)
 
-        # AUDITORÍA
-        log_evento('USUARIOS', 'ACTUALIZAR_USUARIO', f'Modificación de datos del usuario ID: {id_usuario}', id_operador, id_sesion)
+        log_evento("USUARIOS", "UPDATE", f"Usuario actualizado {id_usuario}")
 
-        return jsonify({'success': True, 'message': 'Usuario actualizado.'}), 200
+        return jsonify({"success": True, "message": "Usuario actualizado"}), 200
+
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+        return jsonify({"success": False, "message": str(e)}), 500
 
-# 3. ELIMINAR USUARIO
+
+# =========================================================
+# SOFT DELETE
+# =========================================================
+
 @usuario_routes.route('/api/usuarios/<int:id_usuario>', methods=['DELETE'])
+@admin_required 
 def eliminar_usuario(id_usuario):
     try:
-        # Nota: Algunos clientes web no envían body en DELETE, se puede recibir por query params o headers
-        data = request.get_json() or {}
-        id_operador = data.get('id_operador')
-        id_sesion = data.get('id_sesion')
-
-        db.create_connection()
-        query = f"DELETE FROM {Config.SCHEMA}.t_usuario WHERE id_usuario = %s"
-        db.execute_query(query, (id_usuario,), commit=True)
-        
-        # AUDITORÍA
-        log_evento('USUARIOS', 'ELIMINAR_USUARIO', f'Eliminación del usuario ID: {id_usuario}', id_operador, id_sesion)
-
-        return jsonify({'success': True, 'message': 'Usuario eliminado.'}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'message': 'Error: El usuario tiene registros vinculados (citas/pagos).'}), 400
-    finally:
-        db.close_connection()
-
-# 4. ASIGNAR ROL (Acción Crítica Administrativa)
-@usuario_routes.route('/api/usuarios/asignar-rol', methods=['POST'])
-def asignar_rol_y_permisos():
-    try:
-        data = request.get_json() or {}
-        id_admin = data.get('id_admin') # ID del administrador que opera
-        id_target = data.get('id_usuario_destino')
-        nuevo_rol = data.get('nuevo_id_rol')
-        id_sesion = data.get('id_sesion')
-
-        db.create_connection()
-        
-        # Validar que el operador sea Administrador (Rol 1)
-        check_sql = f"SELECT id_rol FROM {Config.SCHEMA}.t_usuario WHERE id_usuario = %s"
-        admin_res = db.execute_query(check_sql, (id_admin,), fetchone=True)
-
-        if not admin_res or admin_res[0] != 1:
-            log_evento('SECURITY', 'UNAUTHORIZED_ROLE_CHANGE', f'Intento fallido de cambio de rol por ID: {id_admin}', id_admin, id_sesion)
-            return jsonify({'success': False, 'message': 'No tiene permisos para realizar esta acción.'}), 403
-
-        update_sql = f"UPDATE {Config.SCHEMA}.t_usuario SET id_rol = %s WHERE id_usuario = %s"
-        db.execute_query(update_sql, (nuevo_rol, id_target), commit=True)
-
-        # AUDITORÍA DE CAMBIO DE ROL
-        log_evento('USUARIOS', 'CAMBIAR_ROL', f'Cambio de rol al usuario {id_target} a nuevo rol ID: {nuevo_rol}', id_admin, id_sesion)
-
-        return jsonify({'success': True, 'message': 'Rol actualizado correctamente.'}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
-
-
-@usuario_routes.route('/api/bitacora', methods=['GET'])
-def listar_bitacora():
-    try:
-        # Ahora recibimos 'nombre' en lugar de (o además de) id_usuario
-        nombre_busqueda = request.args.get('nombre') 
-        modulo = request.args.get('modulo')
-        fecha_inicio = request.args.get('fecha_inicio')
-        fecha_fin = request.args.get('fecha_fin')
-
-        db.create_connection()
-        
-        # Agregamos JOIN a t_persona para buscar por nombre real
-        query = f"""
-            SELECT b.id_bitacora, p.nombre, b.modulo, b.accion, 
-                   b.descripcion, b.fecha_registro, b.metadata, b.id_sesion, u.nombre_usuario
-            FROM {Config.SCHEMA}.t_bitacora b
-            LEFT JOIN {Config.SCHEMA}.t_usuario u ON b.id_usuario = u.id_usuario
-            LEFT JOIN {Config.SCHEMA}.t_persona p ON u.id_persona = p.id_persona
-            WHERE 1=1
+        query = """
+            UPDATE clinica.t_usuario
+            SET estado = 'INACTIVO'
+            WHERE id_usuario = %s
         """
-        params = []
 
-        # FILTRO FLEXIBLE POR NOMBRE (No restrictivo)
-        if nombre_busqueda:
-            # Buscamos coincidencias parciales en nombre real O nombre de usuario
-            query += " AND (p.nombre ILIKE %s OR u.nombre_usuario ILIKE %s)"
-            termino = f"%{nombre_busqueda}%"
-            params.append(termino)
-            params.append(termino)
+        db.execute_query(query, (id_usuario,), commit=True)
 
-        if modulo:
-            query += " AND b.modulo = %s"
-            params.append(modulo)
+        log_evento("USUARIOS", "SOFT_DELETE", f"Usuario desactivado {id_usuario}")
 
-        if fecha_inicio and fecha_fin:
-            query += " AND b.fecha_registro::date BETWEEN %s AND %s"
-            params.append(fecha_inicio)
-            params.append(fecha_fin)
+        return jsonify({
+            "success": True,
+            "message": "Usuario desactivado correctamente"
+        }), 200
 
-        query += " ORDER BY b.fecha_registro DESC LIMIT 150"
-        
-        results = db.execute_query(query, tuple(params), fetchall=True)
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    
+
+@usuario_routes.route('/api/usuarios/asignar-rol', methods=['POST'])
+@admin_required
+def asignar_rol():
+    try:
+        data = request.get_json() or {}
+
+        id_usuario = data.get('id_usuario')
+        id_rol = data.get('id_rol')
+
+        if not id_usuario or not id_rol:
+            return jsonify({
+                "success": False,
+                "message": "Datos incompletos"
+            }), 400
+
+        query = """
+            UPDATE clinica.t_usuario
+            SET id_rol = %s
+            WHERE id_usuario = %s
+        """
+
+        db.execute_query(query, (id_rol, id_usuario), commit=True)
+
+        id_admin = Security.get_user_id()
+
+        log_evento(
+            "ROLES",
+            "ASIGNAR_ROL",
+            f"Admin {id_admin} asignó rol {id_rol} a usuario {id_usuario}",
+            id_usuario=id_admin
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Rol asignado correctamente"
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@usuario_routes.route('/api/roles', methods=['GET'])
+@admin_required
+def listar_roles():
+    try:
+        query = """
+            SELECT id_rol, tipo_rol
+            FROM clinica.t_rol
+            ORDER BY id_rol
+        """
+
+        rows = db.execute_query(query, fetchall=True)
 
         data = [{
-            'id': r[0],
-            'usuario': r[1] or r[8] or 'SISTEMA', # Prioriza nombre real, luego username
-            'modulo': r[2],
-            'accion': r[3],
-            'descripcion': r[4],
-            'fecha': r[5].strftime('%Y-%m-%d %H:%M:%S') if r[5] else None,
-            'metadata': r[6],
-            'id_sesion': r[7]
-        } for r in (results or [])]
+            "id_rol": r[0],
+            "rol": r[1]
+        } for r in (rows or [])]
 
-        return jsonify({'success': True, 'data': data}), 200
+        return jsonify({"success": True, "data": data}), 200
+
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()
+        return jsonify({"success": False, "message": str(e)}), 500        
+    
+@usuario_routes.route('/api/roles/<int:id_rol>/permisos', methods=['GET'])
+@admin_required
+def permisos_por_rol(id_rol):
+    try:
+        query = """
+            SELECT p.id_permiso, p.nombre
+            FROM clinica.t_permiso p
+            INNER JOIN clinica.t_rol_permiso rp ON rp.id_permiso = p.id_permiso
+            WHERE rp.id_rol = %s
+        """
+
+        rows = db.execute_query(query, (id_rol,), fetchall=True)
+
+        data = [{
+            "id_permiso": r[0],
+            "permiso": r[1]
+        } for r in (rows or [])]
+
+        return jsonify({"success": True, "data": data}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500    
