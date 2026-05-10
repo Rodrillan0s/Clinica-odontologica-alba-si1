@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import DetallesCitas from "./DetallesCitas";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function AgendaCitas({ onClose, dataMaster }) {
+export default function AgendaCitas({ onClose, dataMaster, user }) {
   const [citas, setCitas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -17,6 +18,7 @@ export default function AgendaCitas({ onClose, dataMaster }) {
   const [selectedEstado, setSelectedEstado] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
+  const [selectedCitaDetalle, setSelectedCitaDetalle] = useState(null);
   const limit = 10;
 
   const pacientesFiltrados =
@@ -321,6 +323,9 @@ export default function AgendaCitas({ onClose, dataMaster }) {
                     <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Estado
                     </th>
+                    <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -379,8 +384,16 @@ export default function AgendaCitas({ onClose, dataMaster }) {
                                   : "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {cita.estado_cita || "N/A"}
+                          {cita.estado_cita === "PROGRAMADO" ? "PROGRAMADA" : cita.estado_cita === "COMPLETADO" ? "FINALIZADA" : cita.estado_cita === "CANCELADO" ? "CANCELADA" : cita.estado_cita}
                         </span>
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        <button
+                          onClick={() => setSelectedCitaDetalle(cita)}
+                          className="px-4 py-2 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
+                        >
+                          Detalles
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -421,8 +434,21 @@ export default function AgendaCitas({ onClose, dataMaster }) {
             </div>
           )}
         </div>
-        </div>
       </div>
+      </div>
+
+      {selectedCitaDetalle && (
+        <DetallesCitas 
+          idCita={selectedCitaDetalle.id_cita} 
+          originalCita={selectedCitaDetalle}
+          user={user}
+          dataMaster={dataMaster}
+          onClose={() => {
+            setSelectedCitaDetalle(null);
+            fetchCitas(currentPage); // refresh list in case it was modified
+          }} 
+        />
+      )}
     </div>
   );
 }

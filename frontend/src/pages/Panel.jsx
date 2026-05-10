@@ -137,7 +137,7 @@ export default function Panel() {
       )}
 
       {showAgendaModal && (
-          <AgendaCitas onClose={() => setShowAgendaModal(false)} dataMaster={dataMaster} />
+          <AgendaCitas onClose={() => setShowAgendaModal(false)} dataMaster={dataMaster} user={user} />
       )}
     </div>
   );
