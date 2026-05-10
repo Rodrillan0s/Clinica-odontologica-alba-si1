@@ -224,6 +224,7 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
                   </div>
                 );
               })}
+            </div>
           )}
         </div>
       </div>

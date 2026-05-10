@@ -226,15 +226,16 @@ def get_cita(id):
             return jsonify({'success': False, 'message': 'Cita no encontrada'}), 404
 
         cita = {
-            "id_cita": result[0],
-            "nombre_personal": result[1],
-            "nombre_paciente": result[2],
-            "fecha_registro": result[3].isoformat() if result[3] else None,
+            "id_cita":            result[0],
+            "nombre_personal":    result[1],
+            "nombre_paciente":    result[2],
+            "fecha_registro":     result[3].isoformat() if result[3] else None,
             "fecha_agendamiento": result[4].isoformat() if result[4] else None,
             "fecha_finalizacion": result[5].isoformat() if result[5] else None,
-            "estado_cita": result[6],
-            "nombre_sala": result[7],
-            "cita_obs": result[8]
+            "id_estado_cita":     result[6],
+            "nombre_estado":      result[7],
+            "nombre_sala":        result[8],
+            "cita_obs":           result[9]
         }
 
         return jsonify({'success': True, 'data': cita}), 200

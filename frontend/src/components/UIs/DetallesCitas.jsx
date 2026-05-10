@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import AgendarCitas from "./AgendarCitas";
+import { ESTADO_CITA, ESTADO_CITA_LABELS, ESTADO_CITA_COLORS } from "../../constants/enums";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -440,9 +441,11 @@ export default function DetallesCitas({
                       setFormData({ ...formData, estado_cita: e.target.value })
                     }
                   >
-                    <option value="PROGRAMADA">PROGRAMADA</option>
-                    <option value="FINALIZADA">FINALIZADA</option>
-                    <option value="CANCELADA">CANCELADA</option>
+                    <option value={ESTADO_CITA.PROGRAMADA}>Programada</option>
+                    <option value={ESTADO_CITA.COMPLETADA}>Completada</option>
+                    <option value={ESTADO_CITA.CANCELADA}>Cancelada</option>
+                    <option value={ESTADO_CITA.REPROGRAMADA}>Reprogramada</option>
+                    <option value={ESTADO_CITA.NO_ASISTIO}>No Asistió</option>
                   </select>
                 </div>
               </div>
@@ -552,28 +555,15 @@ export default function DetallesCitas({
                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
                   Estado Actual
                 </p>
-                <span
-                  className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    cita.estado_cita === "PROGRAMADA" ||
-                    cita.estado_cita === "PROGRAMADO"
-                      ? "bg-blue-100 text-blue-700"
-                      : cita.estado_cita === "FINALIZADA" ||
-                          cita.estado_cita === "COMPLETADO"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : cita.estado_cita === "CANCELADA" ||
-                            cita.estado_cita === "CANCELADO"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-gray-200 text-gray-800"
-                  }`}
-                >
-                  {cita.estado_cita === "PROGRAMADO"
-                    ? "PROGRAMADA"
-                    : cita.estado_cita === "COMPLETADO"
-                      ? "FINALIZADA"
-                      : cita.estado_cita === "CANCELADO"
-                        ? "CANCELADA"
-                        : cita.estado_cita}
-                </span>
+                {(() => {
+                  const colors = ESTADO_CITA_COLORS[cita.id_estado_cita] || ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA];
+                  const label = cita.nombre_estado || ESTADO_CITA_LABELS[cita.id_estado_cita] || `Estado ${cita.id_estado_cita}`;
+                  return (
+                    <span className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${colors.badge}`}>
+                      {label}
+                    </span>
+                  );
+                })()}
               </div>
 
               <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
