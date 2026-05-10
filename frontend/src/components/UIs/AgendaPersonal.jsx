@@ -17,7 +17,7 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
     setLoading(true);
     setError(null);
     try {
-      let url = `${API_URL}/citas?page=1&limit=100&estado=Programada`;
+      let url = `${API_URL}/citas?page=1&limit=100&estado=PROGRAMADA`;
       if (selectedOdontologo) {
         url += `&id_personal=${selectedOdontologo}`;
       }

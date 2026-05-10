@@ -99,8 +99,8 @@ export default function Panel() {
         r.json(),
       );
 
-      const resPacientes = await fetch(`${API_URL}/pacientes`, config).then((r) =>
-        r.json(),
+      const resPacientes = await fetch(`${API_URL}/pacientes`, config).then(
+        (r) => r.json(),
       );
 
       const listaUsuarios = resUsu.success ? resUsu.data : [];

@@ -478,7 +478,7 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
                     {saving ? "..." : "Finalizar"}
                   </button>
                   <button
-                    onClick={() => handleStatusUpdate("Cancelada")}
+                    onClick={() => handleStatusUpdate("CANCELADA")}
                     disabled={saving}
                     className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50"
                   >
