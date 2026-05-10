@@ -14,34 +14,52 @@ export default function FormPermisosUsuarioModal({ user, onClose }) {
   const [permisos, setPermisos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [tab, setTab] = useState("activos"); // activos | add
+  const [tab, setTab] = useState("activos");
   const [search, setSearch] = useState("");
   const [confirm, setConfirm] = useState(null);
 
   // =========================
   // FETCH
   // =========================
+
   const fetchPermisos = async () => {
 
-    setLoading(true);
+    try {
 
-    const res = await fetch(
-      `${API_URL}/usuarios/${user.id_usuario}/permisos`,
-      { headers }
-    );
+      setLoading(true);
 
-    const data = await res.json();
-    setPermisos(data.data || []);
-    setLoading(false);
+      const res = await fetch(
+        `${API_URL}/usuarios/${user.id_usuario}/permisos`,
+        { headers }
+      );
+
+      const data = await res.json();
+
+      setPermisos(data.data || []);
+
+    } catch (err) {
+
+      console.log(err);
+
+    } finally {
+
+      setLoading(false);
+
+    }
   };
 
   useEffect(() => {
-    if (user) fetchPermisos();
+
+    if (user) {
+      fetchPermisos();
+    }
+
   }, [user]);
 
   // =========================
   // ACTIONS
   // =========================
+
   const activar = async (p) => {
 
     await fetch(`${API_URL}/usuarios/permisos`, {
@@ -68,54 +86,88 @@ export default function FormPermisosUsuarioModal({ user, onClose }) {
     });
 
     setConfirm(null);
+
     fetchPermisos();
   };
 
   // =========================
-  // FILTROS BASE
+  // FILTERS
   // =========================
+
   const activos = permisos.filter(p => p.habilitado);
+
   const disponibles = permisos.filter(p => !p.habilitado);
 
-  // =========================
-  // SEARCH (solo add tab)
-  // =========================
   const disponiblesFiltrados = useMemo(() => {
+
     return disponibles.filter(p =>
       p.nombre.toLowerCase().includes(search.toLowerCase()) ||
       (p.modulo || "").toLowerCase().includes(search.toLowerCase())
     );
+
   }, [search, disponibles]);
 
   // =========================
-  // GROUP BY MODULO
+  // GROUP
   // =========================
+
   const groupByModulo = (list) => {
+
     return list.reduce((acc, p) => {
+
       const key = p.modulo || "SIN MÓDULO";
-      if (!acc[key]) acc[key] = [];
+
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+
       acc[key].push(p);
+
       return acc;
+
     }, {});
   };
 
   const activosGroup = groupByModulo(activos);
+
   const disponiblesGroup = groupByModulo(disponiblesFiltrados);
 
   // =========================
-  // UI CARD
+  // CARD
   // =========================
+
   const Card = ({ p, action, label, color }) => (
-    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+
+    <div className="
+      flex flex-col sm:flex-row
+      sm:items-center sm:justify-between
+      gap-3
+      bg-gray-50
+      border border-gray-100
+      p-3 rounded-2xl
+    ">
 
       <div className="min-w-0">
-        <p className="font-medium text-sm truncate">{p.nombre}</p>
-        <p className="text-xs text-gray-400 truncate">{p.modulo}</p>
+
+        <p className="font-bold text-sm text-[#2A5C4D] break-words">
+          {p.nombre}
+        </p>
+
+        <p className="text-xs text-gray-400 break-words">
+          {p.modulo}
+        </p>
+
       </div>
 
       <button
         onClick={() => action(p)}
-        className={`px-3 py-1 rounded-lg text-xs text-white ${color}`}
+        className={`
+          w-full sm:w-auto
+          px-4 py-2
+          rounded-xl
+          text-xs font-bold text-white
+          ${color}
+        `}
       >
         {label}
       </button>
@@ -125,50 +177,97 @@ export default function FormPermisosUsuarioModal({ user, onClose }) {
 
   return (
 
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-2 z-50">
+    <div className="
+      fixed inset-0 z-50
+      bg-black/60
+      flex items-center justify-center
+      p-2 md:p-4
+    ">
 
+      {/* MODAL */}
       <div className="
-        w-full max-w-4xl
+        w-full max-w-5xl
         bg-white
-        rounded-2xl
+        rounded-3xl
         shadow-2xl
         flex flex-col
-        max-h-[90vh]
+        max-h-[95vh]
+        overflow-hidden
       ">
 
         {/* HEADER */}
-        <div className="p-4 border-b flex justify-between">
+        <div className="
+          p-4 md:p-6
+          border-b
+          flex items-start justify-between gap-4
+        ">
 
-          <div>
-            <h2 className="font-black text-[#2A5C4D]">
+          <div className="min-w-0">
+
+            <h2 className="font-black text-xl md:text-2xl text-[#2A5C4D] break-words">
               {user.usuario}
             </h2>
-            <p className="text-xs text-gray-500">
+
+            <p className="text-sm text-gray-500 mt-1">
               Rol: {user.rol}
             </p>
+
           </div>
 
-          <button onClick={onClose} className="text-xl">✕</button>
+          <button
+            onClick={onClose}
+            className="
+              w-10 h-10
+              rounded-xl
+              bg-gray-100
+              hover:bg-red-50
+              text-gray-500
+              hover:text-red-500
+              flex items-center justify-center
+              text-xl
+              transition-all
+              flex-shrink-0
+            "
+          >
+            ✕
+          </button>
 
         </div>
 
         {/* TABS */}
-        <div className="flex border-b">
+        <div className="
+          grid grid-cols-2
+          border-b
+        ">
 
           <button
             onClick={() => setTab("activos")}
-            className={`flex-1 py-2 font-bold text-sm ${
-              tab === "activos" ? "bg-[#148F77] text-white" : "bg-gray-100"
-            }`}
+            className={`
+              py-3 md:py-4
+              text-sm font-black
+              transition-all
+              ${
+                tab === "activos"
+                  ? "bg-[#148F77] text-white"
+                  : "bg-gray-100 text-gray-500"
+              }
+            `}
           >
             Activos ({activos.length})
           </button>
 
           <button
             onClick={() => setTab("add")}
-            className={`flex-1 py-2 font-bold text-sm ${
-              tab === "add" ? "bg-[#148F77] text-white" : "bg-gray-100"
-            }`}
+            className={`
+              py-3 md:py-4
+              text-sm font-black
+              transition-all
+              ${
+                tab === "add"
+                  ? "bg-[#148F77] text-white"
+                  : "bg-gray-100 text-gray-500"
+              }
+            `}
           >
             Añadir ({disponibles.length})
           </button>
@@ -177,66 +276,114 @@ export default function FormPermisosUsuarioModal({ user, onClose }) {
 
         {/* SEARCH */}
         {tab === "add" && (
-          <div className="p-3 border-b">
+
+          <div className="p-4 border-b">
+
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar permiso o módulo..."
-              className="w-full p-2 border rounded-xl text-sm"
+              className="
+                w-full
+                p-3
+                border border-gray-200
+                rounded-2xl
+                outline-none
+                focus:ring-2
+                focus:ring-[#148F77]
+              "
             />
+
           </div>
+
         )}
 
         {/* BODY */}
-        <div className="p-4 overflow-y-auto flex-1 space-y-6">
+        <div className="
+          flex-1
+          overflow-y-auto
+          p-4 md:p-6
+          space-y-6
+          bg-[#F8FBFB]
+        ">
 
           {loading ? (
-            <p className="text-sm text-gray-500">Cargando...</p>
+
+            <div className="text-center py-10 text-gray-500">
+              Cargando permisos...
+            </div>
+
           ) : tab === "activos" ? (
 
-            Object.keys(activosGroup).map(mod => (
+            Object.keys(activosGroup).length === 0 ? (
 
-              <div key={mod}>
+              <div className="text-center py-10 text-gray-400">
+                No existen permisos activos
+              </div>
 
-                <h3 className="font-bold text-[#2A5C4D] mb-2 text-sm">
-                  {mod}
-                </h3>
+            ) : (
 
-                <div className="space-y-2">
+              Object.keys(activosGroup).map(mod => (
 
-                  {activosGroup[mod].map(p => (
+                <div key={mod} className="space-y-3">
 
-                    <Card
-                      key={p.id_permiso}
-                      p={p}
-                      label="Quitar"
-                      color="bg-red-500"
-                      action={(p) => setConfirm(p)}
-                    />
+                  <h3 className="
+                    font-black
+                    text-sm
+                    uppercase
+                    tracking-widest
+                    text-[#148F77]
+                  ">
+                    {mod}
+                  </h3>
 
-                  ))}
+                  <div className="space-y-3">
+
+                    {activosGroup[mod].map(p => (
+
+                      <Card
+                        key={p.id_permiso}
+                        p={p}
+                        label="Quitar"
+                        color="bg-red-500 hover:bg-red-600"
+                        action={(p) => setConfirm(p)}
+                      />
+
+                    ))}
+
+                  </div>
 
                 </div>
 
-              </div>
+              ))
 
-            ))
+            )
 
           ) : (
 
             Object.keys(disponiblesGroup).length === 0 ? (
-              <p className="text-gray-400 text-sm">Sin permisos disponibles</p>
+
+              <div className="text-center py-10 text-gray-400">
+                Sin permisos disponibles
+              </div>
+
             ) : (
 
               Object.keys(disponiblesGroup).map(mod => (
 
-                <div key={mod}>
+                <div key={mod} className="space-y-3">
 
-                  <h3 className="font-bold text-[#2A5C4D] mb-2 text-sm">
+                  <h3 className="
+                    font-black
+                    text-sm
+                    uppercase
+                    tracking-widest
+                    text-[#148F77]
+                  ">
                     {mod}
                   </h3>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
 
                     {disponiblesGroup[mod].map(p => (
 
@@ -244,7 +391,7 @@ export default function FormPermisosUsuarioModal({ user, onClose }) {
                         key={p.id_permiso}
                         p={p}
                         label="Activar"
-                        color="bg-green-600"
+                        color="bg-green-600 hover:bg-green-700"
                         action={activar}
                       />
 
@@ -263,39 +410,84 @@ export default function FormPermisosUsuarioModal({ user, onClose }) {
         </div>
 
         {/* FOOTER */}
-        <div className="p-3 border-t">
+        <div className="
+          p-4
+          border-t
+          bg-white
+        ">
+
           <button
             onClick={onClose}
-            className="w-full bg-gray-200 py-2 rounded-xl font-bold"
+            className="
+              w-full
+              py-3
+              rounded-2xl
+              bg-gray-200
+              hover:bg-gray-300
+              font-black
+              transition-all
+            "
           >
             Cerrar
           </button>
+
         </div>
 
       </div>
 
-      {/* CONFIRM MODAL */}
+      {/* CONFIRM */}
       {confirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
 
-          <div className="bg-white p-5 rounded-xl w-[300px] text-center">
+        <div className="
+          fixed inset-0 z-[60]
+          bg-black/70
+          flex items-center justify-center
+          p-4
+        ">
 
-            <p className="mb-4 text-sm">
-              ¿Quitar <b>{confirm.nombre}</b>?
+          <div className="
+            bg-white
+            rounded-3xl
+            p-6
+            w-full max-w-sm
+            shadow-2xl
+          ">
+
+            <p className="text-center text-sm md:text-base mb-6">
+              ¿Quitar el permiso{" "}
+              <span className="font-black">
+                {confirm.nombre}
+              </span>
+              ?
             </p>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-3">
 
               <button
                 onClick={() => quitar(confirm)}
-                className="flex-1 bg-red-500 text-white py-2 rounded"
+                className="
+                  flex-1
+                  bg-red-500
+                  hover:bg-red-600
+                  text-white
+                  py-3
+                  rounded-2xl
+                  font-bold
+                "
               >
                 Sí
               </button>
 
               <button
                 onClick={() => setConfirm(null)}
-                className="flex-1 bg-gray-200 py-2 rounded"
+                className="
+                  flex-1
+                  bg-gray-200
+                  hover:bg-gray-300
+                  py-3
+                  rounded-2xl
+                  font-bold
+                "
               >
                 No
               </button>
@@ -305,6 +497,7 @@ export default function FormPermisosUsuarioModal({ user, onClose }) {
           </div>
 
         </div>
+
       )}
 
     </div>
