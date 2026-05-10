@@ -55,7 +55,7 @@ def create_cita():
     id_s = data.get('id_sesion')
 
     try:
-        db.create_connection()
+
         
         # Ejecución del Procedure en Supabase
         query = f"CALL {Config.SCHEMA}.p_crear_cita(%s, %s, %s, %s, %s)"
@@ -216,7 +216,7 @@ def get_cita(id):
 @citas_routes.route('/api/citas/odontologos-por-procedimiento/<int:id_procedimiento>', methods=['GET'])
 def get_odontologos_por_procedimiento(id_procedimiento):
     try:
-        db.create_connection()
+        
         query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_odontologos_por_procedimiento(%s)"
         results = db.execute_query(query, (id_procedimiento,), fetchall=True)
 
@@ -234,7 +234,7 @@ def get_odontologos_por_procedimiento(id_procedimiento):
 @citas_routes.route('/api/procedimientos', methods=['GET'])
 def get_procedimientos():
     try:
-        db.create_connection()
+   
         query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_todos_los_procedimientos()"
         results = db.execute_query(query, fetchall=True)
 
@@ -259,7 +259,7 @@ def get_disponibilidad():
         if not all([id_personal, id_sala, fecha_str]):
             return jsonify({'success': False, 'message': 'Faltan parámetros'}), 400
 
-        db.create_connection()
+  
         query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_slots_libres(%s, %s, %s, 30)"
         results = db.execute_query(query, (id_personal, id_sala, fecha_str), fetchall=True)
         
@@ -276,7 +276,7 @@ def get_disponibilidad():
 @citas_routes.route('/api/odontologos', methods=['GET'])
 def get_odontologos():
     try:
-        db.create_connection() # Aseguramos conexión abierta
+       # Aseguramos conexión abierta
         sql = f"""
             SELECT p.id_persona, p.nombre 
             FROM {Config.SCHEMA}.t_persona p

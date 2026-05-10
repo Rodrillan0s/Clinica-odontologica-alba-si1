@@ -3,17 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth_store";
 
 import Sidebar from "../components/layout/Sidebar";
+
 import DashboardAdmin from "../components/dashboards/DashboardAdmin";
 import ModuloCitas from "../components/UIs/ModuloCitas";
 import DashboardOdontologo from "../components/dashboards/DashboardOdontologo";
 import DashboardRecepcionista from "../components/dashboards/DashboardRecepcionista";
 import DashboardPaciente from "../components/dashboards/DashboardPaciente";
+
 import AdminUI from "../components/UIs/Admin";
 import CambioPasswordUI from "../components/UIs/CambioPassword";
 import AgendarCitas from "../components/UIs/AgendarCitas";
 import AgendaCitas from "../components/UIs/AgendaCitas";
 import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
+import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -26,8 +29,11 @@ const ROLES = {
 };
 
 export default function Panel() {
+  const token = localStorage.getItem("token");
+
   const user = useAuthStore((state) => state.user);
   const clearStore = useAuthStore((state) => state.logout);
+
   const navigate = useNavigate();
 
   const [activeMenu, setActiveMenu] = useState("Panel de Control");
@@ -42,6 +48,17 @@ export default function Panel() {
     loading: true,
   });
 
+  // =========================
+  // HEADERS AUTH
+  // =========================
+  const authHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  // =========================
+  // LOGOUT
+  // =========================
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/logout`, {
@@ -49,11 +66,17 @@ export default function Panel() {
         credentials: "include",
       });
     } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
       clearStore();
       navigate("/login");
     }
   };
 
+  // =========================
+  // FETCH GENERAL
+  // =========================
   const fetchTodo = async (signal) => {
     try {
       const config = {
@@ -95,12 +118,17 @@ export default function Panel() {
 
   useEffect(() => {
     const controller = new AbortController();
+
     fetchTodo(controller.signal);
+
     return () => controller.abort();
   }, []);
 
   const userRolId = user?.rol ? Number(user.rol) : null;
 
+  // =========================
+  // LOADING
+  // =========================
   if (!userRolId && dataMaster.loading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[#F4F9F9] text-[#148F77] font-bold">
@@ -117,6 +145,7 @@ export default function Panel() {
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
         userRolId={userRolId}
+        logout={handleLogout}
         logout={handleLogout}
       />
 
@@ -189,6 +218,7 @@ export default function Panel() {
         </div>
       </main>
 
+      {/* MODAL */}
       {showModalCita && (
         <AgendarCitas
           onClose={() => setShowModalCita(false)}

@@ -50,3 +50,6 @@ class PostgreSQL():
     def close_connection(self, commit=False):
         #self.pool.closeall()
         pass
+   
+
+    
