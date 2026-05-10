@@ -50,6 +50,14 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
     return paciente ? paciente.nombre : `Paciente #${id}`;
   };
 
+  const getOdontologoName = (id) => {
+    if (!dataMaster?.odontologos) return id;
+    const odon = dataMaster.odontologos.find(
+      (o) => (o.id_personal || o.id_persona || o.id) == id,
+    );
+    return odon ? odon.nombre : `Doc. #${id}`;
+  };
+
   const getSalaName = (id) => {
     if (!dataMaster?.salas) return `Sala #${id}`;
     const sala = dataMaster.salas.find((s) => s.id_sala == id);
@@ -149,14 +157,14 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-3">
               {citas.map((cita) => (
                 <div
                   key={cita.id_cita}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden"
+                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden flex flex-col sm:flex-row sm:items-center gap-4 pl-6"
                 >
                   <div
-                    className={`absolute top-0 left-0 w-1 h-full ${
+                    className={`absolute top-0 left-0 w-1.5 h-full ${
                       cita.estado_cita?.toUpperCase() === "PROGRAMADA"
                         ? "bg-[#148F77]"
                         : cita.estado_cita?.toUpperCase() === "FINALIZADA"
@@ -165,17 +173,60 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
                     }`}
                   ></div>
 
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex flex-col">
-                      <span className="text-lg font-black text-[#2A5C4D]">
-                        {formatTime(cita.fecha_agendamiento)}
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                        {getSalaName(cita.id_sala)}
-                      </span>
+                  <div className="flex flex-col sm:w-32 flex-shrink-0">
+                    <span className="text-lg font-black text-[#2A5C4D]">
+                      {formatTime(cita.fecha_agendamiento)}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                      {getSalaName(cita.id_sala)}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 border-t sm:border-t-0 sm:border-l border-gray-50 pt-3 sm:pt-0 sm:pl-4 w-full">
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+                        Paciente
+                      </p>
+                      <p
+                        className="text-sm font-bold text-gray-700 truncate"
+                        title={getPacienteName(cita.id_paciente)}
+                      >
+                        {getPacienteName(cita.id_paciente)}
+                      </p>
                     </div>
+
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+                        Motivo
+                      </p>
+                      <p
+                        className="text-xs text-gray-600 truncate"
+                        title={cita.cita_obs || "Sin observaciones"}
+                      >
+                        {cita.cita_obs || (
+                          <span className="text-gray-300 italic">
+                            Sin observaciones
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+                        Odontólogo
+                      </p>
+                      <p
+                        className="text-sm font-bold text-gray-700 truncate"
+                        title={getOdontologoName(cita.id_personal)}
+                      >
+                        {getOdontologoName(cita.id_personal)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex-shrink-0 sm:w-28 flex justify-start sm:justify-end mt-2 sm:mt-0">
                     <span
-                      className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
+                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md text-center ${
                         cita.estado_cita?.toUpperCase() === "PROGRAMADA"
                           ? "bg-emerald-50 text-[#148F77]"
                           : cita.estado_cita?.toUpperCase() === "FINALIZADA"
@@ -185,28 +236,6 @@ export default function AgendaPersonal({ onClose, dataMaster }) {
                     >
                       {cita.estado_cita}
                     </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
-                        Paciente
-                      </p>
-                      <p className="text-sm font-bold text-gray-700 truncate">
-                        {getPacienteName(cita.id_paciente)}
-                      </p>
-                    </div>
-
-                    {cita.cita_obs && (
-                      <div className="pt-2 border-t border-gray-50">
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
-                          Motivo
-                        </p>
-                        <p className="text-xs text-gray-600 truncate">
-                          {cita.cita_obs}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
