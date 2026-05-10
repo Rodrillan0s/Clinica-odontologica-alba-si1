@@ -197,6 +197,7 @@ export default function Panel() {
             <ModuloCitas
               openModal={() => setShowModalCita(true)}
               openAgendaModal={() => setShowAgendaModal(true)}
+              dataMaster={dataMaster}
             />
           )}
 

@@ -238,9 +238,9 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                   className="w-full pl-4 pr-10 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] focus:ring-0 transition-colors appearance-none cursor-pointer"
                 >
                   <option value="">Todos los estados</option>
-                  <option value="PROGRAMADA">PROGRAMADA</option>
-                  <option value="CANCELADA">CANCELADA</option>
-                  <option value="FINALIZADA">FINALIZADA</option>
+                  <option value="Programada">PROGRAMADA</option>
+                  <option value="Cancelada">CANCELADA</option>
+                  <option value="Finalizada">FINALIZADA</option>
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                   ▼
@@ -375,16 +375,16 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                       <td className="py-2 px-4">
                         <span
                           className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                            cita.estado_cita === "PROGRAMADA"
+                            cita.estado_cita?.toUpperCase() === "PROGRAMADA"
                               ? "bg-blue-100 text-blue-700"
-                              : cita.estado_cita === "FINALIZADA"
+                              : cita.estado_cita?.toUpperCase() === "FINALIZADA"
                                 ? "bg-emerald-100 text-emerald-700"
-                                : cita.estado_cita === "CANCELADA"
+                                : cita.estado_cita?.toUpperCase() === "CANCELADA"
                                   ? "bg-red-100 text-red-700"
                                   : "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {cita.estado_cita === "PROGRAMADO" ? "PROGRAMADA" : cita.estado_cita === "COMPLETADO" ? "FINALIZADA" : cita.estado_cita === "CANCELADO" ? "CANCELADA" : cita.estado_cita}
+                          {cita.estado_cita?.toUpperCase() === "PROGRAMADO" ? "PROGRAMADA" : cita.estado_cita?.toUpperCase() === "COMPLETADO" ? "FINALIZADA" : cita.estado_cita?.toUpperCase() === "CANCELADO" ? "CANCELADA" : cita.estado_cita}
                         </span>
                       </td>
                       <td className="py-2 px-4 text-center">
