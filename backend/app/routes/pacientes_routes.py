@@ -39,7 +39,7 @@ def registrar_paciente():
                 'message': 'Debe ingresar nombre y apellido'
             }), 400
 
-        db.create_connection()
+       
 
    
         sql_call = f"""
@@ -81,8 +81,7 @@ def registrar_paciente():
             'message': str(e)
         }), 500
 
-    finally:
-        db.close_connection()
+   
 
 
 @paciente_routes.route('/api/pacientes', methods=['GET'])

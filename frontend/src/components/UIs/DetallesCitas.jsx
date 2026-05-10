@@ -3,7 +3,13 @@ import AgendarCitas from "./AgendarCitas";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function DetallesCitas({ idCita, originalCita, user, dataMaster, onClose }) {
+export default function DetallesCitas({
+  idCita,
+  originalCita,
+  user,
+  dataMaster,
+  onClose,
+}) {
   const [loading, setLoading] = useState(true);
   const [cita, setCita] = useState(null);
   const [error, setError] = useState("");
@@ -20,7 +26,7 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
     fecha_base: "",
     hora_seleccionada: "",
     estado_cita: "",
-    cita_obs: ""
+    cita_obs: "",
   });
 
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -54,7 +60,9 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
     if (isEditing && originalCita) {
       const initialDate = new Date(originalCita.fecha_agendamiento);
       const tzOffset = initialDate.getTimezoneOffset() * 60000;
-      const localISOTime = new Date(initialDate - tzOffset).toISOString().slice(0, -1);
+      const localISOTime = new Date(initialDate - tzOffset)
+        .toISOString()
+        .slice(0, -1);
       const initialFechaBase = localISOTime.split("T")[0];
       const initialHora = localISOTime.split("T")[1].slice(0, 5);
 
@@ -65,7 +73,7 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
         fecha_base: initialFechaBase,
         hora_seleccionada: initialHora,
         estado_cita: originalCita.estado_cita || "",
-        cita_obs: originalCita.cita_obs || ""
+        cita_obs: originalCita.cita_obs || "",
       });
       setSaveError("");
     }
@@ -73,7 +81,12 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
 
   // Fetch slots
   useEffect(() => {
-    if (!isEditing || !formData.id_personal || !formData.id_sala || !formData.fecha_base) {
+    if (
+      !isEditing ||
+      !formData.id_personal ||
+      !formData.id_sala ||
+      !formData.fecha_base
+    ) {
       setSlotsDisponibles([]);
       return;
     }
@@ -87,18 +100,22 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
           fecha: formData.fecha_base,
         });
 
-        const res = await fetch(`${API_URL}/citas/disponibilidad?${queryParams}`);
+        const res = await fetch(
+          `${API_URL}/citas/disponibilidad?${queryParams}`,
+        );
         const data = await res.json();
         if (data.success) {
           let horarios = data.data;
 
-          // Si estamos viendo el odontologo/sala/fecha original, 
-          // asegurarnos de que el slot actual esté en la lista, ya que 
+          // Si estamos viendo el odontologo/sala/fecha original,
+          // asegurarnos de que el slot actual esté en la lista, ya que
           // la BD podría filtrarlo como "ocupado" (por esta misma cita).
           if (originalCita) {
             const initialDate = new Date(originalCita.fecha_agendamiento);
             const tzOffset = initialDate.getTimezoneOffset() * 60000;
-            const localISOTime = new Date(initialDate - tzOffset).toISOString().slice(0, -1);
+            const localISOTime = new Date(initialDate - tzOffset)
+              .toISOString()
+              .slice(0, -1);
             const initialFechaBase = localISOTime.split("T")[0];
             const initialHora = localISOTime.split("T")[1].slice(0, 5);
 
@@ -107,10 +124,15 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
               formData.id_sala == originalCita.id_sala &&
               formData.fecha_base == initialFechaBase
             ) {
-              const alreadyExists = horarios.some(s => s.inicio.slice(0, 5) === initialHora);
+              const alreadyExists = horarios.some(
+                (s) => s.inicio.slice(0, 5) === initialHora,
+              );
               if (!alreadyExists) {
                 // Inyectarlo en orden
-                horarios.push({ inicio: initialHora + ":00", fin: initialHora + ":30" });
+                horarios.push({
+                  inicio: initialHora + ":00",
+                  fin: initialHora + ":30",
+                });
                 horarios.sort((a, b) => a.inicio.localeCompare(b.inicio));
               }
             }
@@ -149,29 +171,30 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
       id_sala: formData.id_sala,
       cita_obs: formData.cita_obs,
       estado_cita: formData.estado_cita,
-      fecha_finalizacion: formData.estado_cita === 'FINALIZADA' ? new Date().toISOString() : null,
+      fecha_finalizacion:
+        formData.estado_cita === "FINALIZADA" ? new Date().toISOString() : null,
       id_usuario: user?.id_usuario || null,
-      id_sesion: user?.id_sesion || null
+      id_sesion: user?.id_sesion || null,
     };
 
     try {
       const res = await fetch(`${API_URL}/citas/${idCita}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
         setIsEditing(false);
         fetchCita();
-        
+
         if (originalCita) {
-           originalCita.id_personal = formData.id_personal;
-           originalCita.id_paciente = formData.id_paciente;
-           originalCita.id_sala = formData.id_sala;
-           originalCita.fecha_agendamiento = fecha_agendamiento;
-           originalCita.estado_cita = formData.estado_cita;
-           originalCita.cita_obs = formData.cita_obs;
+          originalCita.id_personal = formData.id_personal;
+          originalCita.id_paciente = formData.id_paciente;
+          originalCita.id_sala = formData.id_sala;
+          originalCita.fecha_agendamiento = fecha_agendamiento;
+          originalCita.estado_cita = formData.estado_cita;
+          originalCita.cita_obs = formData.cita_obs;
         }
       } else {
         setSaveError(data.message || "Error al actualizar la cita.");
@@ -186,7 +209,7 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
   const handleStatusUpdate = async (newStatus, setFinalization = true) => {
     setSaving(true);
     setSaveError("");
-    
+
     // Payload for status update
     // Usamos los IDs de originalCita o cita para asegurar que no sean undefined
     const payload = {
@@ -198,14 +221,14 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
       estado_cita: newStatus,
       fecha_finalizacion: setFinalization ? new Date().toISOString() : null,
       id_usuario: user?.id_usuario || null,
-      id_sesion: user?.id_sesion || null
+      id_sesion: user?.id_sesion || null,
     };
 
     try {
       const res = await fetch(`${API_URL}/citas/${idCita}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
@@ -265,29 +288,51 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Paciente</label>
+                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                    Paciente
+                  </label>
                   <select
                     className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
                     value={formData.id_paciente}
-                    onChange={(e) => setFormData({ ...formData, id_paciente: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, id_paciente: e.target.value })
+                    }
                   >
                     <option value="">Seleccione Paciente</option>
-                    {pacientesResult.map(p => (
-                      <option key={p.id_persona || p.id_usuario || p.id} value={p.id_persona || p.id_usuario || p.id}>{p.nombre}</option>
+                    {pacientesResult.map((p) => (
+                      <option
+                        key={p.id_persona || p.id_usuario || p.id}
+                        value={p.id_persona || p.id_usuario || p.id}
+                      >
+                        {p.nombre}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Especialista</label>
+                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                    Especialista
+                  </label>
                   <select
                     className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
                     value={formData.id_personal}
-                    onChange={(e) => setFormData({ ...formData, id_personal: e.target.value, hora_seleccionada: "" })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        id_personal: e.target.value,
+                        hora_seleccionada: "",
+                      })
+                    }
                   >
                     <option value="">Seleccione Especialista</option>
-                    {dataMaster?.odontologos?.map(o => (
-                      <option key={o.id_usuario || o.id_persona || o.id} value={o.id_usuario || o.id_persona || o.id}>{o.nombre}</option>
+                    {dataMaster?.odontologos?.map((o) => (
+                      <option
+                        key={o.id_usuario || o.id_persona || o.id}
+                        value={o.id_usuario || o.id_persona || o.id}
+                      >
+                        {o.nombre}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -295,32 +340,52 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Sala</label>
+                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                    Sala
+                  </label>
                   <select
                     className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
                     value={formData.id_sala}
-                    onChange={(e) => setFormData({ ...formData, id_sala: e.target.value, hora_seleccionada: "" })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        id_sala: e.target.value,
+                        hora_seleccionada: "",
+                      })
+                    }
                   >
                     <option value="">Seleccione Sala</option>
-                    {dataMaster?.salas?.map(s => (
-                      <option key={s.id_sala} value={s.id_sala}>{s.nombre}</option>
+                    {dataMaster?.salas?.map((s) => (
+                      <option key={s.id_sala} value={s.id_sala}>
+                        {s.nombre}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Fecha</label>
+                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                    Fecha
+                  </label>
                   <input
                     type="date"
                     className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
                     value={formData.fecha_base}
-                    onChange={(e) => setFormData({ ...formData, fecha_base: e.target.value, hora_seleccionada: "" })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        fecha_base: e.target.value,
+                        hora_seleccionada: "",
+                      })
+                    }
                   />
                 </div>
               </div>
 
               <div className="bg-gray-50 rounded-[2rem] p-6 border border-dashed border-gray-200 min-h-[130px]">
-                <p className="text-[9px] font-black text-gray-400 uppercase mb-4 tracking-widest">Horarios Disponibles:</p>
+                <p className="text-[9px] font-black text-gray-400 uppercase mb-4 tracking-widest">
+                  Horarios Disponibles:
+                </p>
                 {loadingSlots ? (
                   <div className="flex justify-center py-4 space-x-2">
                     <div className="w-2 h-2 bg-[#148F77] rounded-full animate-bounce"></div>
@@ -340,7 +405,12 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
                               ? "bg-[#148F77] text-white shadow-md transform scale-105"
                               : "bg-white text-gray-600 hover:bg-emerald-50 hover:text-[#148F77]"
                           }`}
-                          onClick={() => setFormData({ ...formData, hora_seleccionada: horaValue })}
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              hora_seleccionada: horaValue,
+                            })
+                          }
                         >
                           {horaValue}
                         </button>
@@ -349,7 +419,9 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
                   </div>
                 ) : (
                   <p className="text-center text-gray-400 text-xs italic py-4">
-                    {!formData.id_personal || !formData.id_sala || !formData.fecha_base
+                    {!formData.id_personal ||
+                    !formData.id_sala ||
+                    !formData.fecha_base
                       ? "Seleccione Odontólogo, Sala y Fecha para ver horarios"
                       : "No hay horarios disponibles"}
                   </p>
@@ -358,11 +430,15 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Estado</label>
+                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                    Estado
+                  </label>
                   <select
                     className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
                     value={formData.estado_cita}
-                    onChange={(e) => setFormData({ ...formData, estado_cita: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, estado_cita: e.target.value })
+                    }
                   >
                     <option value="PROGRAMADA">PROGRAMADA</option>
                     <option value="FINALIZADA">FINALIZADA</option>
@@ -372,11 +448,15 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Observaciones</label>
+                <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                  Observaciones
+                </label>
                 <textarea
                   className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-medium border-none outline-none focus:ring-4 focus:ring-emerald-50 resize-none h-24"
                   value={formData.cita_obs}
-                  onChange={(e) => setFormData({ ...formData, cita_obs: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cita_obs: e.target.value })
+                  }
                   placeholder="Detalles adicionales..."
                 ></textarea>
               </div>
@@ -407,64 +487,105 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
               )}
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Paciente</p>
-                  <p className="text-sm font-bold text-gray-800">{cita.nombre_paciente}</p>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    Paciente
+                  </p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {cita.nombre_paciente}
+                  </p>
                 </div>
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Especialista</p>
-                  <p className="text-sm font-bold text-gray-800">{cita.nombre_personal}</p>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    Especialista
+                  </p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {cita.nombre_personal}
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-emerald-50/50 p-6 rounded-[2rem] border border-emerald-100">
-                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Fecha Agendada</p>
+                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">
+                    Fecha Agendada
+                  </p>
                   <p className="text-sm font-bold text-[#148F77]">
                     {new Date(cita.fecha_agendamiento).toLocaleString()}
                   </p>
                 </div>
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Sala</p>
-                  <p className="text-sm font-bold text-gray-800">{cita.nombre_sala}</p>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    Sala
+                  </p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {cita.nombre_sala}
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Fecha de Registro</p>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    Fecha de Registro
+                  </p>
                   <p className="text-sm font-bold text-gray-800">
-                    {cita.fecha_registro ? new Date(cita.fecha_registro).toLocaleString() : "N/A"}
+                    {cita.fecha_registro
+                      ? new Date(cita.fecha_registro).toLocaleString()
+                      : "N/A"}
                   </p>
                 </div>
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Fecha de Finalización</p>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    Fecha de Finalización
+                  </p>
                   <p className="text-sm font-bold text-gray-800">
-                    {cita.fecha_finalizacion ? new Date(cita.fecha_finalizacion).toLocaleString() : <span className="italic opacity-50">Pendiente</span>}
+                    {cita.fecha_finalizacion ? (
+                      new Date(cita.fecha_finalizacion).toLocaleString()
+                    ) : (
+                      <span className="italic opacity-50">Pendiente</span>
+                    )}
                   </p>
                 </div>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Estado Actual</p>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                  Estado Actual
+                </p>
                 <span
                   className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    cita.estado_cita === "PROGRAMADA" || cita.estado_cita === "PROGRAMADO"
+                    cita.estado_cita === "PROGRAMADA" ||
+                    cita.estado_cita === "PROGRAMADO"
                       ? "bg-blue-100 text-blue-700"
-                      : cita.estado_cita === "FINALIZADA" || cita.estado_cita === "COMPLETADO"
+                      : cita.estado_cita === "FINALIZADA" ||
+                          cita.estado_cita === "COMPLETADO"
                         ? "bg-emerald-100 text-emerald-700"
-                        : cita.estado_cita === "CANCELADA" || cita.estado_cita === "CANCELADO"
+                        : cita.estado_cita === "CANCELADA" ||
+                            cita.estado_cita === "CANCELADO"
                           ? "bg-red-100 text-red-700"
                           : "bg-gray-200 text-gray-800"
                   }`}
                 >
-                  {cita.estado_cita === "PROGRAMADO" ? "PROGRAMADA" : cita.estado_cita === "COMPLETADO" ? "FINALIZADA" : cita.estado_cita === "CANCELADO" ? "CANCELADA" : cita.estado_cita}
+                  {cita.estado_cita === "PROGRAMADO"
+                    ? "PROGRAMADA"
+                    : cita.estado_cita === "COMPLETADO"
+                      ? "FINALIZADA"
+                      : cita.estado_cita === "CANCELADO"
+                        ? "CANCELADA"
+                        : cita.estado_cita}
                 </span>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                  Observaciones
+                </p>
                 <p className="text-sm font-medium text-gray-600">
-                  {cita.cita_obs || <span className="italic opacity-50">Sin observaciones registradas.</span>}
+                  {cita.cita_obs || (
+                    <span className="italic opacity-50">
+                      Sin observaciones registradas.
+                    </span>
+                  )}
                 </p>
               </div>
 

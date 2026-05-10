@@ -91,8 +91,26 @@ def get_citas():
     offset = (page - 1) * limit
 
     try:
-                    
-        # Llamada a la nueva función f_obtener_citas con 12 parámetros
+        # Mapeo del filtro de estado: puede llegar como ID int o string del nombre
+        estado_raw = filters.get('estado')
+        id_estado = None
+        if estado_raw:
+            # Si ya es un número, úsalo directamente
+            if estado_raw.isdigit():
+                id_estado = int(estado_raw)
+            else:
+                # Si viene como string, convertir al ID correspondiente
+                estado_map = {
+                    'PROGRAMADA': 1, 'Programada': 1,
+                    'CANCELADA': 2, 'Cancelada': 2,
+                    'REPROGRAMADA': 3, 'Reprogramada': 3,
+                    'COMPLETADA': 4, 'Completada': 4,
+                    'FINALIZADA': 4,  # compatibilidad con nombre anterior
+                    'NO_ASISTIO': 5, 'No Asistió': 5,
+                }
+                id_estado = estado_map.get(estado_raw)
+
+        # Llamada a la función f_obtener_citas con 12 parámetros
         query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         params = (
             filters.get('id_personal'),
@@ -104,7 +122,7 @@ def get_citas():
             filters.get('fecha_fin_desde'),
             filters.get('fecha_fin_hasta'),
             filters.get('id_sala'),
-            filters.get('estado'),
+            id_estado,
             limit,
             offset
         )
@@ -114,24 +132,25 @@ def get_citas():
         if results:
             for row in results:
                 citas_list.append({
-                    "id_cita": row[0],
-                    "id_personal": row[1],
-                    "id_paciente": row[2],
-                    "fecha_registro": row[3].isoformat() if row[3] else None,
+                    "id_cita":            row[0],
+                    "id_personal":        row[1],
+                    "id_paciente":        row[2],
+                    "fecha_registro":     row[3].isoformat() if row[3] else None,
                     "fecha_agendamiento": row[4].isoformat() if row[4] else None,
                     "fecha_finalizacion": row[5].isoformat() if row[5] else None,
-                    "estado_cita": row[6],
-                    "id_sala": row[7],
-                    "cita_obs": row[8]  
+                    "id_estado_cita":     row[6],   # integer FK
+                    "nombre_estado":      row[7],   # varchar desde t_cita_estado
+                    "id_sala":            row[8],
+                    "cita_obs":           row[9]
                 })
-                
+
         response = {
             "data": citas_list,
             "page": page,
             "limit": limit
         }
 
-        return jsonify(response), 200    
+        return jsonify(response), 200
     except Exception as e:
         return jsonify({'message': f'Error al obtener las citas: {e}'}), 500
     
@@ -156,17 +175,28 @@ def update_cita(id):
     fecha_agendamiento = data.get('fecha_agendamiento')
     id_sala = data.get('id_sala')
     cita_obs = data.get('cita_obs')
-    
+
     # Datos para bitácora
     id_u = data.get('id_usuario')
     id_s = data.get('id_sesion')
-    estado_cita = data.get('estado_cita') 
-    fecha_finalizacion = data.get('fecha_finalizacion') 
+    fecha_finalizacion = data.get('fecha_finalizacion')
+
+    # El estado llega como integer (id_estado_cita) desde el frontend
+    id_estado_cita = data.get('id_estado_cita') or data.get('estado_cita')
+    # Si llega como string de compatibilidad, convertir
+    if isinstance(id_estado_cita, str):
+        estado_map = {
+            'PROGRAMADA': 1, 'Programada': 1,
+            'CANCELADA': 2, 'Cancelada': 2,
+            'REPROGRAMADA': 3, 'Reprogramada': 3,
+            'COMPLETADA': 4, 'Completada': 4, 'FINALIZADA': 4,
+            'NO_ASISTIO': 5, 'No Asistió': 5,
+        }
+        id_estado_cita = estado_map.get(id_estado_cita, id_estado_cita)
 
     try:
-        
         query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s, %s, %s)"
-        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs, estado_cita, fecha_finalizacion)
+        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs, id_estado_cita, fecha_finalizacion)
 
         db.execute_query(query, params, commit=True)
 

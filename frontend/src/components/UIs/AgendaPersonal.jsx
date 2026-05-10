@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import DetallesCitas from "./DetallesCitas";
+import { ESTADO_CITA, ESTADO_CITA_LABELS, ESTADO_CITA_COLORS } from "../../constants/enums";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -17,7 +18,8 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
     setLoading(true);
     setError(null);
     try {
-      let url = `${API_URL}/citas?page=1&limit=100&estado=PROGRAMADA`;
+      // La API ahora devuelve id_estado_cita (integer)
+      let url = `${API_URL}/citas?page=1&limit=100&estado=${ESTADO_CITA.PROGRAMADA}`;
       if (selectedOdontologo) {
         url += `&id_personal=${selectedOdontologo}`;
       }
@@ -160,108 +162,82 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {citas.map((cita) => (
-                <div
-                  key={cita.id_cita}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden flex flex-col sm:flex-row sm:items-center gap-4 pl-6"
-                >
+              {citas.map((cita) => {
+                const estadoColors = ESTADO_CITA_COLORS[cita.id_estado_cita] || ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA];
+                const estadoLabel = cita.nombre_estado || ESTADO_CITA_LABELS[cita.id_estado_cita] || `Estado ${cita.id_estado_cita}`;
+                return (
                   <div
-                    className={`absolute top-0 left-0 w-1.5 h-full ${
-                      cita.estado_cita?.toUpperCase() === "PROGRAMADA"
-                        ? "bg-[#148F77]"
-                        : cita.estado_cita?.toUpperCase() === "FINALIZADA"
-                          ? "bg-blue-500"
-                          : "bg-red-500"
-                    }`}
-                  ></div>
+                    key={cita.id_cita}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden flex flex-col sm:flex-row sm:items-center gap-4 pl-6"
+                  >
+                    <div className={`absolute top-0 left-0 w-1.5 h-full ${estadoColors.bar}`}></div>
 
-                  <div className="flex flex-col sm:w-32 flex-shrink-0">
-                    <span className="text-lg font-black text-[#2A5C4D]">
-                      {formatTime(cita.fecha_agendamiento)}
-                    </span>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                      {getSalaName(cita.id_sala)}
-                    </span>
-                  </div>
-
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 border-t sm:border-t-0 sm:border-l border-gray-50 pt-3 sm:pt-0 sm:pl-4 w-full">
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
-                        Paciente
-                      </p>
-                      <p
-                        className="text-sm font-bold text-gray-700 truncate"
-                        title={getPacienteName(cita.id_paciente)}
-                      >
-                        {getPacienteName(cita.id_paciente)}
-                      </p>
+                    <div className="flex flex-col sm:w-32 flex-shrink-0">
+                      <span className="text-lg font-black text-[#2A5C4D]">
+                        {formatTime(cita.fecha_agendamiento)}
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                        {getSalaName(cita.id_sala)}
+                      </span>
                     </div>
 
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
-                        Motivo
-                      </p>
-                      <p
-                        className="text-xs text-gray-600 truncate"
-                        title={cita.cita_obs || "Sin observaciones"}
-                      >
-                        {cita.cita_obs || (
-                          <span className="text-gray-300 italic">
-                            Sin observaciones
-                          </span>
-                        )}
-                      </p>
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 border-t sm:border-t-0 sm:border-l border-gray-50 pt-3 sm:pt-0 sm:pl-4 w-full">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+                          Paciente
+                        </p>
+                        <p className="text-sm font-bold text-gray-700 truncate" title={getPacienteName(cita.id_paciente)}>
+                          {getPacienteName(cita.id_paciente)}
+                        </p>
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+                          Motivo
+                        </p>
+                        <p className="text-xs text-gray-600 truncate" title={cita.cita_obs || "Sin observaciones"}>
+                          {cita.cita_obs || <span className="text-gray-300 italic">Sin observaciones</span>}
+                        </p>
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+                          Odontólogo
+                        </p>
+                        <p className="text-sm font-bold text-gray-700 truncate" title={getOdontologoName(cita.id_personal)}>
+                          {getOdontologoName(cita.id_personal)}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
-                        Odontólogo
-                      </p>
-                      <p
-                        className="text-sm font-bold text-gray-700 truncate"
-                        title={getOdontologoName(cita.id_personal)}
+                    <div className="flex-shrink-0 sm:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-end gap-2 mt-2 sm:mt-0">
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md text-center ${estadoColors.badge}`}>
+                        {estadoLabel}
+                      </span>
+                      <button
+                        onClick={() => setSelectedCitaDetalle(cita)}
+                        className="px-4 py-1.5 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm whitespace-nowrap"
                       >
-                        {getOdontologoName(cita.id_personal)}
-                      </p>
+                        Detalles
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex-shrink-0 sm:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-end gap-2 mt-2 sm:mt-0">
-                    <span
-                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md text-center ${
-                        cita.estado_cita?.toUpperCase() === "PROGRAMADA"
-                          ? "bg-emerald-50 text-[#148F77]"
-                          : cita.estado_cita?.toUpperCase() === "FINALIZADA"
-                            ? "bg-blue-50 text-blue-600"
-                            : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {cita.estado_cita}
-                    </span>
-                    <button
-                      onClick={() => setSelectedCitaDetalle(cita)}
-                      className="px-4 py-1.5 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm whitespace-nowrap"
-                    >
-                      Detalles
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                );
+              })}
           )}
         </div>
       </div>
 
       {selectedCitaDetalle && (
-        <DetallesCitas 
-          idCita={selectedCitaDetalle.id_cita} 
+        <DetallesCitas
+          idCita={selectedCitaDetalle.id_cita}
           originalCita={selectedCitaDetalle}
           user={user}
           dataMaster={dataMaster}
           onClose={() => {
             setSelectedCitaDetalle(null);
-            fetchCitas(); 
-          }} 
+            fetchCitas();
+          }}
         />
       )}
     </div>

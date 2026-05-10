@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import DetallesCitas from "./DetallesCitas";
+import { ESTADO_CITA, ESTADO_CITA_LABELS, ESTADO_CITA_COLORS } from "../../constants/enums";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -26,51 +27,54 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
       p.nombre?.toLowerCase().includes(pacienteSearch.toLowerCase()),
     ) || [];
 
-  const fetchCitas = useCallback(async (page = currentPage) => {
-    setLoading(true);
-    try {
-      let url = `${API_URL}/citas?page=${page}&limit=${limit}`;
-      if (selectedOdontologo) {
-        url += `&id_personal=${selectedOdontologo}`;
-      }
-      if (selectedPacienteId) {
-        url += `&id_paciente=${selectedPacienteId}`;
-      }
-      if (selectedSala) {
-        url += `&id_sala=${selectedSala}`;
-      }
-      if (selectedEstado) {
-        url += `&estado=${selectedEstado}`;
-      }
-      if (fechaInicio) {
-        url += `&fecha_agen_desde=${fechaInicio}`;
-      }
-      if (fechaFin) {
-        url += `&fecha_agen_hasta=${fechaFin}`;
-      }
+  const fetchCitas = useCallback(
+    async (page = currentPage) => {
+      setLoading(true);
+      try {
+        let url = `${API_URL}/citas?page=${page}&limit=${limit}`;
+        if (selectedOdontologo) {
+          url += `&id_personal=${selectedOdontologo}`;
+        }
+        if (selectedPacienteId) {
+          url += `&id_paciente=${selectedPacienteId}`;
+        }
+        if (selectedSala) {
+          url += `&id_sala=${selectedSala}`;
+        }
+        if (selectedEstado) {
+          url += `&estado=${selectedEstado}`;
+        }
+        if (fechaInicio) {
+          url += `&fecha_agen_desde=${fechaInicio}`;
+        }
+        if (fechaFin) {
+          url += `&fecha_agen_hasta=${fechaFin}`;
+        }
 
-      const citasRes = await fetch(url).then((res) => res.json());
+        const citasRes = await fetch(url).then((res) => res.json());
 
-      if (citasRes.data) {
-        setCitas(citasRes.data);
-        setHasMore(citasRes.data.length === limit);
-      } else {
-        setErrorMessage(citasRes.message || "Error al cargar las citas.");
+        if (citasRes.data) {
+          setCitas(citasRes.data);
+          setHasMore(citasRes.data.length === limit);
+        } else {
+          setErrorMessage(citasRes.message || "Error al cargar las citas.");
+        }
+      } catch (err) {
+        setErrorMessage("Error de conexión al cargar las citas.");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setErrorMessage("Error de conexión al cargar las citas.");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    currentPage,
-    selectedOdontologo,
-    selectedPacienteId,
-    selectedSala,
-    selectedEstado,
-    fechaInicio,
-    fechaFin,
-  ]);
+    },
+    [
+      currentPage,
+      selectedOdontologo,
+      selectedPacienteId,
+      selectedSala,
+      selectedEstado,
+      fechaInicio,
+      fechaFin,
+    ],
+  );
 
   useEffect(() => {
     fetchCitas();
@@ -238,10 +242,11 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                     className="w-full pl-4 pr-10 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] focus:ring-0 transition-colors appearance-none cursor-pointer"
                   >
                     <option value="">Todos los estados</option>
-                    <option value="PROGRAMADA">PROGRAMADA</option>
-                    <option value="CANCELADA">CANCELADA</option>
-                    <option value="FINALIZADA">FINALIZADA</option>
-                    <option value="REPROGRAMADA">REPROGRAMADA</option>
+                    <option value={ESTADO_CITA.PROGRAMADA}>Programada</option>
+                    <option value={ESTADO_CITA.CANCELADA}>Cancelada</option>
+                    <option value={ESTADO_CITA.REPROGRAMADA}>Reprogramada</option>
+                    <option value={ESTADO_CITA.COMPLETADA}>Completada</option>
+                    <option value={ESTADO_CITA.NO_ASISTIO}>No Asistió</option>
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                     ▼
@@ -378,25 +383,10 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                         <td className="py-2 px-4">
                           <span
                             className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                              cita.estado_cita?.toUpperCase() === "PROGRAMADA"
-                                ? "bg-blue-100 text-blue-700"
-                                : cita.estado_cita?.toUpperCase() ===
-                                    "FINALIZADA"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : cita.estado_cita?.toUpperCase() ===
-                                      "CANCELADA"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-700"
+                              (ESTADO_CITA_COLORS[cita.id_estado_cita] || ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA]).badge
                             }`}
                           >
-                            {cita.estado_cita?.toUpperCase() === "PROGRAMADO"
-                              ? "PROGRAMADA"
-                              : cita.estado_cita?.toUpperCase() === "COMPLETADO"
-                                ? "FINALIZADA"
-                                : cita.estado_cita?.toUpperCase() ===
-                                    "CANCELADO"
-                                  ? "CANCELADA"
-                                  : cita.estado_cita}
+                            {cita.nombre_estado || ESTADO_CITA_LABELS[cita.id_estado_cita] || `Estado ${cita.id_estado_cita}`}
                           </span>
                         </td>
                         <td className="py-2 px-4 text-center">
