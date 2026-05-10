@@ -101,9 +101,6 @@ export default function AgendaCitas({ onClose, dataMaster }) {
       <div className="bg-white rounded-[3rem] w-full max-w-6xl shadow-2xl overflow-hidden animate-fade-in-up max-h-[95vh] flex flex-col">
         <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div>
-            <h3 className="text-2xl font-black text-[#2A5C4D] italic tracking-tighter">
-              Agenda General
-            </h3>
             <p className="text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
               Listado de citas registradas
             </p>
@@ -318,6 +315,9 @@ export default function AgendaCitas({ onClose, dataMaster }) {
                       Sala
                     </th>
                     <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      Observaciones
+                    </th>
+                    <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       Estado
                     </th>
                   </tr>
@@ -355,6 +355,16 @@ export default function AgendaCitas({ onClose, dataMaster }) {
                       </td>
                       <td className="py-4 px-4 text-xs font-medium text-gray-500">
                         {getSalaName(cita.id_sala)}
+                      </td>
+                      <td
+                        className="py-4 px-4 text-xs font-medium text-gray-500 truncate max-w-[200px]"
+                        title={cita.cita_obs || "Sin observaciones"}
+                      >
+                        {cita.cita_obs || (
+                          <span className="text-gray-300 italic">
+                            Sin observaciones
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-4">
                         <span

@@ -16,10 +16,13 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
   const [slotsDisponibles, setSlotsDisponibles] = useState([]);
 
   const [pacienteSearch, setPacienteSearch] = useState("");
-  const [pacientesResult, setPacientesResult] = useState([]);
   const [showPacienteDropdown, setShowPacienteDropdown] = useState(false);
   const [selectedPacienteName, setSelectedPacienteName] = useState("");
-  const abortPaciente = useRef(null);
+
+  const pacientesResult =
+    dataMaster?.pacientes?.filter((p) =>
+      p.nombre.toLowerCase().includes(pacienteSearch.toLowerCase()),
+    ) || [];
 
   const [formData, setFormData] = useState({
     fecha_base: "",
@@ -40,12 +43,11 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
   const salas = dataMaster?.salas || [];
 
   useEffect(() => {
-
     const fetchOdontologos = async () => {
       try {
         const res = await fetch(`${API_URL}/odontologos`);
         const data = await res.json();
-        setOdontologosFiltrados(Array.isArray(data) ? data : (data.data || []));
+        setOdontologosFiltrados(Array.isArray(data) ? data : data.data || []);
       } catch (err) {
         console.error("Error fetching odontologos", err);
       }
@@ -70,7 +72,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
         const res = await fetch(`${API_URL}/odontologos`, {
           signal: abortDoc.current.signal,
         }).then((r) => r.json());
-        setOdontologosFiltrados(Array.isArray(res) ? res : (res.data || []));
+        setOdontologosFiltrados(Array.isArray(res) ? res : res.data || []);
       } else {
         const res = await fetch(
           `${API_URL}/citas/odontologos-por-procedimiento/${idProc}`,
@@ -83,33 +85,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
     }
   };
 
-  useEffect(() => {
-    if (!isStaff) return;
 
-    if (abortPaciente.current) abortPaciente.current.abort();
-    abortPaciente.current = new AbortController();
-
-    const fetchPacientes = async () => {
-      try {
-        const res = await fetch(
-          `${API_URL}/pacientes?nombre=${encodeURIComponent(pacienteSearch)}`,
-          { signal: abortPaciente.current.signal },
-        );
-        const data = await res.json();
-        if (data.success) {
-          setPacientesResult(data.data);
-        }
-      } catch (err) {
-        if (err.name !== "AbortError")
-          console.error("Error buscando pacientes");
-      }
-    };
-    fetchPacientes();
-
-    return () => {
-      if (abortPaciente.current) abortPaciente.current.abort();
-    };
-  }, [pacienteSearch, isStaff]);
 
   useEffect(() => {
     if (!formData.id_odontologo || !formData.id_sala || !formData.fecha_base) {
@@ -260,7 +236,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
                     <input
                       type="text"
                       placeholder="Buscar paciente por nombre..."
-                      className="w-full p-4 bg-emerald-50 text-[#148F77] rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-100 placeholder:text-emerald-300"
+                      className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
                       value={
                         showPacienteDropdown
                           ? pacienteSearch
@@ -284,12 +260,12 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
                         {pacientesResult.length > 0 ? (
                           pacientesResult.map((p) => (
                             <li
-                              key={p.id}
+                              key={p.id_persona || p.id_usuario || p.id}
                               className="p-4 text-xs font-bold text-gray-600 hover:bg-emerald-50 hover:text-[#148F77] cursor-pointer transition-colors border-b border-gray-50 last:border-0"
                               onMouseDown={() => {
                                 setFormData((prev) => ({
                                   ...prev,
-                                  id_paciente: p.id,
+                                  id_paciente: p.id_persona || p.id_usuario || p.id,
                                 }));
                                 setSelectedPacienteName(p.nombre);
                                 setPacienteSearch("");
