@@ -30,7 +30,9 @@ export default function Bitacora() {
 
       console.log("Buscando con params:", params.toString()); // Debug para consola
 
-      const res = await fetch(`${API_URL}/bitacora?${params.toString()}`);
+      const res = await fetch(`${API_URL}/bitacora?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
       const data = await res.json();
       
       if (data.success) {

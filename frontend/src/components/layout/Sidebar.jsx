@@ -17,9 +17,14 @@ export default function Sidebar({
   dataMaster,
   userRolId,
   logout,
-  sidebarOpen = false,
-  setSidebarOpen = () => {},
+  isOpen,
+  setIsOpen,
 }) {
+
+  // =========================
+  // SUBMENUS
+  // =========================
+
   const [openMenus, setOpenMenus] = useState({
     citas: true,
     usuarios: true,
@@ -33,6 +38,10 @@ export default function Sidebar({
       [menu]: !prev[menu],
     }));
   };
+
+  // =========================
+  // USER DATA
+  // =========================
 
   const currentUserData =
     dataMaster?.usuarios?.find(
@@ -54,63 +63,76 @@ export default function Sidebar({
     return rolEncontrado || "CLIENTE";
   };
 
-  const MenuItem = ({ title }) => (
+  // =========================
+  // MENU BUTTON
+  // =========================
+
+  const MenuButton = ({ title }) => (
     <button
-      type="button"
       onClick={() => {
         setActiveMenu(title);
-        setSidebarOpen(false);
+        setIsOpen(false);
       }}
-      className={`w-full flex items-center gap-3 px-5 py-3 rounded-2xl transition-all
-      ${
+      className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all ${
         activeMenu === title
-          ? "bg-[#148F77] text-white shadow-lg"
-          : "text-gray-500 hover:bg-emerald-50 hover:text-[#148F77]"
+          ? "bg-[#148F77] text-white shadow-xl"
+          : "text-gray-400 hover:bg-emerald-50 hover:text-[#148F77]"
       }`}
     >
-      <span className="font-bold text-xs">{title}</span>
+      <span className="font-bold text-xs">
+        {title}
+      </span>
     </button>
   );
 
   return (
     <>
-      {sidebarOpen && (
+      {/* OVERLAY PARA MÓVIL */}
+      {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setIsOpen(false)}
         />
       )}
 
+      {/* SIDEBAR */}
       <aside
-        className={`
-          fixed md:relative top-0 left-0 z-50
-          h-screen w-72 bg-white border-r border-gray-100
-          flex flex-col shadow-xl transition-transform duration-300
-          ${
-            sidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full md:translate-x-0"
-          }
-        `}
+        className={`fixed md:relative inset-y-0 left-0 w-64 bg-white border-r border-gray-100 flex flex-col z-40 shadow-2xl md:shadow-sm transform transition-transform duration-300 ease-in-out ${
+          isOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:translate-x-0"
+        }`}
       >
         {/* HEADER */}
-        <div className="p-8 flex items-center justify-between border-b border-gray-100">
+        <div className="p-8 flex justify-between items-center border-b border-gray-50">
           <img src={logo} alt="Alba" className="h-10" />
 
           <button
-            className="md:hidden text-2xl text-gray-400"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setIsOpen(false)}
+            className="md:hidden p-2 text-gray-400 hover:text-red-500"
           >
-            ✕
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
           </button>
         </div>
 
         {/* USER */}
-        <div className="p-6 flex flex-col items-center border-b border-gray-100">
+        <div className="p-6 flex flex-col items-center border-b border-gray-50 bg-gray-50/10">
           <div
-            className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center text-xl font-black mb-3 shadow-lg
-            ${
-              Number(userRolId) === 1
+            className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center text-xl font-black mb-3 shadow-lg ${
+              userRolId === 1
                 ? "bg-orange-50 text-orange-600"
                 : "bg-[#148F77] text-white"
             }`}
@@ -118,37 +140,39 @@ export default function Sidebar({
             {currentUserData?.nombre?.charAt(0) || "U"}
           </div>
 
-          <h3 className="text-[#2A5C4D] font-black text-[11px] text-center uppercase">
+          <h3 className="text-[#2A5C4D] font-black text-[11px] text-center leading-tight px-4 uppercase">
             {currentUserData?.nombre || "Usuario"}
           </h3>
 
-          <p className="text-gray-400 text-[10px] font-bold mt-1 tracking-widest lowercase">
+          <p className="text-gray-400 text-[10px] font-bold mt-1 tracking-widest lowercase transition-all">
             @{usernameDisplay}
           </p>
 
-          <p className="text-[#148F77] text-[8px] font-black uppercase mt-3 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+          <p className="text-[#148F77] text-[8px] font-black uppercase mt-3 bg-emerald-50 px-3 py-1.5 rounded-full shadow-sm border border-emerald-100">
             {getRolName(userRolId)}
           </p>
         </div>
 
         {/* NAV */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-5">
+        <nav className="flex-1 p-4 space-y-5 overflow-y-auto">
 
           {/* CITAS */}
           <div>
             <button
-              type="button"
               onClick={() => toggleMenu("citas")}
               className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
             >
               <span>Citas</span>
-              <span>{openMenus.citas ? "−" : "+"}</span>
+
+              <span className="text-lg">
+                {openMenus.citas ? "−" : "+"}
+              </span>
             </button>
 
             {openMenus.citas && (
               <div className="mt-2 space-y-2">
-          
-                <MenuItem title="Citas" />
+           
+                <MenuButton title="Citas" />
               </div>
             )}
           </div>
@@ -157,18 +181,20 @@ export default function Sidebar({
           {Number(userRolId) === 1 && (
             <div>
               <button
-                type="button"
                 onClick={() => toggleMenu("usuarios")}
                 className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
               >
                 <span>Usuarios</span>
-                <span>{openMenus.usuarios ? "−" : "+"}</span>
+
+                <span className="text-lg">
+                  {openMenus.usuarios ? "−" : "+"}
+                </span>
               </button>
 
               {openMenus.usuarios && (
                 <div className="mt-2 space-y-2">
-                  <MenuItem title="Usuarios y Roles" />
-                  <MenuItem title="Cambiar contraseña" />
+                  <MenuButton title="Usuarios y Roles" />
+                  <MenuButton title="Cambiar contraseña" />
                 </div>
               )}
             </div>
@@ -178,17 +204,19 @@ export default function Sidebar({
           {[1, 2, 4].includes(Number(userRolId)) && (
             <div>
               <button
-                type="button"
                 onClick={() => toggleMenu("pacientes")}
                 className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
               >
                 <span>Pacientes</span>
-                <span>{openMenus.pacientes ? "−" : "+"}</span>
+
+                <span className="text-lg">
+                  {openMenus.pacientes ? "−" : "+"}
+                </span>
               </button>
 
               {openMenus.pacientes && (
                 <div className="mt-2 space-y-2">
-                  <MenuItem title="Pacientes" />
+                  <MenuButton title="Pacientes" />
                 </div>
               )}
             </div>
@@ -198,17 +226,19 @@ export default function Sidebar({
           {Number(userRolId) === 1 && (
             <div>
               <button
-                type="button"
                 onClick={() => toggleMenu("administracion")}
                 className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
               >
                 <span>Administración</span>
-                <span>{openMenus.administracion ? "−" : "+"}</span>
+
+                <span className="text-lg">
+                  {openMenus.administracion ? "−" : "+"}
+                </span>
               </button>
 
               {openMenus.administracion && (
                 <div className="mt-2 space-y-2">
-                  <MenuItem title="Bitácora" />
+                  <MenuButton title="Bitácora" />
                 </div>
               )}
             </div>
@@ -216,7 +246,7 @@ export default function Sidebar({
         </nav>
 
         {/* FOOTER */}
-        <div className="p-6 border-t border-gray-100">
+        <div className="p-6 border-t">
           <button
             onClick={logout}
             className="w-full py-4 rounded-2xl text-red-400 font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"

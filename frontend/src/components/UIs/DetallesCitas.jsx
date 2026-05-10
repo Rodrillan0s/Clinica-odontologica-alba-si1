@@ -41,7 +41,9 @@ export default function DetallesCitas({
   const fetchCita = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/citas/${idCita}`);
+      const res = await fetch(`${API_URL}/citas/${idCita}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
       const data = await res.json();
       if (data.success) {
         setCita(data.data);
@@ -108,6 +110,7 @@ export default function DetallesCitas({
 
         const res = await fetch(
           `${API_URL}/citas/disponibilidad?${queryParams}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
         );
         const data = await res.json();
         if (data.success) {
@@ -188,7 +191,10 @@ export default function DetallesCitas({
     try {
       const res = await fetch(`${API_URL}/citas/${idCita}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -233,7 +239,10 @@ export default function DetallesCitas({
     try {
       const res = await fetch(`${API_URL}/citas/${idCita}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
         body: JSON.stringify(payload),
       });
       const data = await res.json();

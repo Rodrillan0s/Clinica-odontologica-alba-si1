@@ -51,7 +51,9 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
           url += `&fecha_agen_hasta=${fechaFin}`;
         }
 
-        const citasRes = await fetch(url).then((res) => res.json());
+        const citasRes = await fetch(url, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        }).then((res) => res.json());
 
         if (citasRes.data) {
           setCitas(citasRes.data);

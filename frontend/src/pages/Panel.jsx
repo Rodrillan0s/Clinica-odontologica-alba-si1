@@ -18,7 +18,6 @@ import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
 const ROLES = {
   ADMINISTRADOR: 1,
   ODONTOLOGO: 2,
@@ -31,16 +30,12 @@ const ROLES = {
 export default function Panel() {
   const user = useAuthStore((state) => state.user);
   const clearStore = useAuthStore((state) => state.logout);
-
   const navigate = useNavigate();
 
-  const [activeMenu, setActiveMenu] = useState("Citas");
-
+  const [activeMenu, setActiveMenu] = useState("Panel de Control");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showModalCita, setShowModalCita] = useState(false);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const [dataMaster, setDataMaster] = useState({
     procedimientos: [],
     odontologos: [],
@@ -53,7 +48,6 @@ export default function Panel() {
   // =========================
   // FETCH CONFIG
   // =========================
-
   const fetchConfig = (signal) => ({
     signal,
     credentials: "include",
@@ -66,7 +60,6 @@ export default function Panel() {
   // =========================
   // LOGOUT
   // =========================
-
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/logout`, {
@@ -84,9 +77,7 @@ export default function Panel() {
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-
       clearStore();
-
       navigate("/login");
     }
   };
@@ -94,22 +85,18 @@ export default function Panel() {
   // =========================
   // FETCH GENERAL
   // =========================
-
   const fetchTodo = async (signal) => {
     try {
       const config = fetchConfig(signal);
-
       const rolActual = user?.rol ? Number(user.rol) : null;
       const esAdmin = rolActual === 1;
 
+      // /api/usuarios solo está disponible para administradores
       const fetchUsuarios = esAdmin
         ? fetch(`${API_URL}/usuarios?t=${Date.now()}`, config).then((r) =>
             r.json(),
           )
-        : Promise.resolve({
-            success: true,
-            data: [],
-          });
+        : Promise.resolve({ success: true, data: [] });
 
       const [resProc, resDoc, resUsu, resSalas, resPacientes] =
         await Promise.all([
@@ -120,128 +107,45 @@ export default function Panel() {
           fetch(`${API_URL}/pacientes`, config).then((r) => r.json()),
         ]);
 
+      const listaUsuarios = resUsu.success ? resUsu.data : [];
+
       setDataMaster({
         procedimientos: resProc.success ? resProc.data : [],
-        odontologos: Array.isArray(resDoc)
-          ? resDoc
-          : resDoc.data || [],
-        usuarios: resUsu.success ? resUsu.data : [],
-        pacientes: resPacientes.success
-          ? resPacientes.data
-          : [],
+        odontologos: Array.isArray(resDoc) ? resDoc : resDoc.data || [],
+        usuarios: listaUsuarios,
+        pacientes: resPacientes.success ? resPacientes.data : [],
         salas: resSalas.success ? resSalas.data : [],
         loading: false,
       });
     } catch (err) {
       if (err.name !== "AbortError") {
         console.log(err);
-
-        setDataMaster((prev) => ({
-          ...prev,
-          loading: false,
-        }));
+        setDataMaster((prev) => ({ ...prev, loading: false }));
       }
     }
   };
 
   useEffect(() => {
     const controller = new AbortController();
-
     fetchTodo(controller.signal);
-
     return () => controller.abort();
   }, []);
 
-  const userRolId = user?.rol
-    ? Number(user.rol)
-    : null;
+  const userRolId = user?.rol ? Number(user.rol) : null;
 
   // =========================
   // LOADING
   // =========================
-
   if (!userRolId && dataMaster.loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F4F9F9] text-[#148F77] font-bold">
+      <div className="h-screen w-full flex items-center justify-center bg-[#F4F9F9] text-[#148F77] font-bold">
         Cargando sesión...
       </div>
     );
   }
 
-  // =========================
-  // RENDER MODULOS
-  // =========================
-
-  const renderContent = () => {
-    switch (activeMenu) {
-      case "Panel de Control":
-        return userRolId === ROLES.ADMINISTRADOR ? (
-          <DashboardAdmin
-            setView={(v) =>
-              setActiveMenu(
-                v === "bitacora"
-                  ? "Bitácora"
-                  : "Panel de Control",
-              )
-            }
-          />
-        ) : userRolId === ROLES.ODONTOLOGO ? (
-          <DashboardOdontologo
-            openModal={() => setShowModalCita(true)}
-          />
-        ) : userRolId === ROLES.RECEPCIONISTA ? (
-          <DashboardRecepcionista
-            openModal={() => setShowModalCita(true)}
-          />
-        ) : (
-          <DashboardPaciente
-            openModal={() => setShowModalCita(true)}
-          />
-        );
-
-      case "Usuarios y Roles":
-        return userRolId === ROLES.ADMINISTRADOR ? (
-          <ModuloUsuarios />
-        ) : null;
-
-      case "Bitácora":
-        return userRolId === ROLES.ADMINISTRADOR ? (
-          <Bitacora />
-        ) : null;
-
-      case "Pacientes":
-        return <ModuloPacientes />;
-
-      case "Cambiar contraseña":
-        return <CambioPasswordUI />;
-
-      case "Citas":
-        return (
-          <ModuloCitas
-            openModal={() => setShowModalCita(true)}
-            openAgendaModal={() => setShowAgendaModal(true)}
-            dataMaster={dataMaster}
-            user={user}
-          />
-        );
-
-      default:
-        return (
-          <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
-            <p className="text-6xl mb-4">⚙️</p>
-
-            <p className="font-black uppercase tracking-[0.3em] text-xs">
-              Módulo en Desarrollo
-            </p>
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className="min-h-screen flex bg-[#F4F9F9] text-gray-800 overflow-hidden">
-
-      {/* SIDEBAR */}
+    <div className="flex flex-col md:flex-row h-screen bg-[#F4F9F9] font-sans antialiased overflow-hidden text-gray-800">
       <Sidebar
         user={user}
         dataMaster={dataMaster}
@@ -249,35 +153,101 @@ export default function Panel() {
         setActiveMenu={setActiveMenu}
         userRolId={userRolId}
         logout={handleLogout}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
-      {/* MAIN */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-
-        {/* HEADER */}
-        <header className="bg-white min-h-[80px] px-4 md:px-10 flex items-center justify-between border-b border-gray-100 shadow-sm">
-
-          {/* MOBILE BUTTON */}
-          <button
-            className="md:hidden text-2xl text-[#148F77]"
-            onClick={() => setSidebarOpen(true)}
-          >
-            ☰
-          </button>
-
-          <div className="text-[10px] md:text-xs font-black text-gray-300 uppercase tracking-widest italic">
-            Clínica Alba /
-            <span className="text-[#148F77] ml-2">
-              {activeMenu}
-            </span>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-white border-b border-gray-100 shadow-sm px-4 md:px-10 h-16 md:h-20 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 text-gray-400 hover:text-[#148F77]"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+            <div className="text-[10px] md:text-xs font-black text-gray-300 uppercase tracking-widest italic">
+              Clínica Alba /{" "}
+              <span className="text-[#148F77] font-black">{activeMenu}</span>
+            </div>
           </div>
         </header>
 
-        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto p-4 md:p-10">
-          {renderContent()}
+          {/* PANEL DE CONTROL / DASHBOARDS */}
+          {activeMenu === "Panel de Control" &&
+            (userRolId === ROLES.ADMINISTRADOR ? (
+              <DashboardAdmin
+                setView={(v) =>
+                  setActiveMenu(
+                    v === "bitacora" ? "Bitácora" : "Panel de Control",
+                  )
+                }
+              />
+            ) : userRolId === ROLES.ODONTOLOGO ? (
+              <DashboardOdontologo openModal={() => setShowModalCita(true)} />
+            ) : userRolId === ROLES.RECEPCIONISTA ? (
+              <DashboardRecepcionista
+                openModal={() => setShowModalCita(true)}
+              />
+            ) : (
+              <DashboardPaciente openModal={() => setShowModalCita(true)} />
+            ))}
+
+          {/* GESTIÓN DE USUARIOS */}
+          {activeMenu === "Usuarios y Roles" &&
+            userRolId === ROLES.ADMINISTRADOR && <ModuloUsuarios />}
+
+          {/* BITÁCORA */}
+          {activeMenu === "Bitácora" && userRolId === ROLES.ADMINISTRADOR && (
+            <Bitacora />
+          )}
+
+          {/* PACIENTES */}
+          {activeMenu === "Pacientes" && <ModuloPacientes />}
+
+          {/* CONTRASEÑA */}
+          {activeMenu === "Cambiar contraseña" && <CambioPasswordUI />}
+
+          {/* CITAS */}
+          {activeMenu === "Citas" && (
+            <ModuloCitas
+              openModal={() => setShowModalCita(true)}
+              openAgendaModal={() => setShowAgendaModal(true)}
+              dataMaster={dataMaster}
+              user={user}
+            />
+          )}
+
+          {/* MÓDULO EN DESARROLLO */}
+          {![
+            "Panel de Control",
+            "Usuarios y Roles",
+            "Cambiar contraseña",
+            "Pacientes",
+            "Bitácora",
+            "Citas",
+          ].includes(activeMenu) && (
+            <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
+              <p className="text-4xl md:text-6xl mb-4">⚙️</p>
+              <p className="font-black uppercase tracking-[0.3em] text-[10px] md:text-xs">
+                Módulo en Desarrollo
+              </p>
+            </div>
+          )}
         </div>
       </main>
 
@@ -288,10 +258,7 @@ export default function Panel() {
           user={user}
           dataMaster={dataMaster}
           isStaff={userRolId < 5}
-          onRefresh={() => {
-            const controller = new AbortController();
-            fetchTodo(controller.signal);
-          }}
+          onRefresh={() => fetchTodo()}
         />
       )}
 

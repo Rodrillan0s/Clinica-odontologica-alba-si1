@@ -8,28 +8,38 @@ class Security:
 
     @staticmethod
     def decode_token():
-
         auth_header = request.headers.get("Authorization")
-
         if not auth_header:
+            print("DEBUG: Falta cabecera Authorization")
             return None
 
         try:
-
             token = auth_header.split(" ")[1]
-
             data = jwt.decode(
                 token,
                 Config.TOKEN_SECRET_KEY,
                 algorithms=["HS256"]
             )
 
+            user_id = data.get("user_id")
+            if not user_id:
+                print("DEBUG: Token sin user_id")
+                return None
+
             return {
-                "id_usuario": data.get("user_id"),
-                "rol": data.get("role")
+                "id_usuario": user_id,
+                "rol": data.get("role"),
+                "id_persona": data.get("id_persona")
             }
 
-        except Exception:
+        except jwt.ExpiredSignatureError:
+            print("DEBUG: Token expirado")
+            return None
+        except jwt.InvalidTokenError as e:
+            print(f"DEBUG: Token inválido: {e}")
+            return None
+        except Exception as e:
+            print(f"DEBUG: Error en decode_token: {e}")
             return None
 
 
@@ -59,6 +69,7 @@ def obtener_permisos_usuario(id_usuario):
         INNER JOIN clinica.t_permisos p
             ON p.id_permiso = up.id_permiso
         WHERE up.id_usuario = %s
+        AND up.habilitado = TRUE;
 
     """
 
@@ -67,6 +78,9 @@ def obtener_permisos_usuario(id_usuario):
         (id_usuario,),
         fetchall=True
     )
+
+    if not result:
+        return []
 
     return [row[0] for row in result]
 
@@ -161,7 +175,7 @@ def permission_required(*permisos_requeridos):
 
                 return jsonify({
                     "success": False,
-                    "message": "No autorizado"
+                    "message": "No tiene permisos para realizar esta accion"
                 }), 403
 
             return f(*args, **kwargs)
