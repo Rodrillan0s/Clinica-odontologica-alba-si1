@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import FormularioPaciente from "../../pages/RegisterPatient";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = { ODONTOLOGO: 2 };
 
-export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
+export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRefresh, initialData }) {
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
 
   const userRolId = Number(user?.rol);
   const isOdontologo = userRolId === ROLES.ODONTOLOGO;
@@ -27,13 +29,13 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
   const [formData, setFormData] = useState({
     fecha_base: "",
     hora_seleccionada: "",
-    id_paciente: isStaff ? "" : user?.id_persona || user?.id_usuario || "",
-    id_odontologo: isOdontologo
+    id_paciente: initialData?.id_paciente || (isStaff ? "" : user?.id_persona || user?.id_usuario || ""),
+    id_odontologo: initialData?.id_personal || (isOdontologo
       ? user?.id_persona || user?.id_usuario || ""
-      : "",
-    id_sala: "",
-    cita_obs: "",
-    id_procedimiento: "",
+      : ""),
+    id_sala: initialData?.id_sala || "",
+    cita_obs: initialData?.cita_obs || "",
+    id_procedimiento: initialData?.id_procedimiento || "",
   });
 
   const abortDoc = useRef(null);
@@ -41,6 +43,16 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
   const hoy = new Date().toISOString().split("T")[0];
 
   const salas = dataMaster?.salas || [];
+
+  useEffect(() => {
+    if (initialData?.id_paciente && dataMaster?.pacientes) {
+      const p = dataMaster.pacientes.find(item => (item.id_persona || item.id_usuario || item.id) == initialData.id_paciente);
+      if (p) {
+        setSelectedPacienteName(p.nombre);
+        setPacienteSearch(p.nombre);
+      }
+    }
+  }, [initialData, dataMaster?.pacientes]);
 
   useEffect(() => {
     const fetchOdontologos = async () => {
@@ -227,9 +239,18 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
             <form onSubmit={handleSubmit} className="space-y-4">
               {isStaff && (
                 <div className="space-y-1 relative">
-                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                    Paciente
-                  </label>
+                  <div className="flex justify-between items-center px-2">
+                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                      Paciente
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterForm(true)}
+                      className="text-[9px] font-black text-[#148F77] uppercase tracking-widest hover:underline"
+                    >
+                      + Paciente nuevo
+                    </button>
+                  </div>
                   <div className="relative">
                     <input
                       type="text"
@@ -451,6 +472,19 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster }) {
           </div>
         )}
       </div>
+      {showRegisterForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="w-full max-w-xl">
+            <FormularioPaciente
+              onClose={() => setShowRegisterForm(false)}
+              onSuccess={() => {
+                onRefresh?.();
+                setShowRegisterForm(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

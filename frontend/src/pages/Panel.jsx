@@ -228,6 +228,7 @@ export default function Panel() {
           user={user}
           dataMaster={dataMaster}
           isStaff={userRolId < 5}
+          onRefresh={() => fetchTodo()}
         />
       )}
 

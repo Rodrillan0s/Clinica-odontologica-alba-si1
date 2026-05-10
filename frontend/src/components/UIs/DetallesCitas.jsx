@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AgendarCitas from "./AgendarCitas";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -10,6 +11,7 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [showReprogramarModal, setShowReprogramarModal] = useState(false);
 
   const [formData, setFormData] = useState({
     id_personal: "",
@@ -176,6 +178,47 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
       }
     } catch (err) {
       setSaveError("Error de conexión al guardar.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus, setFinalization = true) => {
+    setSaving(true);
+    setSaveError("");
+    
+    // Payload for status update
+    // Usamos los IDs de originalCita o cita para asegurar que no sean undefined
+    const payload = {
+      id_personal: originalCita?.id_personal || cita?.id_personal,
+      id_paciente: originalCita?.id_paciente || cita?.id_paciente,
+      fecha_agendamiento: cita?.fecha_agendamiento,
+      id_sala: originalCita?.id_sala || cita?.id_sala,
+      cita_obs: cita?.cita_obs,
+      estado_cita: newStatus,
+      fecha_finalizacion: setFinalization ? new Date().toISOString() : null,
+      id_usuario: user?.id_usuario || null,
+      id_sesion: user?.id_sesion || null
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/citas/${idCita}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (newStatus === "REPROGRAMADA") {
+          setShowReprogramarModal(true);
+        } else {
+          onClose(); // Close details after finalizing or canceling
+        }
+      } else {
+        setSaveError(data.message || `Error al cambiar estado a ${newStatus}`);
+      }
+    } catch (err) {
+      setSaveError("Error de conexión.");
     } finally {
       setSaving(false);
     }
@@ -357,6 +400,11 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
             </div>
           ) : cita ? (
             <div className="space-y-6">
+              {saveError && (
+                <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase animate-shake">
+                  ⚠️ {saveError}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Paciente</p>
@@ -420,24 +468,66 @@ export default function DetallesCitas({ idCita, originalCita, user, dataMaster, 
                 </p>
               </div>
 
-              <div className="pt-4 flex gap-4">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex-1 py-4 bg-[#2A5C4D] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#1f453a] active:scale-95 transition-all"
-                >
-                  Modificar Cita
-                </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-4 bg-gray-100 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
-                >
-                  Cerrar
-                </button>
+              <div className="pt-6 border-t border-gray-100 space-y-4">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleStatusUpdate("FINALIZADA")}
+                    disabled={saving}
+                    className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {saving ? "..." : "Finalizar"}
+                  </button>
+                  <button
+                    onClick={() => handleStatusUpdate("Cancelada")}
+                    disabled={saving}
+                    className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {saving ? "..." : "Cancelar"}
+                  </button>
+                  <button
+                    onClick={() => handleStatusUpdate("REPROGRAMADA")}
+                    disabled={saving}
+                    className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {saving ? "..." : "Reprogramar"}
+                  </button>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex-1 py-4 bg-[#2A5C4D] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#1f453a] active:scale-95 transition-all"
+                  >
+                    Modificar Cita
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="flex-1 py-4 bg-gray-100 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
         </div>
       </div>
+
+      {showReprogramarModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <AgendarCitas
+            onClose={() => {
+              setShowReprogramarModal(false);
+              onClose();
+            }}
+            user={user}
+            dataMaster={dataMaster}
+            isStaff={true}
+            initialData={cita}
+            onRefresh={() => {}}
+          />
+        </div>
+      )}
     </div>
   );
 }
