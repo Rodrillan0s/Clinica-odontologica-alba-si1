@@ -69,6 +69,7 @@ def obtener_permisos_usuario(id_usuario):
         INNER JOIN clinica.t_permisos p
             ON p.id_permiso = up.id_permiso
         WHERE up.id_usuario = %s
+        AND up.habilitado = TRUE;
 
     """
 
