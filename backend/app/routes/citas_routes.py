@@ -181,9 +181,9 @@ def update_cita(id):
     id_s = data.get('id_sesion')
     fecha_finalizacion = data.get('fecha_finalizacion')
 
-    # El estado llega como integer (id_estado_cita) desde el frontend
+   
     id_estado_cita = data.get('id_estado_cita') or data.get('estado_cita')
-    # Si llega como string de compatibilidad, convertir
+
     if isinstance(id_estado_cita, str):
         estado_map = {
             'PROGRAMADA': 1, 'Programada': 1,
