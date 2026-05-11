@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import AgendarCitas from "./AgendarCitas";
-import { ESTADO_CITA, ESTADO_CITA_LABELS, ESTADO_CITA_COLORS } from "../../constants/enums";
+import {
+  ESTADO_CITA,
+  ESTADO_CITA_LABELS,
+  ESTADO_CITA_COLORS,
+} from "../../constants/enums";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -167,16 +171,18 @@ export default function DetallesCitas({
     const fecha_agendamiento = `${formData.fecha_base} ${formData.hora_seleccionada}:00`;
 
     const payload = {
-      id_personal:       formData.id_personal,
-      id_paciente:       formData.id_paciente,
+      id_personal: formData.id_personal,
+      id_paciente: formData.id_paciente,
       fecha_agendamiento: fecha_agendamiento,
-      id_sala:           formData.id_sala,
-      cita_obs:          formData.cita_obs,
-      id_estado_cita:    formData.estado_cita,   // integer ID del enum
+      id_sala: formData.id_sala,
+      cita_obs: formData.cita_obs,
+      id_estado_cita: formData.estado_cita,
       fecha_finalizacion:
-        formData.estado_cita == ESTADO_CITA.COMPLETADA ? new Date().toISOString() : null,
+        formData.estado_cita == ESTADO_CITA.COMPLETADA
+          ? new Date().toISOString()
+          : null,
       id_usuario: user?.id_usuario || null,
-      id_sesion:  user?.id_sesion  || null,
+      id_sesion: user?.id_sesion || null,
     };
 
     try {
@@ -191,12 +197,12 @@ export default function DetallesCitas({
         fetchCita();
 
         if (originalCita) {
-          originalCita.id_personal        = formData.id_personal;
-          originalCita.id_paciente        = formData.id_paciente;
-          originalCita.id_sala            = formData.id_sala;
+          originalCita.id_personal = formData.id_personal;
+          originalCita.id_paciente = formData.id_paciente;
+          originalCita.id_sala = formData.id_sala;
           originalCita.fecha_agendamiento = fecha_agendamiento;
-          originalCita.id_estado_cita     = formData.estado_cita;
-          originalCita.cita_obs           = formData.cita_obs;
+          originalCita.id_estado_cita = formData.estado_cita;
+          originalCita.cita_obs = formData.cita_obs;
         }
       } else {
         setSaveError(data.message || "Error al actualizar la cita.");
@@ -213,15 +219,15 @@ export default function DetallesCitas({
     setSaveError("");
 
     const payload = {
-      id_personal:        originalCita?.id_personal || cita?.id_personal,
-      id_paciente:        originalCita?.id_paciente || cita?.id_paciente,
+      id_personal: originalCita?.id_personal || cita?.id_personal,
+      id_paciente: originalCita?.id_paciente || cita?.id_paciente,
       fecha_agendamiento: cita?.fecha_agendamiento,
-      id_sala:            originalCita?.id_sala || cita?.id_sala,
-      cita_obs:           cita?.cita_obs,
-      id_estado_cita:     newStatus,   // integer ID del enum
+      id_sala: originalCita?.id_sala || cita?.id_sala,
+      cita_obs: cita?.cita_obs,
+      id_estado_cita: newStatus, // integer ID del enum
       fecha_finalizacion: setFinalization ? new Date().toISOString() : null,
-      id_usuario:         user?.id_usuario || null,
-      id_sesion:          user?.id_sesion  || null,
+      id_usuario: user?.id_usuario || null,
+      id_sesion: user?.id_sesion || null,
     };
 
     try {
@@ -246,7 +252,7 @@ export default function DetallesCitas({
   const handleReprogramar = () => {
     // originalCita viene del listado y tiene los IDs numéricos (id_paciente, id_personal, id_sala)
     // cita viene del fetch de detalle y tiene nombres pero no siempre los IDs
-    const idSource = originalCita;   // para IDs
+    const idSource = originalCita; // para IDs
     const dataSource = cita || originalCita; // para fecha y obs
 
     let fechaBase = "";
@@ -257,9 +263,9 @@ export default function DetallesCitas({
     setReprogramarData({
       id_paciente: idSource?.id_paciente,
       id_personal: idSource?.id_personal,
-      id_sala:     idSource?.id_sala,
-      cita_obs:    dataSource?.cita_obs || "",
-      fecha_base:  fechaBase,
+      id_sala: idSource?.id_sala,
+      cita_obs: dataSource?.cita_obs || "",
+      fecha_base: fechaBase,
     });
     setShowReprogramarModal(true);
   };
@@ -270,7 +276,6 @@ export default function DetallesCitas({
     // Ahora sí marcamos la cita original como REPROGRAMADA
     await handleStatusUpdate(ESTADO_CITA.REPROGRAMADA, false);
   };
-
 
   const pacientesResult = dataMaster?.pacientes || [];
 
@@ -468,7 +473,9 @@ export default function DetallesCitas({
                     <option value={ESTADO_CITA.PROGRAMADA}>Programada</option>
                     <option value={ESTADO_CITA.COMPLETADA}>Completada</option>
                     <option value={ESTADO_CITA.CANCELADA}>Cancelada</option>
-                    <option value={ESTADO_CITA.REPROGRAMADA}>Reprogramada</option>
+                    <option value={ESTADO_CITA.REPROGRAMADA}>
+                      Reprogramada
+                    </option>
                     <option value={ESTADO_CITA.NO_ASISTIO}>No Asistió</option>
                   </select>
                 </div>
@@ -580,10 +587,17 @@ export default function DetallesCitas({
                   Estado Actual
                 </p>
                 {(() => {
-                  const colors = ESTADO_CITA_COLORS[cita.id_estado_cita] || ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA];
-                  const label = cita.nombre_estado || ESTADO_CITA_LABELS[cita.id_estado_cita] || `Estado ${cita.id_estado_cita}`;
+                  const colors =
+                    ESTADO_CITA_COLORS[cita.id_estado_cita] ||
+                    ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA];
+                  const label =
+                    cita.nombre_estado ||
+                    ESTADO_CITA_LABELS[cita.id_estado_cita] ||
+                    `Estado ${cita.id_estado_cita}`;
                   return (
-                    <span className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${colors.badge}`}>
+                    <span
+                      className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${colors.badge}`}
+                    >
                       {label}
                     </span>
                   );
