@@ -4,7 +4,15 @@ import FormularioPaciente from "../../pages/RegisterPatient";
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = { ODONTOLOGO: 2 };
 
-export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRefresh, initialData, onSuccess }) {
+export default function AgendarCitas({
+  onClose,
+  user,
+  isStaff,
+  dataMaster,
+  onRefresh,
+  initialData,
+  onSuccess,
+}) {
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -29,10 +37,11 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRef
   const [formData, setFormData] = useState({
     fecha_base: initialData?.fecha_base || "",
     hora_seleccionada: "",
-    id_paciente: initialData?.id_paciente || (isStaff ? "" : user?.id_persona || user?.id_usuario || ""),
-    id_odontologo: initialData?.id_personal || (isOdontologo
-      ? user?.id_persona || user?.id_usuario || ""
-      : ""),
+    id_paciente:
+      initialData?.id_paciente || (isStaff ? "" : user?.id_persona || ""),
+    id_odontologo:
+      initialData?.id_personal ||
+      (isOdontologo ? user?.id_persona || user?.id_usuario || "" : ""),
     id_sala: initialData?.id_sala || "",
     cita_obs: initialData?.cita_obs || "",
     id_procedimiento: initialData?.id_procedimiento || "",
@@ -46,7 +55,11 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRef
 
   useEffect(() => {
     if (initialData?.id_paciente && dataMaster?.pacientes) {
-      const p = dataMaster.pacientes.find(item => (item.id_persona || item.id_usuario || item.id) == initialData.id_paciente);
+      const p = dataMaster.pacientes.find(
+        (item) =>
+          (item.id_persona || item.id_usuario || item.id) ==
+          initialData.id_paciente,
+      );
       if (p) {
         setSelectedPacienteName(p.nombre);
         setPacienteSearch(p.nombre);
@@ -193,8 +206,7 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRef
         } else {
           setIsSuccess(true);
         }
-      }
-      else setErrorMessage(data.message);
+      } else setErrorMessage(data.message);
     } catch {
       setErrorMessage("Error de conexión local.");
     } finally {
@@ -244,73 +256,90 @@ export default function AgendarCitas({ onClose, user, isStaff, dataMaster, onRef
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {isStaff && (
+              {!isStaff && userRolId >= 5 ? (
                 <div className="space-y-1 relative">
-                  <div className="flex justify-between items-center px-2">
-                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                      Paciente
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowRegisterForm(true)}
-                      className="text-[9px] font-black text-[#148F77] uppercase tracking-widest hover:underline"
-                    >
-                      + Paciente nuevo
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Buscar paciente por nombre..."
-                      className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                      value={
-                        showPacienteDropdown
-                          ? pacienteSearch
-                          : selectedPacienteName || pacienteSearch
-                      }
-                      onChange={(e) => {
-                        setPacienteSearch(e.target.value);
-                        setShowPacienteDropdown(true);
-                        if (e.target.value === "") {
-                          setFormData((prev) => ({ ...prev, id_paciente: "" }));
-                          setSelectedPacienteName("");
-                        }
-                      }}
-                      onFocus={() => setShowPacienteDropdown(true)}
-                      onBlur={() => {
-                        setTimeout(() => setShowPacienteDropdown(false), 200);
-                      }}
-                    />
-                    {showPacienteDropdown && (
-                      <ul className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
-                        {pacientesResult.length > 0 ? (
-                          pacientesResult.map((p) => (
-                            <li
-                              key={p.id_persona || p.id_usuario || p.id}
-                              className="p-4 text-xs font-bold text-gray-600 hover:bg-emerald-50 hover:text-[#148F77] cursor-pointer transition-colors border-b border-gray-50 last:border-0"
-                              onMouseDown={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  id_paciente:
-                                    p.id_persona || p.id_usuario || p.id,
-                                }));
-                                setSelectedPacienteName(p.nombre);
-                                setPacienteSearch("");
-                                setShowPacienteDropdown(false);
-                              }}
-                            >
-                              {p.nombre}
-                            </li>
-                          ))
-                        ) : (
-                          <li className="p-4 text-xs text-gray-400 text-center italic">
-                            No se encontraron pacientes
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                  </div>
+                  <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">
+                    Paciente (Usted)
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    className="w-full p-4 bg-gray-100 text-gray-500 rounded-2xl text-xs font-bold border-none outline-none cursor-not-allowed"
+                    value={user?.nombre || user?.nombre_usuario || "Mi Perfil"}
+                  />
                 </div>
+              ) : (
+                isStaff && (
+                  <div className="space-y-1 relative">
+                    <div className="flex justify-between items-center px-2">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                        Paciente
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowRegisterForm(true)}
+                        className="text-[9px] font-black text-[#148F77] uppercase tracking-widest hover:underline"
+                      >
+                        + Paciente nuevo
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Buscar paciente por nombre..."
+                        className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
+                        value={
+                          showPacienteDropdown
+                            ? pacienteSearch
+                            : selectedPacienteName || pacienteSearch
+                        }
+                        onChange={(e) => {
+                          setPacienteSearch(e.target.value);
+                          setShowPacienteDropdown(true);
+                          if (e.target.value === "") {
+                            setFormData((prev) => ({
+                              ...prev,
+                              id_paciente: "",
+                            }));
+                            setSelectedPacienteName("");
+                          }
+                        }}
+                        onFocus={() => setShowPacienteDropdown(true)}
+                        onBlur={() => {
+                          setTimeout(() => setShowPacienteDropdown(false), 200);
+                        }}
+                      />
+                      {showPacienteDropdown && (
+                        <ul className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
+                          {pacientesResult.length > 0 ? (
+                            pacientesResult.map((p) => (
+                              <li
+                                key={p.id_persona || p.id_usuario || p.id}
+                                className="p-4 text-xs font-bold text-gray-600 hover:bg-emerald-50 hover:text-[#148F77] cursor-pointer transition-colors border-b border-gray-50 last:border-0"
+                                onMouseDown={() => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    id_paciente:
+                                      p.id_persona || p.id_usuario || p.id,
+                                  }));
+                                  setSelectedPacienteName(p.nombre);
+                                  setPacienteSearch("");
+                                  setShowPacienteDropdown(false);
+                                }}
+                              >
+                                {p.nombre}
+                              </li>
+                            ))
+                          ) : (
+                            <li className="p-4 text-xs text-gray-400 text-center italic">
+                              No se encontraron pacientes
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )
               )}
 
               <div className="space-y-1">

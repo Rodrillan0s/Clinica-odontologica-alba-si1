@@ -85,13 +85,17 @@ def login():
         log_evento('LOGIN', 'LOGIN_SUCCESS', f'Sesión iniciada por {p_name}', id_usuario=u_id, id_sesion=id_sesion_actual)
 
         # Generar Token JWT
-        token = create_access_token(u_id, u_name, r_id, p_name) 
+        token = create_access_token(u_id, u_name, r_id, p_name, persona_id=p_id) 
 
         response = make_response(jsonify({
             'success': True,
             'message': 'Bienvenido a Clínica Alba',
             'user': { 
-                'id_usuario': u_id, 'nombre': p_name, 'rol': r_id, 'id_sesion': id_sesion_actual 
+                'id_usuario': u_id, 
+                'id_persona': p_id,
+                'nombre': p_name, 
+                'rol': r_id, 
+                'id_sesion': id_sesion_actual 
             }
         }))
         

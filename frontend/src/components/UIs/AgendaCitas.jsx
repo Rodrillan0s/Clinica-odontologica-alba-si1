@@ -12,9 +12,9 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedOdontologo, setSelectedOdontologo] = useState("");
-  const [pacienteSearch, setPacienteSearch] = useState("");
+  const [pacienteSearch, setPacienteSearch] = useState(user?.rol >= 5 ? (user?.nombre || user?.nombre_usuario || "Mi Perfil") : "");
   const [showPacienteDropdown, setShowPacienteDropdown] = useState(false);
-  const [selectedPacienteId, setSelectedPacienteId] = useState("");
+  const [selectedPacienteId, setSelectedPacienteId] = useState(user?.rol >= 5 ? (user?.id_persona || "") : "");
   const [selectedSala, setSelectedSala] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
@@ -158,8 +158,9 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                 </label>
                 <input
                   type="text"
+                  disabled={user?.rol >= 5}
                   placeholder="Buscar paciente por nombre..."
-                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] focus:ring-0 transition-colors"
+                  className={`w-full p-3 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] focus:ring-0 transition-colors ${user?.rol >= 5 ? "bg-gray-100 cursor-not-allowed opacity-70" : "bg-gray-50"}`}
                   value={pacienteSearch}
                   onChange={(e) => {
                     setPacienteSearch(e.target.value);
@@ -314,9 +315,11 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                       <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                         Fecha Agendada
                       </th>
-                      <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        Paciente
-                      </th>
+                      {user?.rol < 5 && (
+                        <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          Paciente
+                        </th>
+                      )}
                       <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                         Especialista
                       </th>
@@ -329,9 +332,11 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                       <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                         Estado
                       </th>
-                      <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">
-                        Acciones
-                      </th>
+                      {user?.rol < 5 && (
+                        <th className="py-2 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">
+                          Acciones
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -355,12 +360,14 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                             })}
                           </div>
                         </td>
-                        <td
-                          className="py-2 px-4 text-sm font-bold text-gray-700 truncate max-w-[150px]"
-                          title={getPacienteName(cita.id_paciente)}
-                        >
-                          {getPacienteName(cita.id_paciente)}
-                        </td>
+                        {user?.rol < 5 && (
+                          <td
+                            className="py-2 px-4 text-sm font-bold text-gray-700 truncate max-w-[150px]"
+                            title={getPacienteName(cita.id_paciente)}
+                          >
+                            {getPacienteName(cita.id_paciente)}
+                          </td>
+                        )}
                         <td
                           className="py-2 px-4 text-sm font-medium text-gray-600 truncate max-w-[150px]"
                           title={getOdontologoName(cita.id_personal)}
@@ -389,14 +396,16 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                             {cita.nombre_estado || ESTADO_CITA_LABELS[cita.id_estado_cita] || `Estado ${cita.id_estado_cita}`}
                           </span>
                         </td>
-                        <td className="py-2 px-4 text-center">
-                          <button
-                            onClick={() => setSelectedCitaDetalle(cita)}
-                            className="px-4 py-2 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
-                          >
-                            Detalles
-                          </button>
-                        </td>
+                        {user?.rol < 5 && (
+                          <td className="py-2 px-4 text-center">
+                            <button
+                              onClick={() => setSelectedCitaDetalle(cita)}
+                              className="px-4 py-2 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
+                            >
+                              Detalles
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
