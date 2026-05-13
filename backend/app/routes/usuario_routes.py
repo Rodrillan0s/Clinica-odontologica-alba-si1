@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
 import json
 from ..config import db, Config
-from ..classes.security import admin_required, Security
+from ..classes.security import admin_required, Security,permission_required
 usuario_routes = Blueprint('usuario_routes', __name__)
 
 # =========================================================
@@ -34,6 +34,7 @@ def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
 
 @usuario_routes.route('/api/usuarios', methods=['GET'])
 @admin_required
+@permission_required("visualizar_usuarios")
 def listar_usuarios():
     try:
         query = """
@@ -44,7 +45,7 @@ def listar_usuarios():
                 r.tipo_rol
             FROM clinica.t_usuario u
             INNER JOIN clinica.t_rol r ON u.id_rol = r.id_rol
-            WHERE u.estado = 'ACTIVO'
+            WHERE u.estado = true
             ORDER BY u.id_usuario ASC
         """
 
@@ -68,6 +69,7 @@ def listar_usuarios():
 
 @usuario_routes.route('/api/usuarios', methods=['POST'])
 @admin_required
+@permission_required("crear_usuario")
 def crear_usuario():
     try:
         data = request.get_json() or {}
@@ -115,6 +117,7 @@ def crear_usuario():
 
 @usuario_routes.route('/api/usuarios/<int:id_usuario>', methods=['PUT'])
 @admin_required
+@permission_required("modificar_usuario")
 def actualizar_usuario(id_usuario):
     try:
         data = request.get_json() or {}
@@ -129,10 +132,6 @@ def actualizar_usuario(id_usuario):
         if data.get('correo'):
             campos.append("correo = %s")
             valores.append(data['correo'])
-
-        if data.get('id_rol'):
-            campos.append("id_rol = %s")
-            valores.append(data['id_rol'])
 
         if not campos:
             return jsonify({"success": False, "message": "Nada para actualizar"}), 400
@@ -158,72 +157,9 @@ def actualizar_usuario(id_usuario):
 # =========================================================
 # SOFT DELETE
 # =========================================================
-
-@usuario_routes.route('/api/usuarios/<int:id_usuario>', methods=['DELETE'])
-@admin_required 
-def eliminar_usuario(id_usuario):
-    try:
-        query = """
-            UPDATE clinica.t_usuario
-            SET estado = 'INACTIVO'
-            WHERE id_usuario = %s
-        """
-
-        db.execute_query(query, (id_usuario,), commit=True)
-
-        log_evento("USUARIOS", "SOFT_DELETE", f"Usuario desactivado {id_usuario}")
-
-        return jsonify({
-            "success": True,
-            "message": "Usuario desactivado correctamente"
-        }), 200
-
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-    
-
-@usuario_routes.route('/api/usuarios/asignar-rol', methods=['POST'])
-@admin_required
-def asignar_rol():
-    try:
-        data = request.get_json() or {}
-
-        id_usuario = data.get('id_usuario')
-        id_rol = data.get('id_rol')
-
-        if not id_usuario or not id_rol:
-            return jsonify({
-                "success": False,
-                "message": "Datos incompletos"
-            }), 400
-
-        query = """
-            UPDATE clinica.t_usuario
-            SET id_rol = %s
-            WHERE id_usuario = %s
-        """
-
-        db.execute_query(query, (id_rol, id_usuario), commit=True)
-
-        id_admin = Security.get_user_id()
-
-        log_evento(
-            "ROLES",
-            "ASIGNAR_ROL",
-            f"Admin {id_admin} asignó rol {id_rol} a usuario {id_usuario}",
-            id_usuario=id_admin
-        )
-
-        return jsonify({
-            "success": True,
-            "message": "Rol asignado correctamente"
-        }), 200
-
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
 @usuario_routes.route('/api/roles', methods=['GET'])
 @admin_required
+@permission_required("modificar_usuario")
 def listar_roles():
     try:
         query = """
@@ -242,27 +178,192 @@ def listar_roles():
         return jsonify({"success": True, "data": data}), 200
 
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500        
+        return jsonify({"success": False, "message": str(e)}), 500
     
-@usuario_routes.route('/api/roles/<int:id_rol>/permisos', methods=['GET'])
+@usuario_routes.route('/api/usuarios/<int:id_usuario>', methods=['DELETE'])
 @admin_required
-def permisos_por_rol(id_rol):
+@permission_required("eliminar_usuario")
+def eliminar_usuario(id_usuario):
     try:
         query = """
-            SELECT p.id_permiso, p.nombre
-            FROM clinica.t_permiso p
-            INNER JOIN clinica.t_rol_permiso rp ON rp.id_permiso = p.id_permiso
-            WHERE rp.id_rol = %s
+            UPDATE clinica.t_usuario
+            SET estado = false
+            WHERE id_usuario = %s
         """
 
-        rows = db.execute_query(query, (id_rol,), fetchall=True)
+        db.execute_query(query, (id_usuario,), commit=True)
+
+        log_evento("USUARIOS", "SOFT_DELETE", f"Usuario desactivado {id_usuario}")
+
+        return jsonify({
+            "success": True,
+            "message": "Usuario desactivado correctamente"
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    
+
+@usuario_routes.route('/api/usuarios/asignar-rol', methods=['POST'])
+@admin_required
+@permission_required("asignar_roles")
+def asignar_rol():
+    try:
+        data = request.get_json() or {}
+
+        id_usuario = data.get('id_usuario')
+        id_rol = data.get('id_rol')
+
+        if not id_usuario or not id_rol:
+            return jsonify({"success": False, "message": "Datos incompletos"}), 400
+
+        # =========================
+        # 1. CAMBIAR ROL
+        # =========================
+        db.execute_query("""
+            UPDATE clinica.t_usuario
+            SET id_rol = %s
+            WHERE id_usuario = %s
+        """, (id_rol, id_usuario), commit=True)
+
+        # =========================
+        # 2. LIMPIAR TODOS LOS PERMISOS DEL USUARIO
+        # (RESET TOTAL)
+        # =========================
+        db.execute_query("""
+            DELETE FROM clinica.t_usuario_permiso
+            WHERE id_usuario = %s
+        """, (id_usuario,), commit=True)
+
+        # =========================
+        # 3. INSERTAR PERMISOS DEL NUEVO ROL
+        # =========================
+        permisos = db.execute_query("""
+            SELECT id_permiso
+            FROM clinica.t_rol_permiso
+            WHERE id_rol = %s
+        """, (id_rol,), fetchall=True)
+
+        for p in (permisos or []):
+            db.execute_query("""
+                INSERT INTO clinica.t_usuario_permiso (id_usuario, id_permiso, habilitado)
+                VALUES (%s, %s, true)
+            """, (id_usuario, p[0]), commit=True)
+
+        return jsonify({
+            "success": True,
+            "message": "Rol actualizado y permisos reconstruidos"
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    
+@usuario_routes.route('/api/usuarios/<int:id_usuario>/permisos', methods=['GET'])
+@admin_required
+@permission_required("modificar_usuario")
+def permisos_usuario(id_usuario):
+
+    try:
+        query = """
+            SELECT 
+                p.id_permiso,
+                p.nombre,
+                m.nombre_modulo,
+                COALESCE(up.habilitado, false) as habilitado
+            FROM clinica.t_permisos p
+            INNER JOIN clinica.t_modulo m 
+                ON m.id_modulo = p.id_modulo
+
+            LEFT JOIN clinica.t_usuario_permiso up
+                ON up.id_permiso = p.id_permiso
+               AND up.id_usuario = %s
+
+            ORDER BY m.nombre_modulo, p.id_permiso
+        """
+
+        rows = db.execute_query(query, (id_usuario,), fetchall=True)
 
         data = [{
             "id_permiso": r[0],
-            "permiso": r[1]
+            "nombre": r[1],
+            "modulo": r[2],
+            "habilitado": r[3]
         } for r in (rows or [])]
 
         return jsonify({"success": True, "data": data}), 200
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500    
+
+
+@usuario_routes.route('/api/usuarios/permisos', methods=['POST'])
+@admin_required
+@permission_required("modificar_permisos")
+def activar_permiso_usuario():
+
+    try:
+
+        data = request.get_json() or {}
+
+        id_usuario = data.get('id_usuario')
+        id_permiso = data.get('id_permiso')
+
+        if not id_usuario or not id_permiso:
+
+            return jsonify({
+                "success": False,
+                "message": "Datos incompletos"
+            }), 400
+
+        db.execute_query("""
+
+            DELETE FROM clinica.t_usuario_permiso
+            WHERE id_usuario = %s
+            AND id_permiso = %s;
+
+            INSERT INTO clinica.t_usuario_permiso (
+                id_usuario,
+                id_permiso,
+                habilitado
+            )
+            VALUES (%s, %s, true)
+
+        """, (
+            id_usuario,
+            id_permiso,
+            id_usuario,
+            id_permiso
+        ), commit=True)
+
+        return jsonify({
+            "success": True
+        }), 200
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+@usuario_routes.route('/api/usuarios/permisos', methods=['DELETE'])
+@admin_required
+@permission_required("modificar_permisos")
+def quitar_permiso_usuario():
+    try:
+        data = request.get_json() or {}
+
+        id_usuario = data.get('id_usuario')
+        id_permiso = data.get('id_permiso')
+
+        db.execute_query("""
+            UPDATE clinica.t_usuario_permiso
+            SET habilitado = false
+            WHERE id_usuario = %s AND id_permiso = %s
+        """, (id_usuario, id_permiso), commit=True)
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500    
+

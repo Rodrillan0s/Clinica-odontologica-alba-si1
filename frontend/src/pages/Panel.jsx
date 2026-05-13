@@ -9,7 +9,6 @@ import DashboardOdontologo from '../components/dashboards/DashboardOdontologo';
 import DashboardRecepcionista from '../components/dashboards/DashboardRecepcionista';
 import DashboardPaciente from '../components/dashboards/DashboardPaciente';
 
-import AdminUI from '../components/UIs/Admin';
 import CambioPasswordUI from '../components/UIs/CambioPassword';
 import AgendarCitas from '../components/UIs/AgendarCitas';
 import ModuloPacientes from '../components/UIs/ModuloPacientes';
@@ -29,12 +28,10 @@ const ROLES = {
 
 export default function Panel() {
 
-  const token = localStorage.getItem("token");
+  const navigate = useNavigate();
 
   const user = useAuthStore((state) => state.user);
   const clearStore = useAuthStore((state) => state.logout);
-
-  const navigate = useNavigate();
 
   const [activeMenu, setActiveMenu] = useState('Panel de Control');
   const [showModalCita, setShowModalCita] = useState(false);
@@ -48,12 +45,21 @@ export default function Panel() {
   });
 
   // =========================
-  // HEADERS AUTH
+  // FETCH CONFIG
   // =========================
-  const authHeaders = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`
-  };
+  const fetchConfig = (signal) => ({
+
+    signal,
+
+    credentials: 'include',
+
+    headers: {
+      'Content-Type': 'application/json',
+
+      Authorization: `Bearer ${localStorage.getItem('token')}`
+    }
+
+  });
 
   // =========================
   // LOGOUT
@@ -63,20 +69,29 @@ export default function Panel() {
     try {
 
       await fetch(`${API_URL}/logout`, {
+
         method: 'POST',
-        headers: authHeaders
+
+        credentials: 'include',
+
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+
       });
 
     } finally {
 
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
 
       clearStore();
 
       navigate('/login');
 
     }
+
   };
 
   // =========================
@@ -86,45 +101,50 @@ export default function Panel() {
 
     try {
 
-      const config = {
-        signal,
-        headers: authHeaders
-      };
+      const config = fetchConfig(signal);
 
-      const resProc = await fetch(
-        `${API_URL}/procedimientos`,
-        config
-      ).then(r => r.json());
+      const [resProc, resDoc, resUsu] = await Promise.all([
 
-      const resDoc = await fetch(
-        `${API_URL}/odontologos`,
-        config
-      ).then(r => r.json());
+        fetch(`${API_URL}/procedimientos`, config)
+          .then(r => r.json()),
 
-      const resUsu = await fetch(
-        `${API_URL}/usuarios?t=${Date.now()}`,
-        config
-      ).then(r => r.json());
+        fetch(`${API_URL}/odontologos`, config)
+          .then(r => r.json()),
 
-      const listaUsuarios = resUsu.success
+        fetch(`${API_URL}/usuarios?t=${Date.now()}`, config)
+          .then(r => r.json())
+
+      ]);
+
+      const usuarios = resUsu.success
         ? resUsu.data
         : [];
 
       setDataMaster({
-        procedimientos: resProc.success ? resProc.data : [],
+
+        procedimientos: resProc.success
+          ? resProc.data
+          : [],
+
         odontologos: Array.isArray(resDoc)
           ? resDoc
           : (resDoc.data || []),
-        usuarios: listaUsuarios,
-        pacientes: listaUsuarios.filter(
+
+        usuarios,
+
+        pacientes: usuarios.filter(
           u => u.id_rol === 5 || u.id_rol === 6
         ),
+
         loading: false
+
       });
 
     } catch (err) {
 
       if (err.name !== 'AbortError') {
+
+        console.log(err);
 
         setDataMaster(prev => ({
           ...prev,
@@ -134,6 +154,7 @@ export default function Panel() {
       }
 
     }
+
   };
 
   useEffect(() => {
@@ -156,37 +177,25 @@ export default function Panel() {
   if (!userRolId && dataMaster.loading) {
 
     return (
+
       <div className="
-        h-screen
-        w-full
-        flex
-        items-center
-        justify-center
-        bg-[#F4F9F9]
-        text-[#148F77]
-        font-bold
-        text-sm
-        md:text-lg
-        px-4
-        text-center
+        h-screen flex items-center justify-center
+        bg-[#F4F9F9] text-[#148F77]
+        font-bold text-sm md:text-lg
       ">
         Cargando sesión...
       </div>
+
     );
+
   }
 
   return (
 
     <div className="
-      flex
-      flex-col
-      md:flex-row
-      h-screen
-      bg-[#F4F9F9]
-      font-sans
-      antialiased
-      overflow-hidden
-      text-gray-800
+      flex flex-col md:flex-row
+      h-screen overflow-hidden
+      bg-[#F4F9F9] text-gray-800
     ">
 
       {/* SIDEBAR */}
@@ -200,43 +209,25 @@ export default function Panel() {
       />
 
       {/* MAIN */}
-      <main className="
-        flex-1
-        flex
-        flex-col
-        overflow-hidden
-      ">
+      <main className="flex-1 flex flex-col overflow-hidden">
 
         {/* HEADER */}
         <header className="
-          bg-white
-          min-h-[70px]
-          md:h-20
-          px-4
-          md:px-10
-          py-3
-          flex
-          items-center
-          border-b
-          border-gray-100
-          shadow-sm
+          bg-white border-b border-gray-100 shadow-sm
+          px-4 md:px-8 py-4
+          flex items-center
         ">
 
           <div className="
-            text-[9px]
-            md:text-[10px]
-            font-black
-            text-gray-300
-            uppercase
-            tracking-widest
-            italic
-            break-words
+            text-[10px] md:text-xs
+            uppercase tracking-widest
+            font-black italic text-gray-300
           ">
 
             Clínica Alba /
 
-            <span className="text-[#148F77] font-black">
-              {" "}{activeMenu}
+            <span className="text-[#148F77]">
+              {' '}{activeMenu}
             </span>
 
           </div>
@@ -245,13 +236,11 @@ export default function Panel() {
 
         {/* CONTENT */}
         <div className="
-          flex-1
-          overflow-y-auto
-          p-4
-          md:p-10
+          flex-1 overflow-y-auto
+          p-4 md:p-8
         ">
 
-          {/* DASHBOARDS */}
+          {/* DASHBOARD */}
           {activeMenu === 'Panel de Control' && (
 
             userRolId === ROLES.ADMINISTRADOR ?
@@ -308,49 +297,6 @@ export default function Panel() {
             <CambioPasswordUI />
           )}
 
-          {/* MODULO EN DESARROLLO */}
-          {![
-            'Panel de Control',
-            'Usuarios y Roles',
-            'Cambiar contraseña',
-            'Pacientes',
-            'Bitácora'
-          ].includes(activeMenu) && (
-
-            <div className="
-              h-full
-              flex
-              flex-col
-              items-center
-              justify-center
-              opacity-20
-              text-center
-              px-4
-            ">
-
-              <p className="
-                text-4xl
-                md:text-6xl
-                mb-4
-              ">
-                ⚙️
-              </p>
-
-              <p className="
-                font-black
-                uppercase
-                tracking-[0.2em]
-                md:tracking-[0.3em]
-                text-[10px]
-                md:text-xs
-              ">
-                Módulo en Desarrollo
-              </p>
-
-            </div>
-
-          )}
-
         </div>
 
       </main>
@@ -368,5 +314,7 @@ export default function Panel() {
       )}
 
     </div>
+
   );
+
 }

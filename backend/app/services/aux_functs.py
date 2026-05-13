@@ -3,7 +3,7 @@ from ..config import Config
 import jwt
 
 
-def create_access_token(user_id,user_name,role,name,minutes=120):
+def create_access_token(user_id,user_name,id_persona,role,name,minutes=120):
     """
     GENERA EL JWT PARA LA SESION DEL USUARIO
     """
@@ -11,6 +11,7 @@ def create_access_token(user_id,user_name,role,name,minutes=120):
     payload={
         'user_id':user_id,
         'username':user_name,
+        'id_persona':id_persona,
         'role':role,
         'name':name,
         'exp':datetime.now(timezone.utc) + timedelta(minutes=minutes),

@@ -259,18 +259,16 @@ def get_disponibilidad():
 @citas_routes.route('/api/odontologos', methods=['GET'])
 def get_odontologos():
     try:
-       # Aseguramos conexión abierta
+
         sql = f"""
-            SELECT p.id_persona, p.nombre 
-            FROM {Config.SCHEMA}.t_persona p
-            JOIN {Config.SCHEMA}.t_usuario u ON p.id_persona = u.id_persona
-            WHERE u.id_rol = 2
+            SELECT pers.id_personal, per.nombre
+            FROM {Config.SCHEMA}.t_personal pers
+            JOIN {Config.SCHEMA}.t_persona per ON pers.id_personal = per.id_persona
+            WHERE pers.id_cargo = 2
         """
         doctores = db.execute_query(sql, fetchall=True)
-        
+
         lista = [{"id": d[0], "nombre": d[1]} for d in (doctores or [])]
         return jsonify(lista), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        db.close_connection()

@@ -3,6 +3,7 @@ import { useState } from 'react';
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function FormularioPaciente({ onClose, onSuccess }) {
+  const token = localStorage.getItem('token');
   const [formData, setFormData] = useState({
     nombre: '',
     ci: '',
@@ -53,7 +54,9 @@ export default function FormularioPaciente({ onClose, onSuccess }) {
     try {
       const res = await fetch(`${API_URL}/pacientes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
+         },
         body: JSON.stringify(formData)
       });
 

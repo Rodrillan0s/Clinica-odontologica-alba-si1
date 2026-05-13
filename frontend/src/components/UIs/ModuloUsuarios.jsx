@@ -1,32 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
+
+import FormUsuarioModal from "./FormUsuario";
+import FormPermisosUsuarioModal from "./FormPermisos";
+import FormEditUsuarioModal from "./FormEditUsuario";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ModuloUsuarios() {
 
-  const [usuarios, setUsuarios] = useState([]);
-  const [roles, setRoles] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedRole, setSelectedRole] = useState("");
-
-  const [showForm, setShowForm] = useState(false);
-
-  // =========================
-  // TOKEN
-  // =========================
   const token = localStorage.getItem("token");
 
-  // =========================
-  // HEADERS AUTH
-  // =========================
-  const authHeaders = {
+  const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`
   };
+
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // =========================
+  // MODALES
+  // =========================
+  const [showCreate, setShowCreate] = useState(false);
+  const [userPermisos, setUserPermisos] = useState(null);
+  const [userEdit, setUserEdit] = useState(null);
+
+  const [roles, setRoles] = useState([]);
+
+  // =========================
+  // FILTROS
+  // =========================
+  const [search, setSearch] = useState("");
+  const [filterRol, setFilterRol] = useState("");
+  const [filterEstado, setFilterEstado] = useState("");
 
   // =========================
   // FETCH USUARIOS
@@ -34,245 +40,230 @@ export default function ModuloUsuarios() {
   const fetchUsuarios = async () => {
 
     try {
-
-      setLoading(true);
-
-      const res = await fetch(`${API_URL}/usuarios`, {
-        headers: authHeaders
-      });
-
+      const res = await fetch(`${API_URL}/usuarios`, { headers });
       const data = await res.json();
 
-      if (!res.ok || data.success === false) {
-        throw new Error(data.message || "Error usuarios");
-      }
-
       setUsuarios(data.data || []);
-
     } catch (err) {
-
-      setError(err.message);
-
+      console.log(err);
     } finally {
-
       setLoading(false);
-
     }
   };
 
   // =========================
-  // FETCH ROLES
+  // ROLES
   // =========================
   const fetchRoles = async () => {
 
-    try {
+    const res = await fetch(`${API_URL}/roles`, { headers });
+    const data = await res.json();
 
-      const res = await fetch(`${API_URL}/roles`, {
-        headers: authHeaders
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setRoles(data.data);
-      }
-
-    } catch (err) {
-
-      console.log(err);
-
-    }
+    setRoles(data.data || []);
   };
 
   useEffect(() => {
-
     fetchUsuarios();
     fetchRoles();
-
   }, []);
 
   // =========================
-  // ASIGNAR ROL
+  // DESHABILITAR / HABILITAR
   // =========================
-  const asignarRol = async () => {
+  const toggleEstado = async (u) => {
 
-    try {
+    await fetch(`${API_URL}/usuarios/${u.id_usuario}`, {
+      method: "DELETE",
+      headers
+    });
 
-      await fetch(`${API_URL}/usuarios/asignar-rol`, {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({
-          id_usuario: selectedUser,
-          id_rol: selectedRole
-        })
-      });
-
-      setSelectedUser(null);
-      setSelectedRole("");
-
-      fetchUsuarios();
-
-    } catch (err) {
-
-      console.log(err);
-
-    }
+    fetchUsuarios();
   };
 
+  // =========================
+  // FILTROS
+  // =========================
+  const filtered = usuarios.filter(u => {
+
+    const matchSearch =
+      u.usuario.toLowerCase().includes(search.toLowerCase()) ||
+      u.correo.toLowerCase().includes(search.toLowerCase());
+
+    const matchRol = filterRol ? u.rol === filterRol : true;
+
+    const matchEstado =
+      filterEstado === ""
+        ? true
+        : filterEstado === "activo"
+          ? u.estado !== false
+          : u.estado === false;
+
+    return matchSearch && matchRol && matchEstado;
+  });
+
   return (
+
     <div className="p-4 md:p-6">
 
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+      {/* =========================
+          HEADER
+      ========================= */}
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
 
         <h2 className="text-2xl md:text-3xl font-black text-[#2A5C4D]">
           Usuarios
         </h2>
 
         <button
-          onClick={() => setShowForm(true)}
-          className="w-full md:w-auto bg-[#148F77] text-white px-5 py-3 rounded-xl font-bold hover:bg-[#0f6b59] transition"
+          onClick={() => setShowCreate(true)}
+          className="bg-[#148F77] text-white px-4 py-3 rounded-xl font-bold"
         >
           + Nuevo Usuario
         </button>
 
       </div>
 
-      {/* LOADING / ERROR */}
-      {loading && (
-        <p className="text-gray-500">
-          Cargando usuarios...
-        </p>
-      )}
+      {/* =========================
+          FILTROS
+      ========================= */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-5">
 
-      {error && (
-        <p className="text-red-500 font-bold">
-          {error}
-        </p>
-      )}
+        <input
+          placeholder="Buscar usuario o correo"
+          className="border p-3 rounded-xl"
+          onChange={(e) => setSearch(e.target.value)}
+        />
 
-      {/* LISTA */}
-      <div className="space-y-3">
+        <select
+          className="border p-3 rounded-xl"
+          onChange={(e) => setFilterRol(e.target.value)}
+        >
+          <option value="">Todos los roles</option>
+          {roles.map(r => (
+            <option key={r.id_rol} value={r.rol}>
+              {r.rol}
+            </option>
+          ))}
+        </select>
 
-        {!loading && usuarios.map(u => (
-
-          <div
-            key={u.id_usuario}
-            className="
-              p-4
-              bg-white
-              rounded-2xl
-              shadow-sm
-              border
-              border-gray-100
-              flex
-              flex-col
-              md:flex-row
-              md:justify-between
-              md:items-center
-              gap-4
-            "
-          >
-
-            {/* INFO */}
-            <div className="min-w-0">
-
-              <p className="font-bold text-[#2A5C4D] break-words">
-                {u.usuario}
-              </p>
-
-              <p className="text-sm text-gray-500 break-all">
-                {u.correo}
-              </p>
-
-              <p className="text-xs text-gray-400 mt-1">
-                {u.rol}
-              </p>
-
-            </div>
-
-            {/* BUTTON */}
-            <button
-              onClick={() => setSelectedUser(u.id_usuario)}
-              className="
-                w-full
-                md:w-auto
-                text-sm
-                bg-blue-500
-                hover:bg-blue-600
-                transition
-                text-white
-                px-4
-                py-2
-                rounded-xl
-                font-semibold
-              "
-            >
-              Cambiar rol
-            </button>
-
-          </div>
-
-        ))}
+        <select
+          className="border p-3 rounded-xl"
+          onChange={(e) => setFilterEstado(e.target.value)}
+        >
+          <option value="">Todos</option>
+          <option value="activo">Activos</option>
+          <option value="inactivo">Inactivos</option>
+        </select>
 
       </div>
 
-      {/* PANEL ASIGNAR ROL */}
-      {selectedUser && (
+      {/* =========================
+          LISTA
+      ========================= */}
+      {loading ? (
+        <p className="text-gray-500">Cargando...</p>
+      ) : (
 
-        <div className="mt-6 p-4 md:p-6 bg-gray-100 rounded-2xl">
+        <div className="space-y-3">
 
-          <h3 className="font-bold mb-4 text-[#2A5C4D] text-lg">
-            Asignar Rol
-          </h3>
+          {filtered.map(u => (
 
-          <div className="flex flex-col md:flex-row gap-3">
-
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              className="
-                w-full
-                md:w-72
-                p-3
-                rounded-xl
-                border
-                bg-white
-              "
+            <div
+              key={u.id_usuario}
+              className={`
+                p-4 rounded-xl shadow-sm
+                flex flex-col md:flex-row
+                md:justify-between md:items-center
+                gap-3
+                ${u.estado === false ? "bg-gray-100 opacity-60" : "bg-white"}
+              `}
             >
-              <option value="">
-                Seleccione rol
-              </option>
 
-              {roles.map(r => (
-                <option key={r.id_rol} value={r.id_rol}>
-                  {r.rol}
-                </option>
-              ))}
-            </select>
+              {/* INFO */}
+              <div className="min-w-0">
 
-            <button
-              onClick={asignarRol}
-              className="
-                w-full
-                md:w-auto
-                bg-green-600
-                hover:bg-green-700
-                transition
-                text-white
-                px-5
-                py-3
-                rounded-xl
-                font-bold
-              "
-            >
-              Guardar
-            </button>
+                <p className="font-bold text-[#2A5C4D] truncate">
+                  {u.usuario}
+                </p>
 
-          </div>
+                <p className="text-sm text-gray-500 truncate">
+                  {u.correo}
+                </p>
+
+                <p className="text-xs text-gray-400">
+                  {u.rol}
+                </p>
+
+              </div>
+
+              {/* BOTONES */}
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+
+                <button
+                  onClick={() => setUserPermisos(u)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm"
+                >
+                  Permisos
+                </button>
+
+                <button
+                  onClick={() => setUserEdit(u)}
+                  className="bg-gray-800 text-white px-4 py-2 rounded-xl text-sm"
+                >
+                  Editar
+                </button>
+
+                <button
+                  onClick={() => toggleEstado(u)}
+                  className={`
+                    px-4 py-2 rounded-xl text-sm text-white
+                    ${u.estado === false ? "bg-green-500" : "bg-red-500"}
+                  `}
+                >
+                  {u.estado === false ? "Habilitar" : "Deshabilitar"}
+                </button>
+
+              </div>
+
+            </div>
+
+          ))}
 
         </div>
 
+      )}
+
+      {/* =========================
+          MODALES
+      ========================= */}
+      {showCreate && (
+        <FormUsuarioModal
+          roles={roles}
+          onClose={() => setShowCreate(false)}
+          onSuccess={() => {
+            setShowCreate(false);
+            fetchUsuarios();
+          }}
+        />
+      )}
+
+      {userPermisos && (
+        <FormPermisosUsuarioModal
+          user={userPermisos}
+          onClose={() => setUserPermisos(null)}
+        />
+      )}
+
+      {userEdit && (
+        <FormEditUsuarioModal
+          user={userEdit}
+          roles={roles}
+          onClose={() => setUserEdit(null)}
+          onSuccess={() => {
+            setUserEdit(null);
+            fetchUsuarios();
+          }}
+        />
       )}
 
     </div>

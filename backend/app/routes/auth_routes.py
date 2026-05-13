@@ -59,10 +59,9 @@ def login():
         if not user_input or not password:
             return jsonify({'success': False, 'message': 'Faltan credenciales.'}), 400
 
-        db.create_connection()
         call_sql = f"CALL {Config.SCHEMA}.p_login_usuario(%s, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
         result = db.execute_query(call_sql, (user_input.strip(),), fetchone=True)
-        
+
         if not result:
             log_evento('LOGIN', 'LOGIN_FAILED', f'Usuario inexistente: {user_input}')
             return jsonify({'success': False, 'message': 'Usuario no encontrado.'}), 404
@@ -70,41 +69,52 @@ def login():
         u_id, p_id, u_name, u_hash, p_name, p_mail, r_id = result
         es_valida = check_password_hash(u_hash, password)
 
-        # Registrar intento (Procedure de seguridad)
-        db.execute_query(f"CALL {Config.SCHEMA}.p_registrar_intentos_login(%s, %s)", (u_id, es_valida), commit=True)
+        db.execute_query(
+            f"CALL {Config.SCHEMA}.p_registrar_intentos_login(%s, %s)",
+            (u_id, es_valida),
+            commit=True
+        )
 
         if not es_valida:
             log_evento('LOGIN', 'LOGIN_FAILED', f'Password errónea para: {u_name}', id_usuario=u_id)
             return jsonify({'success': False, 'message': 'Contraseña incorrecta.'}), 401
 
-        # CREAR SESIÓN ACTIVA EN DB
-        sql_sesion = f"INSERT INTO {Config.SCHEMA}.t_sesiones (id_usuario, estado, ip_direccion) VALUES (%s, 'ACTIVA', %s) RETURNING id_sesion"
+        # Crear sesión en DB
+        sql_sesion = f"""
+            INSERT INTO {Config.SCHEMA}.t_sesiones 
+            (id_usuario, estado, ip_direccion) 
+            VALUES (%s, 'ACTIVA', %s) 
+            RETURNING id_sesion
+        """
         res_sesion = db.execute_query(sql_sesion, (u_id, obtener_ip()), fetchone=True, commit=True)
         id_sesion_actual = res_sesion[0]
 
-        log_evento('LOGIN', 'LOGIN_SUCCESS', f'Sesión iniciada por {p_name}', id_usuario=u_id, id_sesion=id_sesion_actual)
+        log_evento(
+            'LOGIN',
+            'LOGIN_SUCCESS',
+            f'Sesión iniciada por {p_name}',
+            id_usuario=u_id,
+            id_sesion=id_sesion_actual
+        )
 
-        # Generar Token JWT
-        token = create_access_token(u_id, u_name, r_id, p_name) 
-
-        response = make_response(jsonify({
+        token = create_access_token(u_id, u_name, p_id, r_id, p_name)   
+        return jsonify({
             'success': True,
             'message': 'Bienvenido a Clínica Alba',
-            'user': { 
-                'id_usuario': u_id, 'nombre': p_name, 'rol': r_id, 'id_sesion': id_sesion_actual 
+            'token': token,
+            'user': {
+                'id_usuario': u_id,
+                'nombre': p_name,
+                'id_persona': p_id,
+                'rol': r_id,
+                'id_sesion': id_sesion_actual
             }
-        }))
-        
-        # Configuración de Cookie (Ajustar secure=True si usas HTTPS en Render)
-        response.set_cookie(
-            'access_token', token, httponly=True, samesite='Lax', 
-            max_age=3600*8, secure=False 
-        )
-        return response, 200
+        }), 200
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
+
     finally:
         db.close_connection()
 
@@ -116,7 +126,7 @@ def logout():
         id_usuario = data.get('id_usuario')
 
         if id_sesion:
-            db.create_connection()
+        
             sql = f"UPDATE {Config.SCHEMA}.t_sesiones SET estado = 'FINALIZADA', fecha_fin = NOW() WHERE id_sesion = %s"
             db.execute_query(sql, (id_sesion,), commit=True)
             log_evento('LOGOUT', 'LOGOUT', 'Sesión cerrada por el usuario', id_usuario=id_usuario, id_sesion=id_sesion)
@@ -142,7 +152,7 @@ def forgot_password():
         token_hash = generate_password_hash(token_plano)
         ip_usuario = obtener_ip()
 
-        db.create_connection()
+       
         sql = f"CALL {Config.SCHEMA}.p_solicitar_recuperacion(%s, %s, %s, NULL, NULL)"
         result = db.execute_query(sql, (email, token_hash, ip_usuario), fetchone=True, commit=True)
         
@@ -173,7 +183,7 @@ def reset_password():
         es_valida, msg_error = validar_password(new_password)
         if not es_valida: return jsonify({'success': False, 'message': msg_error}), 400
 
-        db.create_connection()
+     
         sql_check = f"SELECT id_token, token_hash FROM {Config.SCHEMA}.t_token_recuperacion WHERE id_usuario = %s AND usado = FALSE"
         tokens = db.execute_query(sql_check, (u_id,), fetchall=True)
         
@@ -200,7 +210,7 @@ def reset_password():
 @auth_routes.route('/api/verify-ci/<int:ci>', methods=['GET'])
 def verify_ci(ci):
     try:
-        db.create_connection()
+    
         sql = f"SELECT nombre, tipo_persona FROM {Config.SCHEMA}.t_persona WHERE ci = %s"
         result = db.execute_query(sql, (ci,), fetchone=True)
         
@@ -229,7 +239,6 @@ def register():
 
         pass_hash = generate_password_hash(password)
         
-        db.create_connection()
         sql = f"CALL {Config.SCHEMA}.p_registrar_usuario(%s, %s, %s, %s, %s, %s, %s, %s)"
         params = (user_name, data.get('ci'), data.get('name'), data.get('mail'), 
                   data.get('number'), data.get('birth'), data.get('dir'), pass_hash)
@@ -249,7 +258,6 @@ def register():
 @auth_routes.route('/api/stats', methods=['GET'])
 def get_stats():
     try:
-        db.create_connection()
         p = db.execute_query(f"SELECT COUNT(*) FROM {Config.SCHEMA}.t_persona WHERE tipo_persona = 'CLIENTE'", fetchone=True)
         e = db.execute_query(f"SELECT COUNT(*) FROM {Config.SCHEMA}.t_rol", fetchone=True)
         return jsonify({'success': True, 'stats': {'pacientes': p[0], 'especialidades': e[0]}})
@@ -262,7 +270,7 @@ def get_stats():
 def cambiar_password(id_usuario):
     try:
         data = request.get_json()
-        db.create_connection()
+
         
         query = f'SELECT "contraseña" FROM {Config.SCHEMA}.t_usuario WHERE id_usuario = %s'
         res = db.execute_query(query, (id_usuario,), fetchone=True)

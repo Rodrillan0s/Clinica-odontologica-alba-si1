@@ -39,9 +39,8 @@ def registrar_paciente():
                 'message': 'Debe ingresar nombre y apellido'
             }), 400
 
-        db.create_connection()
+     
 
-   
         sql_call = f"""
             CALL clinica.p_registrar_paciente(
                 %s::varchar,
@@ -88,8 +87,7 @@ def registrar_paciente():
 @paciente_routes.route('/api/pacientes', methods=['GET'])
 def listar_pacientes():
     try:
-        db.create_connection()
-
+        
         query = f"""
             SELECT id_paciente,nombre
             FROM clinica.t_paciente a
