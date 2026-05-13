@@ -307,7 +307,7 @@ def get_disponibilidad():
 @citas_routes.route('/api/odontologos', methods=['GET'])
 def get_odontologos():
     try:
-       # Aseguramos conexión abierta
+      
         sql = f"""
             SELECT pers.id_personal, per.nombre
             FROM {Config.SCHEMA}.t_personal pers
