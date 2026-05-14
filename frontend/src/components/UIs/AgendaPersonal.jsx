@@ -24,7 +24,7 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
     try {
       // La API ahora devuelve id_estado_cita (integer)
       let url = `${API_URL}/citas?page=1&limit=100&estado=${ESTADO_CITA.PROGRAMADA}`;
-      
+
       if (user?.rol >= 5) {
         // Para pacientes: filtrar por su propio ID y no restringir por fecha
         url += `&id_paciente=${user?.id_persona || user?.id_usuario}`;
@@ -85,6 +85,10 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
 
   const formatTime = (dateString) => {
     if (!dateString) return "";
+    // Si ya viene formateado como "DD/MM/YY HH:MM", extraemos la parte de la hora
+    if (dateString.includes(" ")) {
+      return dateString.split(" ")[1];
+    }
     const d = new Date(dateString);
     return d.toLocaleTimeString("es-ES", {
       hour: "2-digit",
@@ -114,15 +118,17 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
                   Vista Actual
                 </p>
                 <p className="font-bold text-[#2A5C4D] capitalize">
-                  {selectedDate ? new Date(selectedDate + "T12:00:00").toLocaleDateString(
-                    "es-ES",
-                    {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    },
-                  ) : "Completa"}
+                  {selectedDate
+                    ? new Date(selectedDate + "T12:00:00").toLocaleDateString(
+                        "es-ES",
+                        {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )
+                    : "Completa"}
                 </p>
               </div>
             </div>
@@ -148,12 +154,25 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
                 </div>
               </div>
 
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full sm:w-auto bg-white border-2 border-gray-100 px-4 py-2 rounded-xl text-xs font-bold text-gray-600 focus:outline-none focus:border-[#148F77] transition-colors"
-              />
+              <div className="relative w-full sm:w-auto">
+                <input
+                  type="text"
+                  readOnly
+                  placeholder="DD/MM/AA"
+                  value={selectedDate ? (() => {
+                    const [y, m, d] = selectedDate.split("-");
+                    return `${d}/${m}/${y.slice(-2)}`;
+                  })() : ""}
+                  className="w-full sm:w-auto bg-white border-2 border-gray-100 px-4 py-2 rounded-xl text-xs font-bold text-gray-600 focus:outline-none focus:border-[#148F77] transition-colors cursor-pointer"
+                  onClick={(e) => e.target.nextSibling.showPicker()}
+                />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="absolute opacity-0 inset-0 pointer-events-none"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -201,7 +220,9 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
 
                     <div className="flex flex-col sm:w-32 flex-shrink-0">
                       <span className="text-[10px] font-bold text-[#148F77] uppercase tracking-widest mb-0.5">
-                        {new Date(cita.fecha_agendamiento).toLocaleDateString("es-ES")}
+                        {cita.fecha_agendamiento
+                          ? cita.fecha_agendamiento.split(" ")[0]
+                          : ""}
                       </span>
                       <span className="text-lg font-black text-[#2A5C4D]">
                         {formatTime(cita.fecha_agendamiento)}

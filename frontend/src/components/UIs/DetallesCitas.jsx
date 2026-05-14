@@ -266,7 +266,15 @@ export default function DetallesCitas({
 
     let fechaBase = "";
     if (dataSource?.fecha_agendamiento) {
-      fechaBase = dataSource.fecha_agendamiento.split("T")[0];
+      if (dataSource.fecha_agendamiento.includes(' ')) {
+        // Formato DD/MM/YY HH:MM -> Extraer DD/MM/YY y convertir a YYYY-MM-DD para el input date si es posible
+        const [datePart] = dataSource.fecha_agendamiento.split(" ");
+        const [d, m, y] = datePart.split("/");
+        // Intentamos reconstruir un formato aceptable para el input (asumiendo 20xx para el año)
+        fechaBase = `20${y}-${m}-${d}`;
+      } else {
+        fechaBase = dataSource.fecha_agendamiento.split("T")[0];
+      }
     }
 
     setReprogramarData({
@@ -553,7 +561,9 @@ export default function DetallesCitas({
                     Fecha Agendada
                   </p>
                   <p className="text-sm font-bold text-[#148F77]">
-                    {new Date(cita.fecha_agendamiento).toLocaleString()}
+                    <p className="text-xl font-black text-[#2A5C4D]">
+                      {cita.fecha_agendamiento || "Cargando..."}
+                    </p>
                   </p>
                 </div>
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">

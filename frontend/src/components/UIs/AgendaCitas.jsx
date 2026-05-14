@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import DetallesCitas from "./DetallesCitas";
-import { ESTADO_CITA, ESTADO_CITA_LABELS, ESTADO_CITA_COLORS } from "../../constants/enums";
+import {
+  ESTADO_CITA,
+  ESTADO_CITA_LABELS,
+  ESTADO_CITA_COLORS,
+} from "../../constants/enums";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -12,9 +16,13 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedOdontologo, setSelectedOdontologo] = useState("");
-  const [pacienteSearch, setPacienteSearch] = useState(user?.rol >= 5 ? (user?.nombre || user?.nombre_usuario || "Mi Perfil") : "");
+  const [pacienteSearch, setPacienteSearch] = useState(
+    user?.rol >= 5 ? user?.nombre || user?.nombre_usuario || "Mi Perfil" : "",
+  );
   const [showPacienteDropdown, setShowPacienteDropdown] = useState(false);
-  const [selectedPacienteId, setSelectedPacienteId] = useState(user?.rol >= 5 ? (user?.id_persona || "") : "");
+  const [selectedPacienteId, setSelectedPacienteId] = useState(
+    user?.rol >= 5 ? user?.id_persona || "" : "",
+  );
   const [selectedSala, setSelectedSala] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
@@ -52,7 +60,7 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
         }
 
         const citasRes = await fetch(url, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }).then((res) => res.json());
 
         if (citasRes.data) {
@@ -247,7 +255,9 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                     <option value="">Todos los estados</option>
                     <option value={ESTADO_CITA.PROGRAMADA}>Programada</option>
                     <option value={ESTADO_CITA.CANCELADA}>Cancelada</option>
-                    <option value={ESTADO_CITA.REPROGRAMADA}>Reprogramada</option>
+                    <option value={ESTADO_CITA.REPROGRAMADA}>
+                      Reprogramada
+                    </option>
                     <option value={ESTADO_CITA.COMPLETADA}>Completada</option>
                     <option value={ESTADO_CITA.NO_ASISTIO}>No Asistió</option>
                   </select>
@@ -260,34 +270,70 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
 
             {/* Fila 2: Filtros de fecha */}
             <div className="flex flex-col sm:flex-row gap-4 items-end">
-              <div className="w-full sm:w-1/2">
+              <div className="w-full sm:w-1/2 relative">
                 <label className="block text-xs font-black text-[#148F77] uppercase tracking-widest mb-2">
                   Desde (Fecha Agend.)
                 </label>
-                <input
-                  type="date"
-                  value={fechaInicio}
-                  onChange={(e) => {
-                    setFechaInicio(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] focus:ring-0 transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="DD/MM/AA"
+                    value={
+                      fechaInicio
+                        ? (() => {
+                            const [y, m, d] = fechaInicio.split("-");
+                            return `${d}/${m}/${y.slice(-2)}`;
+                          })()
+                        : ""
+                    }
+                    className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] cursor-pointer"
+                    onClick={(e) => e.target.nextSibling.showPicker()}
+                  />
+                  <input
+                    type="date"
+                    value={fechaInicio}
+                    onChange={(e) => {
+                      setFechaInicio(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="absolute opacity-0 inset-0 pointer-events-none"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs"></div>
+                </div>
               </div>
 
-              <div className="w-full sm:w-1/2">
+              <div className="w-full sm:w-1/2 relative">
                 <label className="block text-xs font-black text-[#148F77] uppercase tracking-widest mb-2">
                   Hasta (Fecha Agend.)
                 </label>
-                <input
-                  type="date"
-                  value={fechaFin}
-                  onChange={(e) => {
-                    setFechaFin(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] focus:ring-0 transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="DD/MM/AA"
+                    value={
+                      fechaFin
+                        ? (() => {
+                            const [y, m, d] = fechaFin.split("-");
+                            return `${d}/${m}/${y.slice(-2)}`;
+                          })()
+                        : ""
+                    }
+                    className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-[#148F77] cursor-pointer"
+                    onClick={(e) => e.target.nextSibling.showPicker()}
+                  />
+                  <input
+                    type="date"
+                    value={fechaFin}
+                    onChange={(e) => {
+                      setFechaFin(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="absolute opacity-0 inset-0 pointer-events-none"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -349,17 +395,14 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                       >
                         <td className="py-2 px-4">
                           <div className="text-sm font-bold text-gray-800">
-                            {new Date(
-                              cita.fecha_agendamiento,
-                            ).toLocaleDateString()}
+                            {cita.fecha_agendamiento
+                              ? cita.fecha_agendamiento.split(" ")[0]
+                              : ""}
                           </div>
                           <div className="text-[10px] font-bold text-[#148F77]">
-                            {new Date(
-                              cita.fecha_agendamiento,
-                            ).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {cita.fecha_agendamiento
+                              ? cita.fecha_agendamiento.split(" ")[1]
+                              : ""}
                           </div>
                         </td>
                         {user?.rol < 5 && (
@@ -392,10 +435,15 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                         <td className="py-2 px-4">
                           <span
                             className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                              (ESTADO_CITA_COLORS[cita.id_estado_cita] || ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA]).badge
+                              (
+                                ESTADO_CITA_COLORS[cita.id_estado_cita] ||
+                                ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA]
+                              ).badge
                             }`}
                           >
-                            {cita.nombre_estado || ESTADO_CITA_LABELS[cita.id_estado_cita] || `Estado ${cita.id_estado_cita}`}
+                            {cita.nombre_estado ||
+                              ESTADO_CITA_LABELS[cita.id_estado_cita] ||
+                              `Estado ${cita.id_estado_cita}`}
                           </span>
                         </td>
                         {user?.rol < 5 && (

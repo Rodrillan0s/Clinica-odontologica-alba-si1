@@ -136,11 +136,11 @@ def get_citas():
                     "id_cita":            row[0],
                     "id_personal":        row[1],
                     "id_paciente":        row[2],
-                    "fecha_registro":     row[3].isoformat() if row[3] else None,
-                    "fecha_agendamiento": row[4].isoformat() if row[4] else None,
-                    "fecha_finalizacion": row[5].isoformat() if row[5] else None,
-                    "id_estado_cita":     row[6],   # integer FK
-                    "nombre_estado":      row[7],   # varchar desde t_cita_estado
+                    "fecha_registro":     row[3].strftime("%d/%m/%y %H:%M") if row[3] else None,
+                    "fecha_agendamiento": row[4].strftime("%d/%m/%y %H:%M") if row[4] else None,
+                    "fecha_finalizacion": row[5].strftime("%d/%m/%y %H:%M") if row[5] else None,
+                    "id_estado_cita":     row[6],
+                    "nombre_estado":      row[7],
                     "id_sala":            row[8],
                     "cita_obs":           row[9]
                 })
@@ -234,9 +234,9 @@ def get_cita(id):
             "id_cita":            result[0],
             "nombre_personal":    result[1],
             "nombre_paciente":    result[2],
-            "fecha_registro":     result[3].isoformat() if result[3] else None,
-            "fecha_agendamiento": result[4].isoformat() if result[4] else None,
-            "fecha_finalizacion": result[5].isoformat() if result[5] else None,
+            "fecha_registro":     result[3].strftime("%d/%m/%y %H:%M") if result[3] else None,
+            "fecha_agendamiento": result[4].strftime("%d/%m/%y %H:%M") if result[4] else None,
+            "fecha_finalizacion": result[5].strftime("%d/%m/%y %H:%M") if result[5] else None,
             "id_estado_cita":     result[6],
             "nombre_estado":      result[7],
             "nombre_sala":        result[8],
