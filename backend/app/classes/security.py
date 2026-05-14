@@ -61,28 +61,14 @@ class Security:
 # =========================================================
 
 def obtener_permisos_usuario(id_usuario):
-
-    query = """
-
-        SELECT nombre
-        FROM clinica.t_usuario_permiso up
-        INNER JOIN clinica.t_permisos p
-            ON p.id_permiso = up.id_permiso
-        WHERE up.id_usuario = %s
-        AND up.habilitado = TRUE;
-
+    query = f"""
+        SELECT p.nombre
+        FROM {Config.SCHEMA}.t_usuario_permiso up
+        INNER JOIN {Config.SCHEMA}.t_permisos p ON p.id_permiso = up.id_permiso
+        WHERE up.id_usuario = %s AND up.habilitado = TRUE
     """
-
-    result = db.execute_query(
-        query,
-        (id_usuario,),
-        fetchall=True
-    )
-
-    if not result:
-        return []
-
-    return [row[0] for row in result]
+    result = db.execute_query(query, (id_usuario,), fetchall=True)
+    return [row[0] for row in result] if result else []
 
 
 # =========================================================

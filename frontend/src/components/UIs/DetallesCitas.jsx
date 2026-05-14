@@ -66,13 +66,25 @@ export default function DetallesCitas({
   // Setup form data when entering edit mode
   useEffect(() => {
     if (isEditing && originalCita) {
-      const initialDate = new Date(originalCita.fecha_agendamiento);
-      const tzOffset = initialDate.getTimezoneOffset() * 60000;
-      const localISOTime = new Date(initialDate - tzOffset)
-        .toISOString()
-        .slice(0, -1);
-      const initialFechaBase = localISOTime.split("T")[0];
-      const initialHora = localISOTime.split("T")[1].slice(0, 5);
+      let initialFechaBase = "";
+      let initialHora = "";
+
+      if (originalCita.fecha_agendamiento && originalCita.fecha_agendamiento.includes('/')) {
+        const parts = originalCita.fecha_agendamiento.split(" ");
+        const datePart = parts[0];
+        const timePart = parts[1] || "00:00";
+        const [d, m, y] = datePart.split("/");
+        initialFechaBase = `20${y}-${m}-${d}`;
+        initialHora = timePart.slice(0, 5);
+      } else if (originalCita.fecha_agendamiento) {
+        const initialDate = new Date(originalCita.fecha_agendamiento);
+        if (!isNaN(initialDate.getTime())) {
+          const tzOffset = initialDate.getTimezoneOffset() * 60000;
+          const localISOTime = new Date(initialDate - tzOffset).toISOString().slice(0, -1);
+          initialFechaBase = localISOTime.split("T")[0];
+          initialHora = localISOTime.split("T")[1].slice(0, 5);
+        }
+      }
 
       setFormData({
         id_personal: originalCita.id_personal || "",
@@ -80,7 +92,7 @@ export default function DetallesCitas({
         id_sala: originalCita.id_sala || "",
         fecha_base: initialFechaBase,
         hora_seleccionada: initialHora,
-        estado_cita: originalCita.estado_cita || "",
+        estado_cita: originalCita.id_estado_cita || "",
         cita_obs: originalCita.cita_obs || "",
       });
       setSaveError("");
@@ -120,13 +132,25 @@ export default function DetallesCitas({
           // asegurarnos de que el slot actual esté en la lista, ya que
           // la BD podría filtrarlo como "ocupado" (por esta misma cita).
           if (originalCita) {
-            const initialDate = new Date(originalCita.fecha_agendamiento);
-            const tzOffset = initialDate.getTimezoneOffset() * 60000;
-            const localISOTime = new Date(initialDate - tzOffset)
-              .toISOString()
-              .slice(0, -1);
-            const initialFechaBase = localISOTime.split("T")[0];
-            const initialHora = localISOTime.split("T")[1].slice(0, 5);
+            let initialFechaBase = "";
+            let initialHora = "";
+
+            if (originalCita.fecha_agendamiento && originalCita.fecha_agendamiento.includes('/')) {
+              const parts = originalCita.fecha_agendamiento.split(" ");
+              const datePart = parts[0];
+              const timePart = parts[1] || "00:00";
+              const [d, m, y] = datePart.split("/");
+              initialFechaBase = `20${y}-${m}-${d}`;
+              initialHora = timePart.slice(0, 5);
+            } else if (originalCita.fecha_agendamiento) {
+              const initialDate = new Date(originalCita.fecha_agendamiento);
+              if (!isNaN(initialDate.getTime())) {
+                const tzOffset = initialDate.getTimezoneOffset() * 60000;
+                const localISOTime = new Date(initialDate - tzOffset).toISOString().slice(0, -1);
+                initialFechaBase = localISOTime.split("T")[0];
+                initialHora = localISOTime.split("T")[1].slice(0, 5);
+              }
+            }
 
             if (
               formData.id_personal == originalCita.id_personal &&
@@ -220,6 +244,18 @@ export default function DetallesCitas({
     }
   };
 
+  // Helper para convertir DD/MM/YY HH:MM a YYYY-MM-DD HH:MM:SS
+  const formatToISO = (dateStr) => {
+    if (!dateStr || !dateStr.includes('/')) return dateStr;
+    try {
+      const [datePart, timePart] = dateStr.split(" ");
+      const [d, m, y] = datePart.split("/");
+      return `20${y}-${m}-${d} ${timePart || "00:00"}:00`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   const handleStatusUpdate = async (newStatus, setFinalization = true) => {
     setSaving(true);
     setSaveError("");
@@ -227,7 +263,7 @@ export default function DetallesCitas({
     const payload = {
       id_personal: originalCita?.id_personal || cita?.id_personal,
       id_paciente: originalCita?.id_paciente || cita?.id_paciente,
-      fecha_agendamiento: cita?.fecha_agendamiento,
+      fecha_agendamiento: formatToISO(cita?.fecha_agendamiento),
       id_sala: originalCita?.id_sala || cita?.id_sala,
       cita_obs: cita?.cita_obs,
       id_estado_cita: newStatus, // integer ID del enum
@@ -414,18 +450,34 @@ export default function DetallesCitas({
                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
                     Fecha
                   </label>
-                  <input
-                    type="date"
-                    className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                    value={formData.fecha_base}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        fecha_base: e.target.value,
-                        hora_seleccionada: "",
-                      })
-                    }
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="DD/MM/AA"
+                      value={formData.fecha_base ? (() => {
+                        const [y, m, d] = formData.fecha_base.split("-");
+                        return `${d}/${m}/${y.slice(-2)}`;
+                      })() : ""}
+                      className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 cursor-pointer"
+                      onClick={(e) => e.target.nextSibling.showPicker()}
+                    />
+                    <input
+                      type="date"
+                      className="absolute opacity-0 inset-0 pointer-events-none"
+                      value={formData.fecha_base}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          fecha_base: e.target.value,
+                          hora_seleccionada: "",
+                        })
+                      }
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">
+                      📅
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -582,9 +634,7 @@ export default function DetallesCitas({
                     Fecha de Registro
                   </p>
                   <p className="text-sm font-bold text-gray-800">
-                    {cita.fecha_registro
-                      ? new Date(cita.fecha_registro).toLocaleString()
-                      : "N/A"}
+                    {cita.fecha_registro || "N/A"}
                   </p>
                 </div>
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
@@ -592,9 +642,7 @@ export default function DetallesCitas({
                     Fecha de Finalización
                   </p>
                   <p className="text-sm font-bold text-gray-800">
-                    {cita.fecha_finalizacion ? (
-                      new Date(cita.fecha_finalizacion).toLocaleString()
-                    ) : (
+                    {cita.fecha_finalizacion || (
                       <span className="italic opacity-50">Pendiente</span>
                     )}
                   </p>
