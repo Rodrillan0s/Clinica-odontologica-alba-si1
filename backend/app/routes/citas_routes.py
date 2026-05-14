@@ -5,29 +5,7 @@ from ..config import db, Config
 import json, traceback
 from ..classes.security import permission_required
 citas_routes = Blueprint('citas_routes', __name__)
-
-
-def obtener_ip():
-    """Obtiene la IP real del cliente."""
-    if request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0]
-    return request.remote_addr
-
-def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
-    """Inserta el registro en t_bitacora usando metadata JSON para la IP."""
-    try:
-        # Guardamos la IP en metadata para no depender de la columna ip_direccion
-        meta = json.dumps({"ip": obtener_ip()})
-        sql = f"""
-            INSERT INTO {Config.SCHEMA}.t_bitacora 
-            (modulo, accion, descripcion, id_usuario, id_sesion, metadata)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        params = (modulo, accion, descripcion, id_usuario, id_sesion, meta)
-        db.execute_query(sql, params, commit=True)
-    except Exception as e:
-        print(f"Error en Bitácora (Citas): {e}")
-
+from ..services.bitacora import Bitacora
 
 
 @citas_routes.route('/api/citas', methods=['POST'])
@@ -62,12 +40,10 @@ def create_cita():
         query = f"CALL {Config.SCHEMA}.p_crear_cita(%s, %s, %s, %s, %s)"
         params = (id_odontologo, id_paciente, fecha_agendamiento, id_sala, cita_obs)
         db.execute_query(query, params, commit=True)
-        
-        # --- REGISTRO EN BITÁCORA ---
-        # Personalizamos la descripción para que sea más informativa en el buscador
+    
         descripcion_log = f"Nueva cita: Paciente {id_paciente} | Doc {id_odontologo} | Sala {id_sala}"
         
-        log_evento('CITAS', 'CREAR_CITA', descripcion_log, id_u, id_s)
+        Bitacora.registrar('CITAS', 'CREAR_CITA', descripcion_log, id_u, id_s)
         
         return jsonify({
             'success': True,
@@ -204,7 +180,7 @@ def update_cita(id):
         db.execute_query(query, params, commit=True)
 
         # REGISTRO EN BITÁCORA
-        log_evento('CITAS', 'ACTUALIZAR_CITA', f'Cita ID: {id} actualizada. Nueva fecha: {fecha_agendamiento}', id_u, id_s)
+        Bitacora.registrar('CITAS', 'ACTUALIZAR_CITA', f'Cita ID: {id} actualizada. Nueva fecha: {fecha_agendamiento}', id_u, id_s)
 
         return jsonify({
             'success': True,

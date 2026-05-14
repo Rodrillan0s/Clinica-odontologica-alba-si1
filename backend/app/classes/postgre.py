@@ -19,7 +19,6 @@ class PostgreSQL():
 
     def create_connection(self):
         conn = self.pool.getconn()
-        # Verificamos si la conexión está cerrada o muerta
         if conn.closed != 0:
             self.pool.putconn(conn, close=True)
             return self.pool.getconn()
