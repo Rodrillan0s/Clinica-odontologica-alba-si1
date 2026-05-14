@@ -54,7 +54,7 @@ export default function CambioPasswordUI() {
               <div className={`fixed top-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-2xl font-black text-[10px] uppercase tracking-widest animate-fade-in-up border-b-4 ${
                   toast.tipo === 'error' ? 'bg-red-500 text-white border-red-700' : 'bg-[#148F77] text-white border-emerald-900'
               }`}>
-                  {toast.tipo === 'error' ? '⚠️ ' : '✓ '} {toast.mensaje}
+                  {toast.tipo === 'error' ? ' ' : '✓ '} {toast.mensaje}
               </div>
           )}
 

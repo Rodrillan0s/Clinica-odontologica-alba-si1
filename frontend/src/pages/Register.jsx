@@ -5,6 +5,20 @@ import fondoWelcome from '../assets/Fondo_Welcome.jpg';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// --- NUEVO: Función para limpiar el texto de la base de datos ---
+const sanitizarError = (errorMsg) => {
+  if (!errorMsg) return "Error desconocido. Intente nuevamente.";
+  
+  if (errorMsg.includes("CONTEXT:")) {
+    let cleanMsg = errorMsg.split("CONTEXT:")[0].trim();
+    cleanMsg = cleanMsg.replace("Error interno:", "").trim();
+    return cleanMsg;
+  }
+  
+  return errorMsg;
+};
+// ---------------------------------------------------------------
+
 export default function Register() {
   const navigate = useNavigate();
 
@@ -51,7 +65,8 @@ export default function Register() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setError(data.message || 'Error al verificar el CI.');
+        // --- NUEVO: Aplicamos sanitizarError aquí también ---
+        setError(sanitizarError(data.message || 'Error al verificar el CI.'));
         setNombre(''); 
         return;
       }
@@ -126,7 +141,8 @@ export default function Register() {
       setTimeout(() => navigate('/login'), 2000); 
       
     } catch (err) {
-      setError(err.message);
+      // --- NUEVO: Aplicamos sanitizarError en el catch ---
+      setError(sanitizarError(err.message));
     } finally {
       setLoading(false);
     }

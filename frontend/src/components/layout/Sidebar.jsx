@@ -30,6 +30,7 @@ export default function Sidebar({
     usuarios: true,
     pacientes: true,
     administracion: false,
+    cuenta: true, // Se agrega "cuenta" al estado para controlar el nuevo menú
   });
 
   const toggleMenu = (menu) => {
@@ -171,7 +172,6 @@ export default function Sidebar({
 
             {openMenus.citas && (
               <div className="mt-2 space-y-2">
-           
                 <MenuButton title="Citas" />
               </div>
             )}
@@ -194,7 +194,7 @@ export default function Sidebar({
               {openMenus.usuarios && (
                 <div className="mt-2 space-y-2">
                   <MenuButton title="Usuarios y Roles" />
-                  <MenuButton title="Cambiar contraseña" />
+                  {/* Se quita de aquí la opción de contraseña para moverla a la sección global */}
                 </div>
               )}
             </div>
@@ -243,6 +243,26 @@ export default function Sidebar({
               )}
             </div>
           )}
+
+          {/* MI CUENTA (Visible para TODOS los roles) */}
+          <div>
+            <button
+              onClick={() => toggleMenu("cuenta")}
+              className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
+            >
+              <span>Mi Cuenta</span>
+              <span className="text-lg">
+                {openMenus.cuenta ? "−" : "+"}
+              </span>
+            </button>
+
+            {openMenus.cuenta && (
+              <div className="mt-2 space-y-2">
+                <MenuButton title="Cambiar contraseña" />
+              </div>
+            )}
+          </div>
+
         </nav>
 
         {/* FOOTER */}

@@ -6,8 +6,20 @@ import { useAuthStore } from '../store/auth_store';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function Login() {
+const sanitizarError = (errorMsg) => {
+  if (!errorMsg) return "Error desconocido. Intente nuevamente.";
+  
+  if (errorMsg.includes("CONTEXT:")) {
+    let cleanMsg = errorMsg.split("CONTEXT:")[0].trim();
+    cleanMsg = cleanMsg.replace("Error interno:", "").trim();
+    return cleanMsg;
+  }
+  
+  return errorMsg;
+};
+// ---------------------------------------------------------------
 
+export default function Login() {
   const [user, setUser] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,12 +30,10 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
     setError('');
     setLoading(true);
 
     try {
-
       const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
@@ -42,24 +52,15 @@ export default function Login() {
       }
 
       if (data.success) {
-
-        // 🔥 GUARDAR TOKEN EN LOCALSTORAGE
         localStorage.setItem("token", data.token);
-
-        // 🔥 GUARDAR USUARIO
         localStorage.setItem("user", JSON.stringify(data.user));
-
-        // 🔥 ZUSTAND
         login(data.user);
-
         navigate('/panel');
-
       } else {
         throw new Error(data.message || 'Credenciales incorrectas');
       }
-
     } catch (err) {
-      setError(err.message);
+      setError(sanitizarError(err.message));
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative p-4">
-
       <div
         className="absolute inset-0 bg-cover bg-center blur-sm"
         style={{ backgroundImage: `url(${fondoWelcome})` }}
@@ -78,11 +78,9 @@ export default function Login() {
       <div className="absolute inset-0 bg-[#2A5C4D]/70" />
 
       <div className="relative z-10 w-full max-w-md bg-white/95 rounded-2xl shadow-2xl overflow-hidden">
-
         <div className="h-2 bg-gradient-to-r from-[#148F77] to-[#2A5C4D]" />
 
         <div className="p-6 sm:p-8">
-
           <Link to="/" className="text-xs font-bold text-gray-400 hover:text-[#148F77]">
             ← Volver
           </Link>
@@ -95,26 +93,37 @@ export default function Login() {
 
           {error && (
             <div className="mb-4 text-xs font-bold text-red-600 bg-red-50 p-3 rounded-lg">
-              ⚠️ {error}
+               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                className={inputClass}
+                placeholder="Usuario o correo"
+                value={user}
+                onChange={(e) => setUser(e.target.value)}
+              />
+            </div>
 
-            <input
-              className={inputClass}
-              placeholder="Usuario o correo"
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-            />
-
-            <input
-              type="password"
-              className={inputClass}
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div>
+              <input
+                type="password"
+                className={inputClass}
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <div className="text-right mt-1">
+                <Link 
+                  to="/forgot-password" 
+                  className="text-[10px] font-bold text-[#148F77] hover:underline"
+                >
+                  ¿OLVIDASTE TU CONTRASEÑA?
+                </Link>
+              </div>
+            </div>
 
             <button
               disabled={loading}
@@ -124,7 +133,6 @@ export default function Login() {
             >
               {loading ? "AUTENTICANDO..." : "INGRESAR"}
             </button>
-
           </form>
 
           <p className="text-center text-xs mt-5 text-gray-500">
@@ -133,7 +141,6 @@ export default function Login() {
               REGÍSTRATE
             </Link>
           </p>
-
         </div>
       </div>
     </div>

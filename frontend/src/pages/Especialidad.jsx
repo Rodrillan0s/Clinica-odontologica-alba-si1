@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { useState } from 'react';
 import logo from '../assets/LOGO.png'; 
 import dent from '../assets/dent.jpg';
 import fondoWelcome from '../assets/Fondo_Welcome.jpg'; 
@@ -46,6 +47,7 @@ const infoTratamientos = {
 export default function Especialidad() {
   const { id } = useParams(); 
   const especialidad = infoTratamientos[id];
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Lista para el menú desplegable
   const especialidadesList = [
@@ -78,32 +80,46 @@ export default function Especialidad() {
           </Link>
           
           {/* Controles a la derecha */}
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 sm:gap-8">
             
-            {/* Menú Desplegable de Especialidades */}
-            <div className="relative group py-2">
-              <button className="flex items-center gap-1 hover:text-[#148F77] text-white font-bold text-sm transition-colors outline-none drop-shadow-md">
-                Otras Especialidades
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3 mt-0.5 transition-transform duration-300 group-hover:rotate-180">
+            {/* Menú Desplegable de Especialidades — funciona en desktop (hover) y móvil (click) */}
+            <div className="relative py-2">
+              <button
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className="flex items-center gap-1 hover:text-[#148F77] text-white font-bold text-sm transition-colors outline-none drop-shadow-md"
+              >
+                <span className="hidden sm:inline">Otras Especialidades</span>
+                <span className="sm:hidden">Especialidades</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  className={`w-3 h-3 mt-0.5 transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                 </svg>
               </button>
               
-              <div className="absolute top-full right-0 w-60 bg-white shadow-2xl rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 flex flex-col py-3 border border-gray-100 overflow-hidden">
-                {especialidadesList.map((item) => (
-                  <Link 
-                    key={item.path} 
-                    to={`/especialidad/${item.path}`} 
-                    className={`px-6 py-3 text-sm font-semibold transition-colors ${
-                      item.path === id 
-                        ? 'text-[#148F77] bg-gray-50' 
-                        : 'text-gray-700 hover:bg-[#148F77] hover:text-white'
-                    }`}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
+              {menuOpen && (
+                <div className="absolute top-full right-0 w-60 bg-white shadow-2xl rounded-xl flex flex-col py-3 border border-gray-100 overflow-hidden z-50">
+                  {especialidadesList.map((item) => (
+                    <Link 
+                      key={item.path} 
+                      to={`/especialidad/${item.path}`}
+                      onClick={() => setMenuOpen(false)}
+                      className={`px-6 py-3 text-sm font-semibold transition-colors ${
+                        item.path === id 
+                          ? 'text-[#148F77] bg-gray-50' 
+                          : 'text-gray-700 hover:bg-[#148F77] hover:text-white'
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Botón Volver al Inicio */}
@@ -111,7 +127,7 @@ export default function Especialidad() {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
               </svg>
-              Inicio
+              <span className="hidden sm:inline">Inicio</span>
             </Link>
             
           </div>
