@@ -5,36 +5,9 @@ from ..config import db, Config
 from ..services import create_access_token
 from flask_mail import Message
 from app import mail 
+from ..services import Bitacora
 
 auth_routes = Blueprint('auth_routes', __name__)
-
-# =========================================================
-# FUNCIONES AUXILIARES (BITÁCORA, IP Y VALIDACIÓN)
-# =========================================================
-
-def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
-    try:
-        import json
-        meta = json.dumps({"ip": obtener_ip()})
-
-        sql = f"""
-            INSERT INTO {Config.SCHEMA}.t_bitacora 
-            (modulo, accion, descripcion, id_usuario, id_sesion, metadata)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        params = (modulo, accion, descripcion, id_usuario, id_sesion, meta)
-        db.execute_query(sql, params, commit=True)
-        
-    except Exception as e:
-        import traceback
-        print("--- ERROR EN BITÁCORA ---")
-        traceback.print_exc()
-
-def obtener_ip():
-    """Obtiene la IP real del cliente, detectando si está en Render/Railway."""
-    if request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0]
-    return request.remote_addr
 
 def validar_password(password):
     """Reglas de complejidad para contraseñas."""
@@ -43,10 +16,8 @@ def validar_password(password):
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password): return False, "Falta un símbolo especial."
     return True, ""
 
-# =========================================================
-# RUTAS DE AUTENTICACIÓN
-# =========================================================
 
+# RUTAS DE AUTENTICACIÓN
 @auth_routes.route('/api/login', methods=['POST'])
 def login():
     try:
@@ -61,7 +32,7 @@ def login():
         result = db.execute_query(call_sql, (user_input.strip(),), fetchone=True)
 
         if not result:
-            log_evento('LOGIN', 'LOGIN_FAILED', f'Usuario inexistente: {user_input}')
+            Bitacora.registrar('LOGIN', 'LOGIN_FAILED', f'Usuario inexistente: {user_input}')
             return jsonify({'success': False, 'message': 'Usuario no encontrado.'}), 404
 
         u_id, p_id, u_name, u_hash, p_name, p_mail, r_id = result
@@ -74,7 +45,7 @@ def login():
         )
 
         if not es_valida:
-            log_evento('LOGIN', 'LOGIN_FAILED', f'Password errónea para: {u_name}', id_usuario=u_id)
+            Bitacora.registrar('LOGIN', 'LOGIN_FAILED', f'Password errónea para: {u_name}', id_usuario=u_id)
             return jsonify({'success': False, 'message': 'Contraseña incorrecta.'}), 401
 
         # Crear sesión en DB
@@ -84,10 +55,10 @@ def login():
             VALUES (%s, 'ACTIVA', %s) 
             RETURNING id_sesion
         """
-        res_sesion = db.execute_query(sql_sesion, (u_id, obtener_ip()), fetchone=True, commit=True)
+        res_sesion = db.execute_query(sql_sesion, (u_id, Bitacora._obtener_ip()), fetchone=True, commit=True)
         id_sesion_actual = res_sesion[0]
 
-        log_evento(
+        Bitacora.registrar(
             'LOGIN',
             'LOGIN_SUCCESS',
             f'Sesión iniciada por {p_name}',
@@ -125,7 +96,7 @@ def logout():
         if id_sesion:
             sql = f"UPDATE {Config.SCHEMA}.t_sesiones SET estado = 'FINALIZADA', fecha_fin = NOW() WHERE id_sesion = %s"
             db.execute_query(sql, (id_sesion,), commit=True)
-            log_evento('LOGOUT', 'LOGOUT', 'Sesión cerrada por el usuario', id_usuario=id_usuario, id_sesion=id_sesion)
+            Bitacora.registrar('LOGOUT', 'LOGOUT', 'Sesión cerrada por el usuario', id_usuario=id_usuario, id_sesion=id_sesion)
 
         response = make_response(jsonify({'success': True, 'message': 'Sesión cerrada'}))
         response.set_cookie('access_token', '', expires=0, httponly=True)
@@ -153,7 +124,7 @@ def forgot_password():
         
         if result and result[0]:
             u_id, u_name = result
-            log_evento('SECURIDAD', 'SOLICITUD_RECUPERACION', f'Solicitud enviada a: {email}', id_usuario=u_id)
+            Bitacora.registrar('SECURIDAD', 'SOLICITUD_RECUPERACION', f'Solicitud enviada a: {email}', id_usuario=u_id)
             
             link = f"{Config.FRONTEND_URL}/reset-password?token={token_plano}&id={u_id}"
             msg = Message(subject="Recuperación - Clínica Alba", sender=Config.MAIL_USERNAME, recipients=[email])
@@ -182,13 +153,13 @@ def reset_password():
         token_id = next((t_id for t_id, t_hash in tokens if check_password_hash(t_hash, token_plano)), None)
         
         if not token_id: 
-            log_evento('SECURIDAD', 'CAMBIO_CONTRASEÑA_FALLIDO', 'Token inválido o expirado', id_usuario=u_id)
+            Bitacora.registrar('SECURIDAD', 'CAMBIO_CONTRASEÑA_FALLIDO', 'Token inválido o expirado', id_usuario=u_id)
             return jsonify({'success': False, 'message': 'Enlace no válido o expirado.'}), 401
 
         new_hash = generate_password_hash(new_password)
         db.execute_query(f"CALL {Config.SCHEMA}.p_finalizar_recuperacion(%s, %s, %s)", (u_id, token_id, new_hash), commit=True)
         
-        log_evento('SECURIDAD', 'CAMBIO_CONTRASEÑA_EXITOSO', 'Contraseña restablecida con éxito', id_usuario=u_id)
+        Bitacora.registrar('SECURIDAD', 'CAMBIO_CONTRASEÑA_EXITOSO', 'Contraseña restablecida con éxito', id_usuario=u_id)
         return jsonify({'success': True, 'message': 'Contraseña actualizada. Ya puede iniciar sesión.'}), 200
     except Exception as e: 
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -232,7 +203,7 @@ def register():
                   data.get('number'), data.get('birth'), data.get('dir'), pass_hash)
         db.execute_query(sql, params, commit=True)
 
-        log_evento('AUTH', 'REGISTER', f'Nuevo usuario creado: {user_name}')
+        Bitacora.registrar('AUTH', 'REGISTER', f'Nuevo usuario creado: {user_name}')
         return jsonify({'success': True, 'message': '¡Registro exitoso!'}), 201
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -261,14 +232,14 @@ def cambiar_password(id_usuario):
         res = db.execute_query(query, (id_usuario,), fetchone=True)
         
         if not res or not check_password_hash(res[0], data.get('password_actual')):
-            log_evento('SECURIDAD', 'CAMBIO_CONTRASEÑA_FALLIDO', 'Clave actual errónea', id_usuario=id_usuario)
+            Bitacora.registrar('SECURIDAD', 'CAMBIO_CONTRASEÑA_FALLIDO', 'Clave actual errónea', id_usuario=id_usuario)
             return jsonify({'success': False, 'message': 'Contraseña actual incorrecta'}), 401
 
         nuevo_hash = generate_password_hash(data.get('nueva_password'))
         db.execute_query(f'UPDATE {Config.SCHEMA}.t_usuario SET "contraseña" = %s WHERE id_usuario = %s', 
                          (nuevo_hash, id_usuario), commit=True)
 
-        log_evento('SECURIDAD', 'CAMBIO_CONTRASEÑA_EXITOSO', 'Cambio manual de contraseña', id_usuario=id_usuario)
+        Bitacora.registrar('SECURIDAD', 'CAMBIO_CONTRASEÑA_EXITOSO', 'Cambio manual de contraseña', id_usuario=id_usuario)
         return jsonify({'success': True, 'message': 'Contraseña actualizada.'}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

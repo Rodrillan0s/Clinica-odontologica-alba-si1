@@ -4,31 +4,8 @@ import json
 from ..config import db, Config
 from ..classes.security import admin_required, Security,permission_required
 usuario_routes = Blueprint('usuario_routes', __name__)
+from ..services.bitacora import Bitacora
 
-# =========================================================
-# BITÁCORA + IP
-# =========================================================
-
-def obtener_ip():
-    if request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0]
-    return request.remote_addr
-
-
-def log_evento(modulo, accion, descripcion, id_usuario=None, id_sesion=None):
-    try:
-        meta = json.dumps({"ip": obtener_ip()})
-        sql = f"""
-            INSERT INTO {Config.SCHEMA}.t_bitacora 
-            (modulo, accion, descripcion, id_usuario, id_sesion, metadata)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        db.execute_query(sql, (modulo, accion, descripcion, id_usuario, id_sesion, meta), commit=True)
-    except Exception as e:
-        print(f"Error Bitácora: {e}")
-
-
-# =========================================================
 # LISTAR USUARIOS
 # =========================================================
 
@@ -103,7 +80,7 @@ def crear_usuario():
 
         db.execute_query(sql, params, commit=True)
 
-        log_evento("USUARIOS", "CREATE", f"Usuario creado: {user_name}")
+        Bitacora.registrar("USUARIOS", "CREATE", f"Usuario creado: {user_name}")
 
         return jsonify({"success": True, "message": "Usuario creado"}), 201
 
@@ -146,7 +123,7 @@ def actualizar_usuario(id_usuario):
 
         db.execute_query(query, tuple(valores), commit=True)
 
-        log_evento("USUARIOS", "UPDATE", f"Usuario actualizado {id_usuario}")
+        Bitacora.registrar("USUARIOS", "UPDATE", f"Usuario actualizado {id_usuario}")
 
         return jsonify({"success": True, "message": "Usuario actualizado"}), 200
 
@@ -193,7 +170,7 @@ def eliminar_usuario(id_usuario):
 
         db.execute_query(query, (id_usuario,), commit=True)
 
-        log_evento("USUARIOS", "SOFT_DELETE", f"Usuario desactivado {id_usuario}")
+        Bitacora.registrar("USUARIOS", "SOFT_DELETE", f"Usuario desactivado {id_usuario}")
 
         return jsonify({
             "success": True,
@@ -367,3 +344,24 @@ def quitar_permiso_usuario():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500    
 
+# =========================================================
+# CONSULTA DE BITÁCORA (AUDITORÍA)
+# =========================================================
+
+@usuario_routes.route('/api/bitacora', methods=['GET'])
+@admin_required
+def consultar_bitacora():
+    try:
+        filtros = {
+            'nombre': request.args.get('nombre'),
+            'modulo': request.args.get('modulo'),
+            'fecha_inicio': request.args.get('fecha_inicio'),
+            'fecha_fin': request.args.get('fecha_fin')
+        }
+        
+        data = Bitacora.listar(filtros)
+        
+        return jsonify({"success": True, "data": data}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
