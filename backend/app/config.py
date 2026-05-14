@@ -18,13 +18,12 @@ class Config:
     # ==========================================
     # CONFIGURACION DE GMAIL (NUEVO)
     # ==========================================
-    MAIL_SERVER = 'smtp.gmail.com'
-    MAIL_PORT = 587
-    MAIL_USE_TLS = True
-    # Estos los sacamos de tu .env para que no estén públicos
-    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'toledoquirogaeddy@gmail.com')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'gdcp iiyv xeqx jpup')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME', 'toledoquirogaeddy@gmail.com')
+    MAIL_SERVER = os.getenv('MAIL_SERVER')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True') == 'True'
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')
 
     # ESQUEMA CONTENEDOR DE LA APLICACION
     SCHEMA = 'clinica'

@@ -26,7 +26,7 @@ def login():
         password = data.get('password')
 
         if not user_input or not password:
-            return jsonify({'success': False, 'message': 'Faltan credenciales.'}), 400
+            return jsonify({'success': False, 'message': 'Ingrese su usuario y contraseña.'}), 400
 
         call_sql = f"CALL {Config.SCHEMA}.p_login_usuario(%s, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
         result = db.execute_query(call_sql, (user_input.strip(),), fetchone=True)
@@ -117,17 +117,16 @@ def forgot_password():
         email = data.get('email', '').strip()
         token_plano = secrets.token_urlsafe(32)
         token_hash = generate_password_hash(token_plano)
-        ip_usuario = obtener_ip()
 
         sql = f"CALL {Config.SCHEMA}.p_solicitar_recuperacion(%s, %s, %s, NULL, NULL)"
-        result = db.execute_query(sql, (email, token_hash, ip_usuario), fetchone=True, commit=True)
+        result = db.execute_query(sql, (email, token_hash, Bitacora._obtener_ip()), fetchone=True, commit=True)
         
         if result and result[0]:
             u_id, u_name = result
             Bitacora.registrar('SECURIDAD', 'SOLICITUD_RECUPERACION', f'Solicitud enviada a: {email}', id_usuario=u_id)
             
             link = f"{Config.FRONTEND_URL}/reset-password?token={token_plano}&id={u_id}"
-            msg = Message(subject="Recuperación - Clínica Alba", sender=Config.MAIL_USERNAME, recipients=[email])
+            msg = Message(subject="Recuperación - Clínica Alba", sender=Config.MAIL_DEFAULT_SENDER, recipients=[email])
             msg.body = f"Hola {u_name}, usa este enlace para restablecer tu cuenta: {link}"
             mail.send(msg)
 
@@ -242,4 +241,44 @@ def cambiar_password(id_usuario):
         Bitacora.registrar('SECURIDAD', 'CAMBIO_CONTRASEÑA_EXITOSO', 'Cambio manual de contraseña', id_usuario=id_usuario)
         return jsonify({'success': True, 'message': 'Contraseña actualizada.'}), 200
     except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+# backend/app/routes/auth_routes.py
+
+@auth_routes.route('/api/validate-token', methods=['POST'])
+def validate_token():
+    try:
+        data = request.get_json()
+        u_id = data.get('id')
+        token_plano = data.get('token')
+
+        if not u_id or not token_plano:
+            return jsonify({'success': False, 'message': 'Parámetros incompletos.'}), 400
+
+        # Buscamos tokens no usados para este usuario
+        # También verificamos que no hayan pasado más de 2 horas (o el tiempo que definas)
+        sql = f"""
+            SELECT id_token, token_hash, fecha_expiracion 
+            FROM {Config.SCHEMA}.t_token_recuperacion 
+            WHERE id_usuario = %s AND usado = FALSE
+        """
+        tokens = db.execute_query(sql, (u_id,), fetchall=True)
+
+        # Buscamos el token correcto comparando el hash
+        token_valido = False
+        for t_id, t_hash, t_exp in (tokens or []):
+            if check_password_hash(t_hash, token_plano):
+                # Opcional: Verificar fecha de expiración manualmente si no lo hace el SQL
+                from datetime import datetime
+                if t_exp > datetime.now():
+                    token_valido = True
+                    break
+
+        if token_valido:
+            return jsonify({'success': True, 'message': 'Token válido.'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'El enlace ha expirado o es inválido.'}), 401
+
+    except Exception as e:
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
