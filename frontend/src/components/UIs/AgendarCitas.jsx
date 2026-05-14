@@ -71,7 +71,7 @@ export default function AgendarCitas({
     const fetchOdontologos = async () => {
       try {
         const res = await fetch(`${API_URL}/odontologos`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
         const data = await res.json();
         setOdontologosFiltrados(Array.isArray(data) ? data : data.data || []);
@@ -98,16 +98,18 @@ export default function AgendarCitas({
       if (!idProc) {
         const res = await fetch(`${API_URL}/odontologos`, {
           signal: abortDoc.current.signal,
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }).then((r) => r.json());
         setOdontologosFiltrados(Array.isArray(res) ? res : res.data || []);
       } else {
         const res = await fetch(
           `${API_URL}/citas/odontologos-por-procedimiento/${idProc}`,
-          { 
+          {
             signal: abortDoc.current.signal,
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-          }
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          },
         ).then((r) => r.json());
         if (res.success) setOdontologosFiltrados(res.data);
       }
@@ -137,10 +139,12 @@ export default function AgendarCitas({
         try {
           const res = await fetch(
             `${API_URL}/citas/disponibilidad?id_personal=${formData.id_odontologo}&id_sala=${formData.id_sala}&fecha=${formData.fecha_base}`,
-            { 
+            {
               signal: abortSlots.current.signal,
-              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-            }
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            },
           ).then((r) => r.json());
           if (res.success) {
             let horariosFiltrados = res.data;
@@ -204,9 +208,9 @@ export default function AgendarCitas({
     try {
       const res = await fetch(`${API_URL}/citas`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify(payload),
       });
@@ -434,33 +438,54 @@ export default function AgendarCitas({
                 <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
                   Fecha
                 </label>
-                <input
-                  type="date"
-                  required
-                  min={hoy}
-                  max="2099-12-31"
-                  className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                  value={formData.fecha_base}
-                  onChange={(e) => {
-                    const year = e.target.value.split("-")[0];
-                    if (year.length > 4) return;
-
-                    const dateObj = new Date(e.target.value + "T00:00:00");
-                    if (dateObj.getDay() === 0) {
-                      setErrorMessage(
-                        "La clínica Alba no atiende los días domingo.",
-                      );
-                      setFormData((prev) => ({ ...prev, fecha_base: "" }));
-                      return;
+                <div className="relative">
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="DD/MM/AA"
+                    required
+                    value={
+                      formData.fecha_base
+                        ? (() => {
+                            const [y, m, d] = formData.fecha_base.split("-");
+                            return `${d}/${m}/${y.slice(-2)}`;
+                          })()
+                        : ""
                     }
+                    className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 cursor-pointer"
+                    onClick={(e) => e.target.nextSibling.showPicker()}
+                  />
+                  <input
+                    type="date"
+                    required
+                    min={hoy}
+                    max="2099-12-31"
+                    value={formData.fecha_base}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const year = val.split("-")[0];
+                      if (year.length > 4) return;
 
-                    setErrorMessage("");
-                    setFormData((prev) => ({
-                      ...prev,
-                      fecha_base: e.target.value,
-                    }));
-                  }}
-                />
+                      const dateObj = new Date(val + "T00:00:00");
+                      if (dateObj.getDay() === 0) {
+                        setErrorMessage(
+                          "La clínica Alba no atiende los días domingo.",
+                        );
+                        setFormData((prev) => ({ ...prev, fecha_base: "" }));
+                        return;
+                      }
+
+                      setFormData((prev) => ({
+                        ...prev,
+                        fecha_base: val,
+                        hora: "",
+                      }));
+                      setErrorMessage("");
+                    }}
+                    className="absolute opacity-0 inset-0 pointer-events-none"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs"></div>
+                </div>
               </div>
 
               <div className="bg-gray-50 rounded-[2rem] p-6 border border-dashed border-gray-200 min-h-[130px]">
