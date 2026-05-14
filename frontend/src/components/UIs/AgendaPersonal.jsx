@@ -159,10 +159,14 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
                   type="text"
                   readOnly
                   placeholder="DD/MM/AA"
-                  value={selectedDate ? (() => {
-                    const [y, m, d] = selectedDate.split("-");
-                    return `${d}/${m}/${y.slice(-2)}`;
-                  })() : ""}
+                  value={
+                    selectedDate
+                      ? (() => {
+                          const [y, m, d] = selectedDate.split("-");
+                          return `${d}/${m}/${y.slice(-2)}`;
+                        })()
+                      : ""
+                  }
                   className="w-full sm:w-auto bg-white border-2 border-gray-100 px-4 py-2 rounded-xl text-xs font-bold text-gray-600 focus:outline-none focus:border-[#148F77] transition-colors cursor-pointer"
                   onClick={(e) => e.target.nextSibling.showPicker()}
                 />
