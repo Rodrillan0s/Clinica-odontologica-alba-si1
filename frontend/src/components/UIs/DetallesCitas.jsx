@@ -330,7 +330,7 @@ export default function DetallesCitas({
     await handleStatusUpdate(ESTADO_CITA.REPROGRAMADA, false);
   };
 
-  const pacientesResult = dataMaster?.pacientes || [];
+  const pacientesResult = (dataMaster?.pacientes || []).filter(p => p.id_rol === 5);
 
   return (
     <div className="fixed inset-0 bg-[#2A5C4D]/90 backdrop-blur-md z-[110] flex items-center justify-center p-4">

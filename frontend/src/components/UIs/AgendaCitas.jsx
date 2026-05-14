@@ -27,13 +27,31 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
   const [selectedEstado, setSelectedEstado] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
+  const [pacientes, setPacientes] = useState([]);
   const [selectedCitaDetalle, setSelectedCitaDetalle] = useState(null);
   const limit = 10;
 
+  useEffect(() => {
+    const fetchPacientes = async () => {
+      try {
+        const res = await fetch(`${API_URL}/pacientes`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+          setPacientes(data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching pacientes", err);
+      }
+    };
+    fetchPacientes();
+  }, []);
+
   const pacientesFiltrados =
-    dataMaster?.pacientes?.filter((p) =>
+    (pacientes.length > 0 ? pacientes : dataMaster?.pacientes || []).filter((p) =>
       p.nombre?.toLowerCase().includes(pacienteSearch.toLowerCase()),
-    ) || [];
+    );
 
   const fetchCitas = useCallback(
     async (page = currentPage) => {
@@ -91,8 +109,8 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
   }, [fetchCitas]);
 
   const getPacienteName = (id) => {
-    if (!dataMaster?.pacientes) return id;
-    const paciente = dataMaster.pacientes.find(
+    const source = pacientes.length > 0 ? pacientes : dataMaster?.pacientes || [];
+    const paciente = source.find(
       (p) => (p.id_persona || p.id_usuario || p.id) == id,
     );
     return paciente ? paciente.nombre : `Paciente #${id}`;

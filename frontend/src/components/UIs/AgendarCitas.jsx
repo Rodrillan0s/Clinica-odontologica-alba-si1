@@ -22,6 +22,7 @@ export default function AgendarCitas({
   const userRolId = Number(user?.rol);
   const isOdontologo = userRolId === ROLES.ODONTOLOGO;
 
+  const [pacientes, setPacientes] = useState([]);
   const [odontologosFiltrados, setOdontologosFiltrados] = useState([]);
   const [slotsDisponibles, setSlotsDisponibles] = useState([]);
 
@@ -30,9 +31,9 @@ export default function AgendarCitas({
   const [selectedPacienteName, setSelectedPacienteName] = useState("");
 
   const pacientesResult =
-    dataMaster?.pacientes?.filter((p) =>
+    (pacientes.length > 0 ? pacientes : dataMaster?.pacientes || []).filter((p) =>
       p.nombre?.toLowerCase().includes(pacienteSearch.toLowerCase()),
-    ) || [];
+    );
 
   const [formData, setFormData] = useState({
     fecha_base: initialData?.fecha_base || "",
@@ -54,8 +55,9 @@ export default function AgendarCitas({
   const salas = dataMaster?.salas || [];
 
   useEffect(() => {
-    if (initialData?.id_paciente && dataMaster?.pacientes) {
-      const p = dataMaster.pacientes.find(
+    const source = pacientes.length > 0 ? pacientes : dataMaster?.pacientes;
+    if (initialData?.id_paciente && source) {
+      const p = source.find(
         (item) =>
           (item.id_persona || item.id_usuario || item.id) ==
           initialData.id_paciente,
@@ -65,7 +67,7 @@ export default function AgendarCitas({
         setPacienteSearch(p.nombre);
       }
     }
-  }, [initialData, dataMaster?.pacientes]);
+  }, [initialData, dataMaster?.pacientes, pacientes]);
 
   useEffect(() => {
     const fetchOdontologos = async () => {
@@ -79,7 +81,23 @@ export default function AgendarCitas({
         console.error("Error fetching odontologos", err);
       }
     };
+
+    const fetchPacientes = async () => {
+      try {
+        const res = await fetch(`${API_URL}/pacientes`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+          setPacientes(data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching pacientes", err);
+      }
+    };
+
     fetchOdontologos();
+    fetchPacientes();
   }, []);
 
   const handleProcChange = async (idProc) => {
