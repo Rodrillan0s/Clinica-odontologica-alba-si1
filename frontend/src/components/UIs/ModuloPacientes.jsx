@@ -1,34 +1,77 @@
 import { useState, useEffect } from 'react';
-// IMPORTANTE: Asegúrate que esta ruta apunte correctamente a tu RegisterPatient
+
 import FormularioPaciente from '../../pages/RegisterPatient';
+import EditPatient from './EditPatient';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ModuloPacientes() {
-  const [pacientes, setPacientes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
+  const [pacientes, setPacientes] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  // MENSAJES VISUALES
+  const [mensaje, setMensaje] = useState('');
+  const [tipoMensaje, setTipoMensaje] = useState('');
+
+  // MODALES
   const [showForm, setShowForm] = useState(false);
 
-  const fetchPacientes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const [showEditForm, setShowEditForm] = useState(false);
 
-      const res = await fetch(`${API_URL}/pacientes`);
+  const [showDeleteModal, setShowDeleteModal] =
+    useState(false);
+
+  const [busqueda, setBusqueda] = useState('');
+
+  const [editandoPaciente, setEditandoPaciente] =
+    useState(null);
+
+  const [pacienteEliminar, setPacienteEliminar] =
+    useState(null);
+
+  const fetchPacientes = async (nombre = '') => {
+
+    try {
+
+      setLoading(true);
+
+      setMensaje('');
+      setTipoMensaje('');
+
+      let url = `${API_URL}/pacientes`;
+
+      if (nombre.trim()) {
+        url += `?nombre=${encodeURIComponent(nombre)}`;
+      }
+
+      const res = await fetch(url);
+
       const data = await res.json();
 
       if (!res.ok || data.success === false) {
-        throw new Error(data.message || "Error al obtener pacientes");
+
+        throw new Error(
+          data.message || 'Error al obtener pacientes'
+        );
+
       }
 
       setPacientes(data.data || []);
+
     } catch (err) {
-      console.error(err);
-      setError(err.message);
+
+      setTipoMensaje('error');
+
+      setMensaje(
+        err.message || 'Ocurrió un error inesperado'
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
@@ -36,51 +79,606 @@ export default function ModuloPacientes() {
     fetchPacientes();
   }, []);
 
+  const eliminarPaciente = async () => {
+
+    if (!pacienteEliminar) return;
+
+    try {
+
+      setMensaje('');
+      setTipoMensaje('');
+
+      const res = await fetch(
+        `${API_URL}/pacientes/${pacienteEliminar.id}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok || data.success === false) {
+
+        throw new Error(
+          data.message || 'Error al inhabilitar paciente'
+        );
+
+      }
+
+      setTipoMensaje('success');
+
+      setMensaje(
+        'Paciente inhabilitado correctamente'
+      );
+
+      setShowDeleteModal(false);
+
+      setPacienteEliminar(null);
+
+      fetchPacientes(busqueda);
+
+    } catch (err) {
+
+      setTipoMensaje('error');
+
+      setMensaje(
+        err.message || 'Ocurrió un error inesperado'
+      );
+
+    }
+  };
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-black text-[#2A5C4D]">
-          Pacientes
-        </h2>
+
+    <div className="w-full p-3 sm:p-5 md:p-6">
+
+      {/* HEADER */}
+      <div className="
+        flex
+        flex-col
+        lg:flex-row
+        lg:items-center
+        lg:justify-between
+        gap-4
+        mb-6
+      ">
+
+        <div>
+
+          <h2 className="
+            text-2xl
+            sm:text-3xl
+            font-black
+            text-[#2A5C4D]
+          ">
+            Pacientes
+          </h2>
+
+          <p className="
+            text-gray-500
+            text-sm
+            sm:text-base
+          ">
+            Gestión de pacientes registrados
+          </p>
+
+        </div>
 
         <button
-          onClick={() => setShowForm(true)}
-          className="bg-[#148F77] text-white px-5 py-2 rounded-xl font-bold hover:bg-[#0f6b59] transition"
+          onClick={() => {
+            setShowForm(true);
+          }}
+          className="
+            bg-[#148F77]
+            hover:bg-[#0f6b59]
+            text-white
+            px-4
+            sm:px-5
+            py-3
+            rounded-xl
+            font-bold
+            transition
+            w-full
+            sm:w-auto
+          "
         >
           + Registrar Nuevo Paciente
         </button>
+
       </div>
 
-      {loading && <p>Cargando pacientes...</p>}
-      {error && <p className="text-red-500 font-bold">Error: {error}</p>}
-      {!loading && !error && pacientes.length === 0 && <p>No hay pacientes</p>}
+      {/* MENSAJES */}
+      {mensaje && (
 
-      {!loading && !error && pacientes.map((p) => (
-        <div key={p.id} className="p-4 bg-white rounded-xl shadow mb-2">
-          <p className="font-bold text-[#2A5C4D]">{p.nombre}</p>
+        <div
+          className={`
+            mb-6
+            p-4
+            rounded-2xl
+            font-semibold
+            border
+            ${
+              tipoMensaje === 'error'
+                ? 'bg-red-100 text-red-700 border-red-300'
+                : 'bg-green-100 text-green-700 border-green-300'
+            }
+          `}
+        >
+
+          {mensaje}
+
         </div>
-      ))}
 
+      )}
+
+      {/* BUSCADOR */}
+      <div className="
+        bg-white
+        rounded-2xl
+        shadow
+        p-4
+        mb-6
+      ">
+
+        <div className="
+          flex
+          flex-col
+          md:flex-row
+          gap-3
+        ">
+
+          <input
+            type="text"
+            placeholder="Buscar paciente..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="
+              flex-1
+              border
+              border-gray-300
+              rounded-xl
+              px-4
+              py-3
+              outline-none
+              focus:ring-2
+              focus:ring-[#148F77]
+            "
+          />
+
+          <button
+            onClick={() => fetchPacientes(busqueda)}
+            className="
+              bg-[#2A5C4D]
+              hover:bg-[#21473b]
+              text-white
+              px-6
+              py-3
+              rounded-xl
+              font-bold
+              transition
+            "
+          >
+            Buscar
+          </button>
+
+        </div>
+
+      </div>
+
+      {/* LOADING */}
+      {loading && (
+
+        <div className="
+          bg-white
+          rounded-2xl
+          shadow
+          p-6
+          text-center
+        ">
+
+          <p className="
+            text-gray-500
+            font-semibold
+          ">
+            Cargando pacientes...
+          </p>
+
+        </div>
+
+      )}
+
+      {/* SIN DATOS */}
+      {!loading && pacientes.length === 0 && (
+
+        <div className="
+          bg-white
+          rounded-2xl
+          shadow
+          p-6
+          text-center
+        ">
+
+          <p className="
+            text-gray-500
+            font-semibold
+          ">
+            No hay pacientes registrados
+          </p>
+
+        </div>
+
+      )}
+
+      {/* LISTA */}
+      {!loading && pacientes.length > 0 && (
+
+        <div className="
+          grid
+          grid-cols-1
+          xl:grid-cols-2
+          gap-4
+        ">
+
+          {pacientes.map((p) => (
+
+            <div
+              key={p.id}
+              className="
+                bg-white
+                rounded-2xl
+                shadow
+                p-4
+                sm:p-5
+                border
+                border-gray-100
+                hover:shadow-lg
+                transition
+              "
+            >
+
+              <div className="
+                flex
+                flex-col
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+                gap-4
+              ">
+
+                <div className="min-w-0">
+
+                  <p className="
+                    font-black
+                    text-lg
+                    text-[#2A5C4D]
+                    break-words
+                  ">
+                    {p.nombre}
+                  </p>
+
+                  <p className="
+                    text-gray-400
+                    text-sm
+                  ">
+                    ID: {p.id}
+                  </p>
+
+                </div>
+
+                <div className="
+                  flex
+                  flex-col
+                  sm:flex-row
+                  gap-2
+                  w-full
+                  sm:w-auto
+                ">
+
+                  <button
+                    onClick={() => {
+
+                      setEditandoPaciente(p);
+
+                      setShowEditForm(true);
+
+                    }}
+                    className="
+                      bg-blue-500
+                      hover:bg-blue-600
+                      text-white
+                      px-4
+                      py-2
+                      rounded-xl
+                      font-bold
+                      transition
+                      w-full
+                      sm:w-auto
+                    "
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    onClick={() => {
+
+                      setPacienteEliminar(p);
+
+                      setShowDeleteModal(true);
+
+                    }}
+                    className="
+                      bg-red-500
+                      hover:bg-red-600
+                      text-white
+                      px-4
+                      py-2
+                      rounded-xl
+                      font-bold
+                      transition
+                      w-full
+                      sm:w-auto
+                    "
+                  >
+                    Inhabilitar
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      )}
+
+      {/* MODAL REGISTRAR */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="relative">
+
+        <div className="
+          fixed
+          inset-0
+          bg-black/50
+          flex
+          items-center
+          justify-center
+          z-50
+          p-2
+          sm:p-4
+        ">
+
+          <div className="
+            relative
+            w-full
+            max-w-3xl
+            max-h-[95vh]
+            overflow-y-auto
+          ">
+
             <button
-              onClick={() => setShowForm(false)}
-              className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-500 font-bold z-10"
+              onClick={() => {
+                setShowForm(false);
+              }}
+              className="
+                absolute
+                top-3
+                right-3
+                w-10
+                h-10
+                flex
+                items-center
+                justify-center
+                rounded-full
+                bg-white
+                hover:bg-red-100
+                text-gray-600
+                hover:text-red-500
+                font-bold
+                shadow
+                z-10
+              "
             >
               ✕
             </button>
 
             <FormularioPaciente
-              onClose={() => setShowForm(false)}
-              onSuccess={() => {
+              onClose={() => {
                 setShowForm(false);
-                fetchPacientes();
+              }}
+
+              onSuccess={() => {
+
+                setShowForm(false);
+
+                fetchPacientes(busqueda);
+
               }}
             />
+
           </div>
+
         </div>
+
       )}
+
+      {/* MODAL EDITAR */}
+      {showEditForm && (
+
+        <div className="
+          fixed
+          inset-0
+          bg-black/50
+          flex
+          items-center
+          justify-center
+          z-50
+          p-2
+          sm:p-4
+        ">
+
+          <div className="
+            relative
+            w-full
+            max-w-3xl
+            max-h-[95vh]
+            overflow-y-auto
+          ">
+
+            <button
+              onClick={() => {
+
+                setShowEditForm(false);
+
+                setEditandoPaciente(null);
+
+              }}
+              className="
+                absolute
+                top-3
+                right-3
+                w-10
+                h-10
+                flex
+                items-center
+                justify-center
+                rounded-full
+                bg-white
+                hover:bg-red-100
+                text-gray-600
+                hover:text-red-500
+                font-bold
+                shadow
+                z-10
+              "
+            >
+              ✕
+            </button>
+
+            <EditPatient
+
+              paciente={editandoPaciente}
+
+              onClose={() => {
+
+                setShowEditForm(false);
+
+                setEditandoPaciente(null);
+
+              }}
+
+              onSuccess={() => {
+
+                setShowEditForm(false);
+
+                setEditandoPaciente(null);
+
+                fetchPacientes(busqueda);
+
+              }}
+
+            />
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* MODAL ELIMINAR */}
+      {showDeleteModal && (
+
+        <div className="
+          fixed
+          inset-0
+          bg-black/50
+          flex
+          items-center
+          justify-center
+          z-50
+          p-4
+        ">
+
+          <div className="
+            bg-white
+            rounded-3xl
+            shadow-2xl
+            w-full
+            max-w-md
+            p-6
+          ">
+
+            <h2 className="
+              text-2xl
+              font-black
+              text-[#2A5C4D]
+              mb-3
+            ">
+              Inhabilitar Paciente
+            </h2>
+
+            <p className="
+              text-gray-600
+              mb-6
+            ">
+              ¿Desea inhabilitar este paciente?
+            </p>
+
+            <div className="
+              flex
+              flex-col
+              sm:flex-row
+              gap-3
+            ">
+
+              <button
+                onClick={() => {
+
+                  setShowDeleteModal(false);
+
+                  setPacienteEliminar(null);
+
+                }}
+                className="
+                  flex-1
+                  bg-gray-200
+                  hover:bg-gray-300
+                  text-gray-700
+                  py-3
+                  rounded-xl
+                  font-bold
+                  transition
+                "
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={eliminarPaciente}
+                className="
+                  flex-1
+                  bg-red-500
+                  hover:bg-red-600
+                  text-white
+                  py-3
+                  rounded-xl
+                  font-bold
+                  transition
+                "
+              >
+                Inhabilitar
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
     </div>
+
   );
 }

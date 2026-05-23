@@ -2,8 +2,13 @@ import { useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function FormularioPaciente({ onClose, onSuccess }) {
+export default function FormularioPaciente({
+  onClose,
+  onSuccess
+}) {
+
   const token = localStorage.getItem('token');
+
   const [formData, setFormData] = useState({
     nombre: '',
     ci: '',
@@ -13,142 +18,373 @@ export default function FormularioPaciente({ onClose, onSuccess }) {
   });
 
   const [errors, setErrors] = useState({});
+
   const [loading, setLoading] = useState(false);
 
+  // MENSAJE VISUAL
+  const [mensaje, setMensaje] = useState('');
+
+  const [tipoMensaje, setTipoMensaje] =
+    useState('');
+
   const handleChange = (e) => {
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
 
-    // limpia error al escribir
+    // LIMPIAR ERROR
     setErrors({
       ...errors,
       [e.target.name]: ''
     });
+
+    // LIMPIAR MENSAJES
+    setMensaje('');
+    setTipoMensaje('');
+
   };
 
   const validate = () => {
+
     const newErrors = {};
 
-    if (formData.ci && isNaN(Number(formData.ci))) {
-      newErrors.ci = "Este campo debe ser numérico";
+    if (
+      formData.ci &&
+      isNaN(Number(formData.ci))
+    ) {
+
+      newErrors.ci =
+        'Este campo debe ser numérico';
+
     }
 
-    if (formData.telefono && isNaN(Number(formData.telefono))) {
-      newErrors.telefono = "Este campo debe ser numérico";
+    if (
+      formData.telefono &&
+      isNaN(Number(formData.telefono))
+    ) {
+
+      newErrors.telefono =
+        'Este campo debe ser numérico';
+
     }
 
     setErrors(newErrors);
 
     return Object.keys(newErrors).length === 0;
+
   };
 
   const handleSubmit = async (e) => {
+
     e.preventDefault();
+
+    setMensaje('');
+    setTipoMensaje('');
 
     if (!validate()) return;
 
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/pacientes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` })
-         },
-        body: JSON.stringify(formData)
-      });
+
+      const res = await fetch(
+        `${API_URL}/pacientes`,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+
+            ...(token && {
+              Authorization: `Bearer ${token}`
+            })
+          },
+
+          body: JSON.stringify(formData)
+        }
+      );
 
       const data = await res.json();
 
-      if (data.success) {
-        alert("Paciente registrado correctamente");
-        onSuccess?.();
-        onClose?.();
-      } else {
-        alert(data.message);
+      if (!res.ok || data.success === false) {
+
+        throw new Error(
+          data.message ||
+          'Error al registrar paciente'
+        );
+
       }
 
+      setTipoMensaje('success');
+
+      setMensaje(
+        'Paciente registrado correctamente'
+      );
+
+      setTimeout(() => {
+
+        onSuccess?.();
+
+        onClose?.();
+
+      }, 1000);
+
     } catch (error) {
-      alert("Error de conexión con el servidor");
+
+      setTipoMensaje('error');
+
+      setMensaje(
+        error.message ||
+        'Error de conexión con el servidor'
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
   return (
-    <div className="bg-white p-8 rounded-[2rem] shadow-xl max-w-2xl mx-auto relative">
 
-      {/*  BOTÓN CERRAR */}
+    <div className="
+      bg-white
+      p-5
+      sm:p-8
+      rounded-[2rem]
+      shadow-xl
+      w-full
+      max-w-2xl
+      mx-auto
+      relative
+    ">
+
+      {/* BOTÓN CERRAR */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 text-gray-500 hover:text-red-500 text-xl font-black"
+        className="
+          absolute
+          top-4
+          right-4
+          text-gray-500
+          hover:text-red-500
+          text-xl
+          font-black
+        "
       >
         ✕
       </button>
 
-      <h3 className="text-xl font-black mb-4">Registrar Paciente</h3>
+      <h3 className="
+        text-2xl
+        font-black
+        mb-6
+        text-[#2A5C4D]
+      ">
+        Registrar Paciente
+      </h3>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* MENSAJES */}
+      {mensaje && (
 
-        <input
-          name="nombre"
-          placeholder="Nombre completo"
-          onChange={handleChange}
-          required
-          className="w-full p-3 bg-gray-50 rounded-xl"
-        />
+        <div
+          className={`
+            mb-5
+            p-4
+            rounded-2xl
+            border
+            font-semibold
+            ${
+              tipoMensaje === 'error'
+                ? 'bg-red-100 text-red-700 border-red-300'
+                : 'bg-green-100 text-green-700 border-green-300'
+            }
+          `}
+        >
 
+          {mensaje}
+
+        </div>
+
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4"
+      >
+
+        {/* NOMBRE */}
         <div>
+
+          <input
+            name="nombre"
+            placeholder="Nombre completo"
+            value={formData.nombre}
+            onChange={handleChange}
+            required
+            className="
+              w-full
+              p-3
+              bg-gray-50
+              rounded-xl
+              border
+              border-gray-200
+              focus:outline-none
+              focus:ring-2
+              focus:ring-[#148F77]
+            "
+          />
+
+        </div>
+
+        {/* CI */}
+        <div>
+
           <input
             name="ci"
             placeholder="CI"
+            value={formData.ci}
             onChange={handleChange}
             required
-            className="w-full p-3 bg-gray-50 rounded-xl"
+            className="
+              w-full
+              p-3
+              bg-gray-50
+              rounded-xl
+              border
+              border-gray-200
+              focus:outline-none
+              focus:ring-2
+              focus:ring-[#148F77]
+            "
           />
+
           {errors.ci && (
-            <p className="text-red-500 text-sm mt-1">{errors.ci}</p>
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.ci}
+            </p>
+
           )}
+
         </div>
 
-        <input
-          type="date"
-          name="fecha_nacimiento"
-          onChange={handleChange}
-          required
-          className="w-full p-3 bg-gray-50 rounded-xl"
-        />
-
-        <input
-          name="direccion"
-          placeholder="Dirección"
-          onChange={handleChange}
-          className="w-full p-3 bg-gray-50 rounded-xl"
-        />
-
+        {/* FECHA */}
         <div>
+
+          <input
+            type="date"
+            name="fecha_nacimiento"
+            value={formData.fecha_nacimiento}
+            onChange={handleChange}
+            required
+            className="
+              w-full
+              p-3
+              bg-gray-50
+              rounded-xl
+              border
+              border-gray-200
+              focus:outline-none
+              focus:ring-2
+              focus:ring-[#148F77]
+            "
+          />
+
+        </div>
+
+        {/* DIRECCIÓN */}
+        <div>
+
+          <input
+            name="direccion"
+            placeholder="Dirección"
+            value={formData.direccion}
+            onChange={handleChange}
+            className="
+              w-full
+              p-3
+              bg-gray-50
+              rounded-xl
+              border
+              border-gray-200
+              focus:outline-none
+              focus:ring-2
+              focus:ring-[#148F77]
+            "
+          />
+
+        </div>
+
+        {/* TELÉFONO */}
+        <div>
+
           <input
             name="telefono"
             placeholder="Teléfono"
+            value={formData.telefono}
             onChange={handleChange}
-            className="w-full p-3 bg-gray-50 rounded-xl"
+            className="
+              w-full
+              p-3
+              bg-gray-50
+              rounded-xl
+              border
+              border-gray-200
+              focus:outline-none
+              focus:ring-2
+              focus:ring-[#148F77]
+            "
           />
+
           {errors.telefono && (
-            <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>
+
+            <p className="
+              text-red-500
+              text-sm
+              mt-1
+              font-medium
+            ">
+              {errors.telefono}
+            </p>
+
           )}
+
         </div>
 
+        {/* BOTÓN */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#148F77] text-white py-3 rounded-xl"
+          className="
+            w-full
+            bg-[#148F77]
+            hover:bg-[#0f6b59]
+            text-white
+            py-3
+            rounded-xl
+            font-bold
+            transition
+            disabled:opacity-60
+          "
         >
-          {loading ? "Guardando..." : "Registrar"}
+
+          {loading
+            ? 'Guardando...'
+            : 'Registrar'}
+
         </button>
 
       </form>
+
     </div>
+
   );
 }
