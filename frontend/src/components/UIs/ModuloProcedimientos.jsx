@@ -37,7 +37,7 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
-      
+
       setProcToDelete(null);
       if (onRefresh) onRefresh();
     } catch (err) {
@@ -53,7 +53,7 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
             Procedimientos Clínicos
           </h2>
           <p className="text-xs text-gray-400 mt-1 font-medium tracking-wide">
-            Catálogo de tratamientos disponibles
+            Catálogo de procedimientos disponibles
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            Agregar tratamiento
+            Agregar procedimiento
           </button>
         </div>
       </div>
@@ -140,20 +140,6 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
                     className="px-6 py-16 text-center text-gray-400 text-sm font-medium"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <svg
-                        className="w-8 h-8 text-gray-200"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
                       <span>No se encontraron procedimientos.</span>
                     </div>
                   </td>
@@ -163,10 +149,10 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
           </table>
         </div>
       </div>
-      
+
       {/* MODAL AGREGAR PROCEDIMIENTO */}
       {showAddModal && (
-        <ModalAgregarProcedimiento 
+        <ModalAgregarProcedimiento
           onClose={() => setShowAddModal(false)}
           onSuccess={handleSuccess}
         />
@@ -177,13 +163,29 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col transform transition-all">
             <div className="p-6 flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-xl font-black text-gray-800 mb-2">¿Eliminar Procedimiento?</h3>
+              <h3 className="text-xl font-black text-gray-800 mb-2">
+                ¿Eliminar Procedimiento?
+              </h3>
               <p className="text-sm text-gray-500 font-medium">
-                Estás a punto de eliminar el procedimiento <span className="font-bold text-gray-700">"{procToDelete.descripcion}"</span>. Esta acción no se puede deshacer.
+                Estás a punto de eliminar el procedimiento{" "}
+                <span className="font-bold text-gray-700">
+                  "{procToDelete.descripcion}"
+                </span>
+                . Esta acción no se puede deshacer.
               </p>
             </div>
             <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
