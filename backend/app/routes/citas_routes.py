@@ -4,8 +4,9 @@ from datetime import timedelta, datetime
 from ..config import db, Config
 import json, traceback
 from ..classes.security import permission_required
-citas_routes = Blueprint('citas_routes', __name__)
 from ..services.bitacora import Bitacora
+citas_routes = Blueprint('citas_routes', __name__)
+
 
 
 @citas_routes.route('/api/citas', methods=['POST'])
@@ -243,23 +244,7 @@ def get_odontologos_por_procedimiento(id_procedimiento):
     
         
 
-@citas_routes.route('/api/procedimientos', methods=['GET'])
-def get_procedimientos():
-    try:
-   
-        query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_todos_los_procedimientos()"
-        results = db.execute_query(query, fetchall=True)
 
-        procedimientos = [{
-            "id": row[0],
-            "descripcion": row[1]
-        } for row in (results or [])]
-
-        return jsonify({'success': True, 'data': procedimientos}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Error al obtener procedimientos: {e}'}), 500
-    
-            
 
 @citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
 def get_disponibilidad():

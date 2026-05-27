@@ -16,6 +16,7 @@ import AgendaCitas from "../components/UIs/AgendaCitas";
 import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
+import ModuloProcedimientos from "../components/UIs/ModuloProcedimientos";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -100,7 +101,7 @@ export default function Panel() {
 
       const [resProc, resDoc, resUsu, resSalas, resPacientes] =
         await Promise.all([
-          fetch(`${API_URL}/procedimientos`, config).then((r) => r.json()),
+          fetch(`${API_URL}/procedimientos?t=${Date.now()}`, config).then((r) => r.json()),
           fetch(`${API_URL}/odontologos`, config).then((r) => r.json()),
           fetchUsuarios,
           fetch(`${API_URL}/salas`, config).then((r) => r.json()),
@@ -232,6 +233,11 @@ export default function Panel() {
             />
           )}
 
+          {/* PROCEDIMIENTOS */}
+          {activeMenu === "Procedimientos" && (
+            <ModuloProcedimientos dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
+          )}
+
           {/* MÓDULO EN DESARROLLO */}
           {![
             "Panel de Control",
@@ -240,6 +246,7 @@ export default function Panel() {
             "Pacientes",
             "Bitácora",
             "Citas",
+            "Procedimientos"
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>

@@ -95,7 +95,7 @@ def listar_pacientes():
             FROM {Config.SCHEMA}.t_paciente a
             INNER JOIN {Config.SCHEMA}.t_persona b 
                 ON b.id_persona = a.id_paciente
-            WHERE a.estado = TRUE
+            WHERE a.estado = 'ACTIVO'
         """
 
         params = []
@@ -258,7 +258,7 @@ def inhabilitar_paciente(id_paciente):
 
         query = f"""
             UPDATE {Config.SCHEMA}.t_paciente
-            SET estado = FALSE
+            SET estado = 'INACTIVO'
             WHERE id_paciente = %s
         """
 
