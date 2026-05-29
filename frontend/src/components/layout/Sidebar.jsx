@@ -262,7 +262,8 @@ export default function Sidebar({
                 <div className="mt-2 space-y-2">
                   <MenuButton title="Gestionar Inventario" />
                   <MenuButton title="Registrar Entradas" />
-                  <MenuButton title="Registrar Salidas" /> {/* <-- Adición exclusiva: Caso de Uso de Mermas y Bajas */}
+                  <MenuButton title="Registrar Salidas" /> 
+                  <MenuButton title="Ajustar Inventario" /> 
                 </div>
               )}
             </div>

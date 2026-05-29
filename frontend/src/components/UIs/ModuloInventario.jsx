@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react"; // <-- Adición: Importamos Fragment para manejar filas compuestas
+import { useState, useEffect, Fragment } from "react"; 
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -14,7 +14,7 @@ export default function ModuloInventario() {
   const [successMsg, setSuccessMsg] = useState("");
 
   // ==========================================
-  // NUEVOS ESTADOS PARA VISTA MAESTRO-DETALLE
+  // ESTADOS PARA VISTA MAESTRO-DETALLE
   // ==========================================
   const [expandedMaterialId, setExpandedMaterialId] = useState(null);
   const [lotes, setLotes] = useState([]);
@@ -66,14 +66,15 @@ export default function ModuloInventario() {
     } finally {
       setLoading(false);
     }
+    // CORREGIDO: Se eliminó la línea residual e inaccesible que generaba errores de sintaxis
   };
-
+  
   useEffect(() => {
     fetchMateriales();
   }, []);
 
   // ==========================================
-  // NUEVA ACCIÓN: CONSULTAR LOTES EN TIEMPO REAL
+  // 2. ACCIÓN: CONSULTAR LOTES EN TIEMPO REAL
   // ==========================================
   const handleToggleLotes = async (id_material) => {
     // Si el usuario vuelve a hacer clic en el que ya está abierto, lo cerramos
@@ -89,8 +90,8 @@ export default function ModuloInventario() {
       setLotes([]); // Limpiamos el caché anterior para evitar flasheos de datos
       setErrorMsg("");
 
-      // Reutilizamos de forma inteligente el endpoint de trazabilidad por ID material
-      const res = await fetch(`${API_URL}/inventario/lotes/${id_material}`, getFetchConfig("GET"));
+      // CORREGIDO: Añadimos ?todo=true para que traiga balances completos (incluso stock 0)
+      const res = await fetch(`${API_URL}/inventario/lotes/${id_material}?todo=true`, getFetchConfig("GET"));
       const result = await res.json();
 
       if (result.success) {
@@ -107,7 +108,7 @@ export default function ModuloInventario() {
   };
 
   // ==========================================
-  // 2. MANEJADORES DE MODAL & FORM
+  // 3. MANEJADORES DE MODAL & FORM
   // ==========================================
   const handleOpenAdd = () => {
     setEditingMaterial(null);
@@ -130,7 +131,7 @@ export default function ModuloInventario() {
   };
 
   // ==========================================
-  // 3. GUARDAR CAMBIOS (CREATE / UPDATE)
+  // 4. GUARDAR CAMBIOS (CREATE / UPDATE)
   // ==========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -178,7 +179,7 @@ export default function ModuloInventario() {
   };
 
   // ==========================================
-  // 4. ELIMINAR MATERIAL (DELETE)
+  // 5. ELIMINAR MATERIAL (DELETE)
   // ==========================================
   const handleDelete = async (id_material) => {
     if (!window.confirm("¿Estás seguro de eliminar este material del catálogo maestro?")) return;
@@ -282,7 +283,7 @@ export default function ModuloInventario() {
               <tbody className="divide-y divide-gray-50 text-xs">
                 {filteredMateriales.map((m) => (
                   <Fragment key={m.id_material}>
-                    {/* FILA MAESTRO (DATOS DEL INSUMO) */}
+                    {/* FILA MAESTRO */}
                     <tr className={`hover:bg-gray-50/40 transition-colors text-gray-700 font-medium ${expandedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
                       <td className="py-4 px-6 text-gray-400 font-bold">#{m.id_material}</td>
                       <td className="py-4 px-6 font-bold text-[#2A5C4D] uppercase">{m.nombre_material}</td>
@@ -293,7 +294,6 @@ export default function ModuloInventario() {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right space-x-2">
-                        {/* NUEVO BOTÓN INTERACTIVO "VER STOCK" */}
                         <button
                           onClick={() => handleToggleLotes(m.id_material)}
                           className={`font-bold px-3 py-1.5 rounded-xl border transition-all text-[11px] ${
@@ -319,7 +319,7 @@ export default function ModuloInventario() {
                       </td>
                     </tr>
 
-                    {/* FILA DETALLE (DESGLOSE COMPLETO DE LOTES RECIBIDOS) */}
+                    {/* FILA DETALLE DE LOTES */}
                     {expandedMaterialId === m.id_material && (
                       <tr>
                         <td colSpan="5" className="bg-gray-50/60 px-8 py-5 border-y border-gray-100">
@@ -376,7 +376,6 @@ export default function ModuloInventario() {
                                   </tbody>
                                 </table>
                                 
-                                {/* RESUMEN DE CONCILIACIÓN FÍSICA AL PIE */}
                                 <div className="bg-gray-50/80 p-3 flex justify-between items-center px-4 border-t border-gray-100 font-bold text-xs">
                                   <span className="text-gray-400 uppercase tracking-wider text-[10px]">Existencias Totales Consolidadas:</span>
                                   <span className="text-[#148F77] font-black text-sm bg-white px-4 py-1.5 rounded-xl border border-gray-100 shadow-sm">
@@ -397,7 +396,7 @@ export default function ModuloInventario() {
         )}
       </div>
 
-      {/* MODAL TRANSACCIONAL (AGREGAR / MODIFICAR) */}
+      {/* MODAL TRANSACCIONAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden transform scale-100 transition-transform">

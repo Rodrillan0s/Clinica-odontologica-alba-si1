@@ -235,7 +235,12 @@ def registrar_proveedor_express():
 @admin_required
 def obtener_lotes_material(id_material):
     try:
-        # Query optimizado con JOIN para traer la procedencia del proveedor y filtrar mermas
+        # Capturamos si la vista requiere ver lotes vacíos/en cero (Gestión y Ajustes)
+        ver_todo = request.args.get('todo', 'false').lower() == 'true'
+        
+        # Si ver_todo es True, dejamos el filtro vacío; si es False, aislamos solo los activos > 0
+        filtro_stock = "" if ver_todo else "AND almacen.cantidad_disponible > 0"
+
         query = f"""
             SELECT 
                 almacen.id_lote,
@@ -245,14 +250,13 @@ def obtener_lotes_material(id_material):
                 prov.nombre_proveedor
             FROM {Config.SCHEMA}.t_materiales_almacen almacen
             LEFT JOIN {Config.SCHEMA}.t_proveedor prov ON almacen.id_proveedor = prov.id_proveedor
-            WHERE almacen.id_material = %s AND almacen.cantidad_disponible > 0
+            WHERE almacen.id_material = %s {filtro_stock}
             ORDER BY almacen.fecha_caducidad ASC NULLS LAST, almacen.id_lote ASC
         """
         rows = db.execute_query(query, (id_material,), fetchall=True)
 
         data = []
         for r in (rows or []):
-            # Mapeamos con un casteo seguro de fechas de Python a String ISO para React
             data.append({
                 "id_lote": r[0],
                 "cantidad_disponible": r[1],
@@ -314,6 +318,57 @@ def registrar_salida_inventario():
         error_msg = str(e)
         if "Transacción denegada" in error_msg:
             # Si es nuestra regla de negocio del SP, limpiamos el string para la UI
+            error_msg = error_msg.split("CONTEXT:")[0] if "CONTEXT:" in error_msg else error_msg
+            
+        return jsonify({"success": False, "message": error_msg}), 400
+    
+
+# CU28: AJUSTAR INVENTARIO
+@inventario_routes.route('/api/inventario/ajuste', methods=['POST'])
+@admin_required
+@permission_required("ajustar_inventario") 
+def ajustar_inventario_almacen():
+    try:
+        data = request.get_json() or {}
+        
+        id_lote = data.get('id_lote')
+        nuevo_stock = data.get('nuevo_stock')
+        motivo = data.get('motivo')
+
+        if id_lote is None or nuevo_stock is None or not motivo:
+            return jsonify({
+                "success": False, 
+                "message": "El número de lote, el nuevo stock real y la justificación son obligatorios."
+            }), 400
+            
+        if int(nuevo_stock) < 0:
+            return jsonify({
+                "success": False, 
+                "message": "El nuevo stock real verificado en los estantes no puede ser menor a cero."
+            }), 400
+
+        sql = f"""
+            CALL {Config.SCHEMA}.p_ajustar_inventario(
+                %s, %s, %s
+            )
+        """
+        params = (id_lote, nuevo_stock, motivo)
+        db.execute_query(sql, params, commit=True)
+
+        Bitacora.registrar(
+            "INVENTARIO", 
+            "AJUSTE", 
+            f"Auditoría física Lote #{id_lote}. Stock ajustado a: {nuevo_stock} u. Motivo: {motivo.upper()}"
+        )
+
+        return jsonify({
+            "success": True, 
+            "message": "Inventario ajustado con éxito."
+        }), 200
+
+    except Exception as e:
+        error_msg = str(e)
+        if "Error" in error_msg or "Transacción inválida" in error_msg:
             error_msg = error_msg.split("CONTEXT:")[0] if "CONTEXT:" in error_msg else error_msg
             
         return jsonify({"success": False, "message": error_msg}), 400
