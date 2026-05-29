@@ -16,6 +16,9 @@ import AgendaCitas from "../components/UIs/AgendaCitas";
 import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
+import ModuloInventario from "../components/UIs/ModuloInventario"; 
+import RegistrarEntradas from "../components/UIs/RegistrarEntradas"; 
+import RegistrarSalidas from "../components/UIs/RegistrarSalidas"; // <-- Adición exclusiva: Importamos el componente del CU27
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -232,6 +235,21 @@ export default function Panel() {
             />
           )}
 
+          {/* GESTIÓN DE INVENTARIO */}
+          {activeMenu === "Gestionar Inventario" && userRolId === ROLES.ADMINISTRADOR && (
+            <ModuloInventario />
+          )}
+
+          {/* REGISTRAR ENTRADAS */}
+          {activeMenu === "Registrar Entradas" && userRolId === ROLES.ADMINISTRADOR && (
+            <RegistrarEntradas />
+          )}
+
+          {/* REGISTRAR SALIDAS */}
+          {activeMenu === "Registrar Salidas" && userRolId === ROLES.ADMINISTRADOR && (
+            <RegistrarSalidas />
+          )}
+
           {/* MÓDULO EN DESARROLLO */}
           {![
             "Panel de Control",
@@ -240,6 +258,9 @@ export default function Panel() {
             "Pacientes",
             "Bitácora",
             "Citas",
+            "Gestionar Inventario",
+            "Registrar Entradas",
+            "Registrar Salidas", // <-- Adición exclusiva: Desbloqueamos la vista de mermas y bajas
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>

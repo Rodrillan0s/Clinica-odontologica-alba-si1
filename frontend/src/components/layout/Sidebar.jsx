@@ -30,7 +30,8 @@ export default function Sidebar({
     usuarios: true,
     pacientes: true,
     administracion: false,
-    cuenta: true, // Se agrega "cuenta" al estado para controlar el nuevo menú
+    inventario: false, // <-- Controla el menú de logística
+    cuenta: true, 
   });
 
   const toggleMenu = (menu) => {
@@ -194,7 +195,6 @@ export default function Sidebar({
               {openMenus.usuarios && (
                 <div className="mt-2 space-y-2">
                   <MenuButton title="Usuarios y Roles" />
-                  {/* Se quita de aquí la opción de contraseña para moverla a la sección global */}
                 </div>
               )}
             </div>
@@ -239,6 +239,30 @@ export default function Sidebar({
               {openMenus.administracion && (
                 <div className="mt-2 space-y-2">
                   <MenuButton title="Bitácora" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* INVENTARIO */}
+          {Number(userRolId) === 1 && (
+            <div>
+              <button
+                onClick={() => toggleMenu("inventario")}
+                className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >
+                <span>Inventario</span>
+
+                <span className="text-lg">
+                  {openMenus.inventario ? "−" : "+"}
+                </span>
+              </button>
+
+              {openMenus.inventario && (
+                <div className="mt-2 space-y-2">
+                  <MenuButton title="Gestionar Inventario" />
+                  <MenuButton title="Registrar Entradas" />
+                  <MenuButton title="Registrar Salidas" /> {/* <-- Adición exclusiva: Caso de Uso de Mermas y Bajas */}
                 </div>
               )}
             </div>
