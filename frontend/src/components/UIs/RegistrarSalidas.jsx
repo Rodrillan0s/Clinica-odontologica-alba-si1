@@ -75,7 +75,6 @@ export default function RegistrarSalidas() {
   const handleMaterialChange = async (e) => {
     const selectedMaterialId = e.target.value;
 
-    // Reseteamos estados dependientes inmediatos por consistencia visual
     setLotes([]);
     setMaxStockDisponible(0);
     setForm((prev) => ({
@@ -91,9 +90,9 @@ export default function RegistrarSalidas() {
       setLoadingLotes(true);
       setErrorMsg("");
       
-      // Llamamos al endpoint dinámico con JOIN que armamos en Flask
+      // CORREGIDO: Añadimos ?todo=true para mapear la trazabilidad completa, incluso si los lotes quedaron en cero (0)
       const res = await fetch(
-        `${API_URL}/inventario/lotes/${selectedMaterialId}`,
+        `${API_URL}/inventario/lotes/${selectedMaterialId}?todo=true`,
         getFetchConfig("GET")
       );
       const result = await res.json();
@@ -112,7 +111,7 @@ export default function RegistrarSalidas() {
   };
 
   // ==========================================
-  // 3. DETECTOR: CAMBIO DE LOTE -> CAPTURAR TECHO MÁXIMO DE REtiRO
+  // 3. DETECTOR: CAMBIO DE LOTE -> CAPTURAR TECHO MÁXIMO DE RETIRO
   // ==========================================
   const handleLoteChange = (e) => {
     const selectedLoteId = e.target.value;
@@ -140,23 +139,21 @@ export default function RegistrarSalidas() {
     setErrorMsg("");
     setSuccessMsg("");
 
-    // Validaciones de seguridad en Frontend
     if (!form.id_lote || !form.cantidad || !form.motivo) {
-      setErrorMsg("Todos los campos marcados con asterisco son obligatorios.");
+      setErrorMsg("Todos los campos marcados son obligatorios.");
       return;
     }
 
     const cantidadRetiro = Number(form.cantidad);
 
     if (cantidadRetiro <= 0) {
-      setErrorMsg("La cantidad a retirar debe ser obligatoriamente mayor a cero.");
+      setErrorMsg("La cantidad a retirar debe ser mayor a cero.");
       return;
     }
 
-    // Blindaje de Regla de Negocio en Caliente
     if (cantidadRetiro > maxStockDisponible) {
       setErrorMsg(
-        `Operación abortada: No puede retirar ${cantidadRetiro} unidades. El lote seleccionado solo dispone de ${maxStockDisponible} unidades físicas.`
+        `Operación abortada: No puede retirar ${cantidadRetiro} unidades. El lote seleccionado solo dispone de ${maxStockDisponible} unidades.`
       );
       return;
     }
@@ -174,10 +171,8 @@ export default function RegistrarSalidas() {
       const result = await res.json();
 
       if (result.success) {
-        // Mostramos confirmación verde esmeralda
-        setSuccessMsg(result.message || "Baja registrada e historial actualizado correctamente.");
+        setSuccessMsg(result.message || "Baja registrada. Historial actualizado");
 
-        // Limpieza de formulario fluido
         setForm({
           id_material: "",
           id_lote: "",
@@ -187,14 +182,13 @@ export default function RegistrarSalidas() {
         setLotes([]);
         setMaxStockDisponible(0);
 
-        // Ocultar mensaje de éxito en 4 segundos
         setTimeout(() => setSuccessMsg(""), 4000);
       } else {
         setErrorMsg(result.message || "Ocurrió un error al procesar el retiro.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error de comunicación crítica con el Backend.");
+      setErrorMsg("Error de comunicación con el Servidor.");
     } finally {
       setSubmitting(false);
     }
@@ -203,20 +197,23 @@ export default function RegistrarSalidas() {
   if (loadingMateriales) {
     return (
       <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm text-center text-[#148F77] font-black text-xs uppercase tracking-widest animate-pulse">
-        Sincronizando almacén de bajas y mermas clínicas...
+        Cargando datos...
       </div>
     );
   }
+
+  // REGLA LOGÍTICA EN CALIENTE: Evaluamos si el material tiene lotes creados pero absolutamente TODOS están en cero
+  const tieneLotesPeroTodosAgotados = lotes.length > 0 && lotes.every((l) => Number(l.cantidad_disponible) === 0);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* HEADER DE LA COMPONENTE */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <h2 className="text-[#2A5C4D] font-black text-lg uppercase tracking-wide">
-          Registrar Salida / Mermas
+          Registrar Salidas
         </h2>
         <p className="text-gray-400 text-xs mt-1">
-          Módulo de Control de Calidad: Retiro de Insumos Vencidos, Dañados o Destinados a Consulta (CU27)
+          En esta sección puedes registrar las salidas o retiros de materiales del inventario. Selecciona el material, el lote específico, la cantidad a retirar y el motivo de la baja.
         </p>
       </div>
 
@@ -236,7 +233,7 @@ export default function RegistrarSalidas() {
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden">
         <div className="p-6 bg-gray-50/50 border-b border-gray-100">
           <h3 className="text-[#2A5C4D] font-black text-xs uppercase tracking-widest">
-            Orden de Retiro e Historial de Kardex
+            Detalles de la salida de material
           </h3>
         </div>
 
@@ -253,7 +250,7 @@ export default function RegistrarSalidas() {
               onChange={handleMaterialChange}
               className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
             >
-              <option value="">-- Busque el material en el catálogo maestro --</option>
+              <option value="">-- SELECCIONE MATERIAL --</option>
               {materiales.map((m) => (
                 <option key={m.id_material} value={m.id_material}>
                   {m.nombre_material} {m.expirable ? " (Monitoreado Vencimiento)" : " (Insumo Fijo)"}
@@ -280,33 +277,42 @@ export default function RegistrarSalidas() {
               ) : !form.id_material ? (
                 <option value="">-- Primero debe elegir un material de la lista superior --</option>
               ) : lotes.length === 0 ? (
-                <option value="">-- No existen lotes con stock para este material --</option>
+                <option value="">-- No existen registros de lotes históricos para este ítem --</option>
               ) : (
                 <>
                   <option value="">-- Seleccione el lote damnificado/a retirar --</option>
                   {lotes.map((l) => (
                     <option key={l.id_lote} value={l.id_lote}>
-                      LOTE #{l.id_lote} ➔ DISPONIBLE: {l.cantidad_disponible} u. | VENCE: {l.fecha_caducidad || "PERMANENTE"} | PROV: {l.nombre_provider || l.nombre_proveedor}
+                      LOTE #{l.id_lote} ➔ STOCK ACTUAL: {l.cantidad_disponible} u. {Number(l.cantidad_disponible) === 0 ? "(AGOTADO)" : ""} | VENCE: {l.fecha_caducidad || "PERMANENTE"} | PROV: {l.nombre_proveedor}
                     </option>
                   ))}
                 </>
               )}
             </select>
 
-            {/* Aviso inteligente si el producto se quedó sin existencias */}
+            {/* ERROR A: El material es nuevo y nunca ha tenido un lote registrado en la historia clínica */}
             {form.id_material && !loadingLotes && lotes.length === 0 && (
               <p className="text-amber-600 bg-amber-50 border border-amber-100 text-[10px] p-3 rounded-lg mt-1 font-medium animate-fadeIn">
-                ⚠️ Alerta logística: Este material figura con existencias totales en cero (0) en todos los estantes de la clínica. No es posible generar retiros.
+                ⚠️ Alerta relacional: Este material no cuenta con ningún lote asociado. Primero debe registrar una Entrada (CU26) para asignarle stock y un proveedor base.
+              </p>
+            )}
+
+            {/* ERROR B: CORREGIDO E INTELIGENTE: Los lotes existen pero están todos vacíos (Saldos en 0) */}
+            {form.id_material && !loadingLotes && tieneLotesPeroTodosAgotados && (
+              <p className="text-red-600 bg-red-50 border border-red-100 text-[10px] p-3 rounded-lg mt-1 font-medium animate-fadeIn">
+                ❌ Alerta de Almacén: Todos los lotes registrados para este insumo se encuentran totalmente AGOTADOS (Stock: 0 u.). Si desea corregir una discrepancia física, utilice el módulo de Ajustar Inventario.
               </p>
             )}
           </div>
 
           {/* INDICADOR EN VIVO DEL STOCK DISPONIBLE */}
-          {maxStockDisponible > 0 && (
-            <div className="p-3 bg-emerald-50 border border-emerald-100 text-[#148F77] text-[10px] rounded-xl font-bold flex justify-between items-center animate-fadeIn">
-              <span>STOCK DISPONIBLE DEL LOTE SELECCIONADO:</span>
-              <span className="bg-[#148F77] text-white px-3 py-1 rounded-full font-black">
-                {maxStockDisponible} Unidades Max.
+          {form.id_lote && (
+            <div className={`p-3 text-[10px] rounded-xl font-bold flex justify-between items-center animate-fadeIn ${
+              maxStockDisponible > 0 ? "bg-emerald-50 border border-emerald-200 text-[#148F77]" : "bg-red-50 border border-red-200 text-red-600"
+            }`}>
+              <span>STOCK EN ESTANTE DEL LOTE SELECCIONADO:</span>
+              <span className={`px-3 py-1 rounded-full font-black text-white ${maxStockDisponible > 0 ? "bg-[#148F77]" : "bg-red-500"}`}>
+                {maxStockDisponible} Unidades Disponibles
               </span>
             </div>
           )}
@@ -318,9 +324,10 @@ export default function RegistrarSalidas() {
             </label>
             <select
               required
+              disabled={maxStockDisponible === 0}
               value={form.motivo}
               onChange={(e) => setForm({ ...form, motivo: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold disabled:bg-gray-100"
             >
               <option value="VENCIMIENTO">PRODUCTO EXPIRED / CADUCADO</option>
               <option value="DAÑO / ROTURA">MATERIAL DAÑADO / ROTURA EN ESTANTE</option>
@@ -340,7 +347,7 @@ export default function RegistrarSalidas() {
               min="1"
               max={maxStockDisponible || undefined}
               disabled={maxStockDisponible === 0}
-              placeholder={maxStockDisponible > 0 ? `Máximo a retirar: ${maxStockDisponible}` : "Ej. 5"}
+              placeholder={maxStockDisponible > 0 ? `Máximo a retirar: ${maxStockDisponible}` : "Lote sin existencias disponibles"}
               value={form.cantidad}
               onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
               className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold disabled:bg-gray-100 disabled:cursor-not-allowed"

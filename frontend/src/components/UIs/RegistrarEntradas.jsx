@@ -6,25 +6,21 @@ const API_URL = import.meta.env.VITE_API_URL;
 export default function RegistrarEntradas() {
   const user = useAuthStore((state) => state.user);
 
-  // Estados de carga de datos maestros
   const [materiales, setMateriales] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Estados de notificaciones
+
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // ==========================================
-  // ESTADOS MAEStROS DEL PROVEEDOR EN CALIENTE
-  // ==========================================
+
   const [showProvModal, setShowProvModal] = useState(false);
   const [nuevoProvNombre, setNuevoProvNombre] = useState("");
-  const [nuevoProvTelefono, setNuevoProvTelefono] = useState(""); // <-- Nuevo estado para el teléfono
+  const [nuevoProvTelefono, setNuevoProvTelefono] = useState(""); 
   const [provSubmitting, setProvSubmitting] = useState(false);
 
-  // Estado unificado del Formulario Transaccional (CU26)
   const [form, setForm] = useState({
     id_material: "",
     cantidad: "",
@@ -66,11 +62,11 @@ export default function RegistrarEntradas() {
       if (dataProv.success) setProveedores(dataProv.data);
 
       if (!dataMat.success || !dataProv.success) {
-        setErrorMsg("Ocurrió un error al sincronizar los catálogos de almacén.");
+        setErrorMsg("Error al cargar los materiales o proveedores. Intente recargar la página.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error crítico de red al conectar con el servidor logístico.");
+      setErrorMsg("Error al conectar con el servidor");
     } finally {
       setLoading(false);
     }
@@ -103,9 +99,7 @@ export default function RegistrarEntradas() {
     }
   };
 
-  // ==========================================
-  // ACCIÓN: GUARDAR PROVEEDOR COMPLETO EN CALIENTE
-  // ==========================================
+  // ACCIÓN: GUARDAR PROVEEDOR 
   const handleGuardarProveedorExpress = async (e) => {
     e.preventDefault();
     if (!nuevoProvNombre.trim()) return;
@@ -115,7 +109,7 @@ export default function RegistrarEntradas() {
       
       const payloadProv = {
         nombre_proveedor: nuevoProvNombre.trim(),
-        telefono: nuevoProvTelefono.trim() || null // Si está vacío se manda null
+        telefono: nuevoProvTelefono.trim() || null 
       };
 
       const res = await fetch(`${API_URL}/proveedores`, getFetchConfig("POST", payloadProv));
@@ -151,17 +145,17 @@ export default function RegistrarEntradas() {
     setSuccessMsg("");
 
     if (!form.id_material || !form.cantidad) {
-      setErrorMsg("El material y la cantidad son requeridos de forma obligatoria.");
+      setErrorMsg("El material y la cantidad son campos obligatorios para registrar una entrada.");
       return;
     }
 
     if (Number(form.cantidad) <= 0) {
-      setErrorMsg("La cantidad de ingresos físicos debe ser mayor a cero.");
+      setErrorMsg("La cantidad de unidades a ingresar deben ser mayor a cero.");
       return;
     }
 
     if (isMaterialExpirable && (!form.fecha_fabricacion || !form.fecha_caducidad)) {
-      setErrorMsg("Este insumo está catalogado como EXPIRABLE. Debe ingresar fechas de lote.");
+      setErrorMsg("Este insumo es expirable. Debe ingresar las fechas de fabricación y caducidad.");
       return;
     }
 
@@ -180,7 +174,7 @@ export default function RegistrarEntradas() {
       const result = await res.json();
 
       if (result.success) {
-        setSuccessMsg(result.message || "Lote ingresado y Kardex actualizado con éxito.");
+        setSuccessMsg(result.message || "Entrada de almacén registrada.");
         setForm({
           id_material: "",
           cantidad: "",
@@ -195,7 +189,7 @@ export default function RegistrarEntradas() {
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error de comunicación con la API del Servidor.");
+      setErrorMsg("Error de comunicación con el Servidor.");
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +198,7 @@ export default function RegistrarEntradas() {
   if (loading) {
     return (
       <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm text-center text-[#148F77] font-black text-xs uppercase tracking-widest animate-pulse">
-        Sincronizando registros y almacenes maestros de la clínica...
+        Cargando datos...
       </div>
     );
   }
@@ -214,10 +208,10 @@ export default function RegistrarEntradas() {
       {/* HEADER PRINCIPAL */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <h2 className="text-[#2A5C4D] font-black text-lg uppercase tracking-wide">
-          Registrar Entrada a Almacén
+          Registrar Entradas al Almacén
         </h2>
         <p className="text-gray-400 text-xs mt-1">
-          Módulo Transaccional para Abastecimiento de Lotes y Auditoría de Kardex (CU26)
+          Utilice este formulario para registrar la recepción física de materiales e insumos en el almacén. Asegúrese de ingresar datos precisos para garantizar la trazabilidad y control de inventarios.
         </p>
       </div>
 
@@ -237,7 +231,7 @@ export default function RegistrarEntradas() {
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden">
         <div className="p-6 bg-gray-50/50 border-b border-gray-100">
           <h3 className="text-[#2A5C4D] font-black text-xs uppercase tracking-widest">
-            Ficha de Recepción de Mercadería
+            Detalles de la entrada de material
           </h3>
         </div>
 
@@ -254,10 +248,10 @@ export default function RegistrarEntradas() {
               onChange={handleMaterialChange}
               className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
             >
-              <option value="">-- Seleccione un elemento del catálogo --</option>
+              <option value="">-- Seleccione un elemento--</option>
               {materiales.map((m) => (
                 <option key={m.id_material} value={m.id_material}>
-                  {m.nombre_material} {m.expirable ? "(Expirable)" : "(Permanente)"}
+                  {m.nombre_material} {m.expirable ? "  - (EXPIRABLE)" : "  - (NO EXPIRABLE)"}
                 </option>
               ))}
             </select>
@@ -266,7 +260,7 @@ export default function RegistrarEntradas() {
           {/* CANTIDAD */}
           <div className="space-y-1">
             <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Cantidad de Unidades a Registrar (Monto Físico) *
+              Cantidad de Unidades a Registrar*
             </label>
             <input
               type="number"
@@ -284,10 +278,10 @@ export default function RegistrarEntradas() {
             <div className="p-5 bg-amber-50/40 rounded-2xl border border-amber-100/70 space-y-4 animate-fadeIn">
               <div className="border-b border-amber-100/50 pb-2">
                 <h4 className="text-amber-700 font-black text-[10px] uppercase tracking-wider">
-                  ⚠️ Control Obligatorio de Trazabilidad Sanitaria
+                  Control de Caducidad Requerido
                 </h4>
                 <p className="text-amber-600/80 text-[10px] mt-0.5">
-                  Este insumo requiere control de caducidad por disposición regulatoria clínica.
+                  Este material es expirable. Por favor, ingrese las fechas de fabricación y caducidad para garantizar el control de inventario.
                 </p>
               </div>
               
@@ -340,7 +334,7 @@ export default function RegistrarEntradas() {
               onChange={(e) => setForm({ ...form, id_proveedor: e.target.value })}
               className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
             >
-              <option value="">-- Sin proveedor asignado (Ingreso Directo) --</option>
+              <option value=""> SIN PROVEEDOR </option>
               {proveedores.map((p) => (
                 <option key={p.id_proveedor} value={p.id_proveedor}>
                   {p.nombre_proveedor} {p.telefono ? `(${p.telefono})` : ""}
@@ -372,7 +366,7 @@ export default function RegistrarEntradas() {
           <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden">
             <div className="p-5 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
               <h4 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest">
-                Registrar Proveedor Express
+                Registrar Proveedor:
               </h4>
               <button
                 type="button"
