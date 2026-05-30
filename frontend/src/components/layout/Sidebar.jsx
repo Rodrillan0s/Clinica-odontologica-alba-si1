@@ -174,6 +174,7 @@ export default function Sidebar({
               <div className="mt-2 space-y-2">
                 <MenuButton title="Citas" />
                 <MenuButton title="Procedimientos" />
+                <MenuButton title="Reportes" />
               </div>
             )}
           </div>

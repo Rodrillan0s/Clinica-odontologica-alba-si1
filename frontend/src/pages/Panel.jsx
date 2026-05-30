@@ -17,6 +17,7 @@ import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
 import ModuloProcedimientos from "../components/UIs/ModuloProcedimientos";
+import ReporteCitas from "../components/UIs/ReporteCitas";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -238,6 +239,11 @@ export default function Panel() {
             <ModuloProcedimientos dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
           )}
 
+          {/* REPORTES */}
+          {activeMenu === "Reportes" && (
+            <ReporteCitas dataMaster={dataMaster} user={user} />
+          )}
+
           {/* MÓDULO EN DESARROLLO */}
           {![
             "Panel de Control",
@@ -246,7 +252,8 @@ export default function Panel() {
             "Pacientes",
             "Bitácora",
             "Citas",
-            "Procedimientos"
+            "Procedimientos",
+            "Reportes"
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>
