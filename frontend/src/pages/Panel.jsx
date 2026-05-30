@@ -16,6 +16,10 @@ import AgendaCitas from "../components/UIs/AgendaCitas";
 import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
+import ModuloInventario from "../components/UIs/ModuloInventario";
+import RegistrarEntradas from "../components/UIs/RegistrarEntradas";
+import RegistrarSalidas from "../components/UIs/RegistrarSalidas"; // <-- Adición exclusiva: Importamos el componente del CU27
+import AjustarInventario from "../components/UIs/AjustarInventario"; // <-- Adición exclusiva: Importamos el componente del CU28
 import ModuloProcedimientos from "../components/UIs/ModuloProcedimientos";
 import ReporteCitas from "../components/UIs/ReporteCitas";
 
@@ -102,7 +106,9 @@ export default function Panel() {
 
       const [resProc, resDoc, resUsu, resSalas, resPacientes] =
         await Promise.all([
-          fetch(`${API_URL}/procedimientos?t=${Date.now()}`, config).then((r) => r.json()),
+          fetch(`${API_URL}/procedimientos?t=${Date.now()}`, config).then((r) =>
+            r.json(),
+          ),
           fetch(`${API_URL}/odontologos`, config).then((r) => r.json()),
           fetchUsuarios,
           fetch(`${API_URL}/salas`, config).then((r) => r.json()),
@@ -234,6 +240,26 @@ export default function Panel() {
             />
           )}
 
+          {/* GESTIÓN DE INVENTARIO */}
+          {activeMenu === "Gestionar Inventario" && userRolId === ROLES.ADMINISTRADOR && (
+            <ModuloInventario />
+          )}
+
+          {/* REGISTRAR ENTRADAS */}
+          {activeMenu === "Registrar Entradas" && userRolId === ROLES.ADMINISTRADOR && (
+            <RegistrarEntradas />
+          )}
+
+          {/* REGISTRAR SALIDAS */}
+          {activeMenu === "Registrar Salidas" && userRolId === ROLES.ADMINISTRADOR && (
+            <RegistrarSalidas />
+          )}
+
+          {/* AJUSTAR INVENTARIO */}
+          {activeMenu === "Ajustar Inventario" && userRolId === ROLES.ADMINISTRADOR && (
+            <AjustarInventario />
+          )}
+
           {/* PROCEDIMIENTOS */}
           {activeMenu === "Procedimientos" && (
             <ModuloProcedimientos dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
@@ -252,6 +278,10 @@ export default function Panel() {
             "Pacientes",
             "Bitácora",
             "Citas",
+            "Gestionar Inventario",
+            "Registrar Entradas",
+            "Registrar Salidas", // <-- Adición exclusiva: Desbloqueamos la vista de mermas y bajas
+            "Ajustar Inventario", 
             "Procedimientos",
             "Reportes"
           ].includes(activeMenu) && (

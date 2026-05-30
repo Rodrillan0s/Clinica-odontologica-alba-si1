@@ -3,4 +3,5 @@ from .auth_routes import auth_routes
 from .citas_routes import citas_routes
 from .usuario_routes import usuario_routes
 from .pacientes_routes import paciente_routes
+from .inventario_routes import inventario_routes
 from .procedimientos_routes import procedimientos_routes_routes
