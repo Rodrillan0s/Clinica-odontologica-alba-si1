@@ -1,8 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 from ..services.citas_service import build_citas_query  
 from datetime import timedelta, datetime
 from ..config import db, Config
 import json, traceback
+import csv
+from io import StringIO
 from ..classes.security import permission_required
 from ..services.bitacora import Bitacora
 citas_routes = Blueprint('citas_routes', __name__)
@@ -244,7 +246,134 @@ def get_odontologos_por_procedimiento(id_procedimiento):
     
         
 
+@citas_routes.route('/api/citas/reporte_paciente', methods=['GET'])
+def get_reporte_paciente():
+    try:
+        id_paciente = request.args.get('id_paciente')
+        if not id_paciente:
+            return jsonify({'success': False, 'message': 'Falta id_paciente'}), 400
 
+        fecha_agen_desde = request.args.get('fecha_agen_desde')
+        fecha_agen_hasta = request.args.get('fecha_agen_hasta')
+        limit = int(request.args.get('limit', 1000))
+
+        
+        params = (
+            None, id_paciente, fecha_agen_desde, fecha_agen_hasta, 
+            None, None, None, None, None, None, limit, 0
+        )
+
+     
+        query_lista = f"SELECT * FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        results_lista = db.execute_query(query_lista, params, fetchall=True)
+
+        citas_list = []
+        if results_lista:
+            for row in results_lista:
+                citas_list.append({
+                    "id_cita": row[0],
+                    "id_personal": row[1],
+                    "id_paciente": row[2],
+                    "fecha_registro": row[3].strftime("%d/%m/%Y %H:%M") if row[3] else None,
+                    "fecha_agendamiento": row[4].strftime("%d/%m/%Y %H:%M") if row[4] else None,
+                    "fecha_finalizacion": row[5].strftime("%d/%m/%Y %H:%M") if row[5] else None,
+                    "id_estado_cita": row[6],
+                    "nombre_estado": row[7],
+                    "id_sala": row[8],
+                    "cita_obs": row[9]
+                })
+
+        query_stats = f"""
+            SELECT nombre_estado, count(*) 
+            FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            GROUP BY nombre_estado
+        """
+        results_stats = db.execute_query(query_stats, params, fetchall=True)
+        
+        stats_dict = {}
+        total = 0
+        if results_stats:
+            for row in results_stats:
+                stats_dict[row[0]] = int(row[1])
+                total += int(row[1])
+
+        response = {
+            'success': True,
+            'data': citas_list,
+            'stats': stats_dict,
+            'total': total
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error al generar reporte: {e}'}), 500
+
+@citas_routes.route('/api/citas/reporte_odontologo', methods=['GET'])
+def get_reporte_odontologo():
+    try:
+        id_odontologo = request.args.get('id_odontologo')
+        fecha_agen_desde = request.args.get('fecha_agen_desde')
+        fecha_agen_hasta = request.args.get('fecha_agen_hasta')
+        limit = request.args.get('limit', 100, type=int)
+        offset = request.args.get('offset', 0, type=int)
+
+        if not id_odontologo:
+            return jsonify({'success': False, 'message': 'El parámetro id_odontologo es requerido'}), 400
+
+        params = (
+            id_odontologo, None, fecha_agen_desde, fecha_agen_hasta, 
+            None, None, None, None, None, None, limit, 0
+        )
+     
+        query_lista = f"SELECT * FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        results_lista = db.execute_query(query_lista, params, fetchall=True)
+
+        citas_list = []
+        if results_lista:
+            for row in results_lista:
+                citas_list.append({
+                    "id_cita": row[0],
+                    "id_personal": row[1],
+                    "id_paciente": row[2],
+                    "fecha_registro": row[3].strftime("%d/%m/%Y %H:%M") if row[3] else None,
+                    "fecha_agendamiento": row[4].strftime("%d/%m/%Y %H:%M") if row[4] else None,
+                    "fecha_finalizacion": row[5].strftime("%d/%m/%Y %H:%M") if row[5] else None,
+                    "id_estado_cita": row[6],
+                    "nombre_estado": row[7],
+                    "id_sala": row[8],
+                    "cita_obs": row[9]
+                })
+
+        query_stats = f"""
+            SELECT nombre_estado, count(*) 
+            FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            GROUP BY nombre_estado
+        """
+        results_stats = db.execute_query(query_stats, params, fetchall=True)
+        
+        stats_dict = {}
+        total = 0
+        if results_stats:
+            for row in results_stats:
+                stats_dict[row[0]] = int(row[1])
+                total += int(row[1])
+
+        response = {
+            'success': True,
+            'data': citas_list,
+            'stats': stats_dict,
+            'total': total
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error al generar reporte de odontólogo: {e}'}), 500
 
 @citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
 def get_disponibilidad():

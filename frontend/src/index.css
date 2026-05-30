@@ -26,3 +26,18 @@
 /* Opcional: Un pequeño retraso por si quieres que un subtítulo aparezca justo después del título */
 .delay-100 { animation-delay: 100ms; opacity: 0; }
 .delay-200 { animation-delay: 200ms; opacity: 0; }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-section, .print-section * {
+    visibility: visible;
+  }
+  .print-section {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100vw;
+  }
+}
