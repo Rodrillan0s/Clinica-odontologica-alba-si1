@@ -84,11 +84,17 @@ export default function ReporteCitas({ dataMaster, user }) {
               String(o.id) === String(row.id_personal) ||
               String(o.id_personal) === String(row.id_personal),
           );
+          const sala = dataMaster?.salas?.find(
+            (s) =>
+              String(s.id_sala) === String(row.id_sala) ||
+              String(s.id) === String(row.id_sala),
+          );
           return {
             id_cita: row.id_cita,
             fecha_agendamiento: row.fecha_agendamiento,
             odontologo_nombre: odon ? odon.nombre : "Desconocido",
             nombre_estado: row.nombre_estado,
+            sala_nombre: sala ? sala.nombre : (row.id_sala ? `Sala ${row.id_sala}` : "Sin asignar"),
             procedimientos: row.cita_obs || "Sin observaciones registradas",
           };
         });
@@ -142,6 +148,7 @@ export default function ReporteCitas({ dataMaster, user }) {
       "FECHA AGENDAMIENTO",
       "ESTADO",
       "ODONTOLOGO",
+      "SALA",
       "OBSERVACIONES",
     ];
 
@@ -151,6 +158,7 @@ export default function ReporteCitas({ dataMaster, user }) {
       row.fecha_agendamiento || "N/A",
       row.nombre_estado,
       row.odontologo_nombre,
+      row.sala_nombre,
       row.procedimientos || "Sin observaciones",
     ]);
 
@@ -444,7 +452,7 @@ export default function ReporteCitas({ dataMaster, user }) {
         <div className="mt-8 border-t border-gray-100 pt-8 print:mt-0 print:border-none print:pt-0">
           {errorMessage && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase rounded-r-xl print:hidden">
-              ⚠️ {errorMessage}
+              {errorMessage}
             </div>
           )}
 
@@ -495,6 +503,9 @@ export default function ReporteCitas({ dataMaster, user }) {
                         Especialista
                       </th>
                       <th className="py-4 px-6 text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                        Sala
+                      </th>
+                      <th className="py-4 px-6 text-[10px] font-black text-[#148F77] uppercase tracking-widest">
                         Estado
                       </th>
                       <th className="py-4 px-6 text-[10px] font-black text-[#148F77] uppercase tracking-widest">
@@ -518,6 +529,9 @@ export default function ReporteCitas({ dataMaster, user }) {
                         </td>
                         <td className="py-4 px-6 text-sm font-medium text-gray-700">
                           {row.odontologo_nombre}
+                        </td>
+                        <td className="py-4 px-6 text-sm font-medium text-gray-700">
+                          {row.sala_nombre}
                         </td>
                         <td className="py-4 px-6">
                           <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gray-100 text-gray-600">
