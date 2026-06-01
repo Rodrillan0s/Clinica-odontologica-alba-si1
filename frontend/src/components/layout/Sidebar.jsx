@@ -32,6 +32,7 @@ export default function Sidebar({
     administracion: false,
     inventario: false, // <-- Controla el menú de logística
     cuenta: true, 
+    personal: true,
   });
 
   const toggleMenu = (menu) => {
@@ -238,6 +239,7 @@ export default function Sidebar({
 
               {openMenus.administracion && (
                 <div className="mt-2 space-y-2">
+                  <MenuButton title="Gestión de Personal" />
                   <MenuButton title="Bitácora" />
                 </div>
               )}

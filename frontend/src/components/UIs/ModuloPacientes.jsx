@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import FormularioPaciente from '../../pages/RegisterPatient';
 import EditPatient from './EditPatient';
 
+import HistorialClinico from './HistorialClinico';
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ModuloPacientes() {
@@ -30,7 +32,76 @@ export default function ModuloPacientes() {
 
   const [pacienteEliminar, setPacienteEliminar] =
     useState(null);
+const [showHistorial, setShowHistorial] =
+  useState(false);
 
+const [pacienteHistorial, setPacienteHistorial] =
+  useState(null);
+
+const [historialPaciente, setHistorialPaciente] =
+  useState(null);
+const verHistorial = async (paciente) => {
+
+  try {
+
+    const res = await fetch(
+      `${API_URL}/pacientes/${paciente.id}/historial`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || data.success === false) {
+      throw new Error(
+        data.message || 'Error al obtener historial'
+      );
+    }
+
+    setPacienteHistorial(paciente);
+
+    setHistorialPaciente(data.data);
+
+    setShowHistorial(true);
+
+  } catch (err) {
+
+    setTipoMensaje('error');
+
+    setMensaje(
+      err.message || 'Error al obtener historial'
+    );
+
+  }
+
+};
+const recargarHistorial = async (idPaciente) => {
+
+  try {
+
+    const res = await fetch(
+      `${API_URL}/pacientes/${idPaciente}/historial`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || data.success === false) {
+      throw new Error(
+        data.message || "Error al actualizar historial"
+      );
+    }
+
+    setHistorialPaciente(data.data);
+
+  } catch (err) {
+
+    setTipoMensaje("error");
+
+    setMensaje(
+      err.message || "Error al actualizar historial"
+    );
+
+  }
+
+};
   const fetchPacientes = async (nombre = '') => {
 
     try {
@@ -309,130 +380,165 @@ export default function ModuloPacientes() {
 
       )}
 
-      {/* LISTA */}
-      {!loading && pacientes.length > 0 && (
+{/* TABLA PACIENTES */}
+{!loading && pacientes.length > 0 && (
 
-        <div className="
-          grid
-          grid-cols-1
-          xl:grid-cols-2
-          gap-4
-        ">
+  <div className="
+    bg-white
+    rounded-2xl
+    shadow
+    overflow-hidden
+  ">
+
+    <div className="overflow-x-auto">
+
+      <table className="w-full">
+
+        <thead>
+
+          <tr className="bg-[#148F77] text-white">
+
+            <th className="px-4 py-4 text-left">
+              ID
+            </th>
+
+            <th className="px-4 py-4 text-left">
+              Nombre
+            </th>
+
+            <th className="px-4 py-4 text-left">
+              CI
+            </th>
+
+            <th className="px-4 py-4 text-left">
+              Fecha Nacimiento
+            </th>
+
+            <th className="px-4 py-4 text-left">
+              Teléfono
+            </th>
+
+            <th className="px-4 py-4 text-left">
+              Dirección
+            </th>
+
+            <th className="px-4 py-4 text-center">
+              Acciones
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
 
           {pacientes.map((p) => (
 
-            <div
+            <tr
               key={p.id}
               className="
-                bg-white
-                rounded-2xl
-                shadow
-                p-4
-                sm:p-5
-                border
-                border-gray-100
-                hover:shadow-lg
+                border-b
+                hover:bg-gray-50
                 transition
               "
             >
 
-              <div className="
-                flex
-                flex-col
-                sm:flex-row
-                sm:items-center
-                sm:justify-between
-                gap-4
-              ">
+              <td className="px-4 py-4">
+                {p.id}
+              </td>
 
-                <div className="min-w-0">
+              <td className="px-4 py-4 font-semibold text-[#2A5C4D]">
+                {p.nombre}
+              </td>
 
-                  <p className="
-                    font-black
-                    text-lg
-                    text-[#2A5C4D]
-                    break-words
-                  ">
-                    {p.nombre}
-                  </p>
+              <td className="px-4 py-4">
+                {p.ci}
+              </td>
 
-                  <p className="
-                    text-gray-400
-                    text-sm
-                  ">
-                    ID: {p.id}
-                  </p>
+              <td className="px-4 py-4">
+                {p.fecha_nacimiento}
+              </td>
 
-                </div>
+              <td className="px-4 py-4">
+                {p.telefono || "-"}
+              </td>
 
-                <div className="
-                  flex
-                  flex-col
-                  sm:flex-row
-                  gap-2
-                  w-full
-                  sm:w-auto
-                ">
+              <td className="px-4 py-4">
+                {p.direccion || "-"}
+              </td>
 
-                  <button
-                    onClick={() => {
+             <td className="px-4 py-4">
 
-                      setEditandoPaciente(p);
+  <div className="flex gap-2 justify-center">
 
-                      setShowEditForm(true);
+    <button
+      onClick={() => verHistorial(p)}
+      className="
+        bg-green-500
+        hover:bg-green-600
+        text-white
+        px-4
+        py-2
+        rounded-xl
+        font-bold
+      "
+    >
+      Historial
+    </button>
 
-                    }}
-                    className="
-                      bg-blue-500
-                      hover:bg-blue-600
-                      text-white
-                      px-4
-                      py-2
-                      rounded-xl
-                      font-bold
-                      transition
-                      w-full
-                      sm:w-auto
-                    "
-                  >
-                    Editar
-                  </button>
+    <button
+      onClick={() => {
+        setEditandoPaciente(p);
+        setShowEditForm(true);
+      }}
+      className="
+        bg-blue-500
+        hover:bg-blue-600
+        text-white
+        px-4
+        py-2
+        rounded-xl
+        font-bold
+      "
+    >
+      Editar
+    </button>
 
-                  <button
-                    onClick={() => {
+    <button
+      onClick={() => {
+        setPacienteEliminar(p);
+        setShowDeleteModal(true);
+      }}
+      className="
+        bg-red-500
+        hover:bg-red-600
+        text-white
+        px-4
+        py-2
+        rounded-xl
+        font-bold
+      "
+    >
+      Inhabilitar
+    </button>
 
-                      setPacienteEliminar(p);
+  </div>
 
-                      setShowDeleteModal(true);
+</td>
 
-                    }}
-                    className="
-                      bg-red-500
-                      hover:bg-red-600
-                      text-white
-                      px-4
-                      py-2
-                      rounded-xl
-                      font-bold
-                      transition
-                      w-full
-                      sm:w-auto
-                    "
-                  >
-                    Inhabilitar
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
+            </tr>
 
           ))}
 
-        </div>
+        </tbody>
 
-      )}
+      </table>
+
+    </div>
+
+  </div>
+
+)}
 
       {/* MODAL REGISTRAR */}
       {showForm && (
@@ -585,6 +691,70 @@ export default function ModuloPacientes() {
         </div>
 
       )}
+      {showHistorial && (
+
+  <div
+    className="
+      fixed
+      inset-0
+      bg-black/50
+      flex
+      items-center
+      justify-center
+      z-50
+      p-4
+    "
+  >
+
+    <div
+      className="
+        relative
+        w-full
+        max-w-5xl
+        max-h-[95vh]
+        overflow-y-auto
+      "
+    >
+
+      <button
+        onClick={() => {
+
+          setShowHistorial(false);
+
+          setPacienteHistorial(null);
+
+          setHistorialPaciente(null);
+
+        }}
+        className="
+          absolute
+          top-3
+          right-3
+          w-10
+          h-10
+          rounded-full
+          bg-white
+          shadow
+          font-bold
+          z-10
+        "
+      >
+        ✕
+      </button>
+
+      <HistorialClinico
+        paciente={pacienteHistorial}
+        historial={historialPaciente}
+          onActualizado={() =>
+    recargarHistorial(pacienteHistorial.id)
+  }
+      />
+
+    </div>
+
+  </div>
+
+)}
 
       {/* MODAL ELIMINAR */}
       {showDeleteModal && (

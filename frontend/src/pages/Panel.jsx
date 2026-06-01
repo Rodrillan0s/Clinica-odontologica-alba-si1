@@ -20,7 +20,7 @@ import ModuloInventario from "../components/UIs/ModuloInventario";
 import RegistrarEntradas from "../components/UIs/RegistrarEntradas"; 
 import RegistrarSalidas from "../components/UIs/RegistrarSalidas"; // <-- Adición exclusiva: Importamos el componente del CU27
 import AjustarInventario from "../components/UIs/AjustarInventario"; // <-- Adición exclusiva: Importamos el componente del CU28
-
+import ModuloPersonal from "../components/UIs/ModuloPersonal";
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
   ADMINISTRADOR: 1,
@@ -256,6 +256,12 @@ export default function Panel() {
             <AjustarInventario />
           )}
 
+          {/* PERSONAL */}
+          {activeMenu === "Gestión de Personal" &&
+          userRolId === ROLES.ADMINISTRADOR && (
+            <ModuloPersonal />
+          )}
+
           {/* MÓDULO EN DESARROLLO */}
           {![
             "Panel de Control",
@@ -263,6 +269,7 @@ export default function Panel() {
             "Cambiar contraseña",
             "Pacientes",
             "Bitácora",
+            "Gestión de Personal",
             "Citas",
             "Gestionar Inventario",
             "Registrar Entradas",
