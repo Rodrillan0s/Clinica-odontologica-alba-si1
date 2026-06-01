@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -6,27 +6,36 @@ const API_URL = import.meta.env.VITE_API_URL;
 export default function RegistrarSalidas() {
   const user = useAuthStore((state) => state.user);
 
-  // Estados de carga de datos maestros
+  // Estados de carga de datos maestros (Panel de Inspección Izquierdo)
   const [materiales, setMateriales] = useState([]);
   const [lotes, setLotes] = useState([]);
   const [loadingMateriales, setLoadingMateriales] = useState(true);
   const [loadingLotes, setLoadingLotes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Estado de control para el Acordeón del Buscador Izquierdo
+  const [selectedMaterialId, setSelectedMaterialId] = useState(null);
+
   // Estados de notificaciones en pantalla
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Estado unificado del Formulario Transaccional (CU27)
+  // Estado unificado del Formulario Transaccional (Ficha Derecha context-locked)
   const [form, setForm] = useState({
     id_material: "",
     id_lote: "",
     cantidad: "",
-    motivo: "VENCIMIENTO", // Valor por defecto lógico
+    motivo: "VENCIMIENTO",
   });
 
-  // Estado de control para validación dinámica en caliente
-  const [maxStockDisponible, setMaxStockDisponible] = useState(0);
+  // Metadatos ampliados para el control informativo del lote a retirar
+  const [metaSalida, setMetaSalida] = useState({
+    nombre_material: "",
+    nombre_proveedor: "",
+    stock_inicial: null,
+    stock_teorico: null,
+    fecha_caducidad: null,
+  });
 
   // Configuración de cabeceras seguras estándar de tu proyecto
   const getFetchConfig = (method = "GET", body = null) => {
@@ -51,15 +60,14 @@ export default function RegistrarSalidas() {
       setErrorMsg("");
       const res = await fetch(`${API_URL}/materiales`, getFetchConfig("GET"));
       const result = await res.json();
-
       if (result.success) {
         setMateriales(result.data);
       } else {
-        setErrorMsg("Error al sincronizar el catálogo base de materiales.");
+        setErrorMsg("Error al cargar datos.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error de red al conectar con el inventario maestro.");
+      setErrorMsg("Error de conexión con el servidor.");
     } finally {
       setLoadingMateriales(false);
     }
@@ -70,79 +78,63 @@ export default function RegistrarSalidas() {
   }, []);
 
   // ==========================================
-  // 2. DETECTOR REACTIVO: SELECCIÓN DE MATERIAL -> CARGAR LOTES
+  // 2. DETECTOR REACTIVO: SELECCIÓN DE MATERIAL -> CARGAR LOTES HISTÓRICOS
   // ==========================================
-  const handleMaterialChange = async (e) => {
-    const selectedMaterialId = e.target.value;
-
-    setLotes([]);
-    setMaxStockDisponible(0);
-    setForm((prev) => ({
-      ...prev,
-      id_material: selectedMaterialId,
-      id_lote: "",
-      cantidad: "",
-    }));
-
-    if (!selectedMaterialId) return;
+  const handleInspectMaterial = async (id_material) => {
+    if (selectedMaterialId === id_material) {
+      setSelectedMaterialId(null);
+      setLotes([]);
+      return;
+    }
 
     try {
+      setSelectedMaterialId(id_material);
       setLoadingLotes(true);
+      setLotes([]);
       setErrorMsg("");
       
-      // CORREGIDO: Añadimos ?todo=true para mapear la trazabilidad completa, incluso si los lotes quedaron en cero (0)
-      const res = await fetch(
-        `${API_URL}/inventario/lotes/${selectedMaterialId}?todo=true`,
-        getFetchConfig("GET")
-      );
+      const res = await fetch(`${API_URL}/inventario/lotes/${id_material}?todo=true`, getFetchConfig("GET"));
       const result = await res.json();
 
       if (result.success) {
         setLotes(result.data);
       } else {
-        setErrorMsg(result.message || "No se pudieron recuperar los lotes del material.");
+        setErrorMsg(result.message || "Error al cargar los lotes para el material seleccionado.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error al consultar la trazabilidad de lotes en el servidor.");
+      setErrorMsg("Error de conexión con el servidor.");
     } finally {
       setLoadingLotes(false);
     }
   };
 
-  // ==========================================
-  // 3. DETECTOR: CAMBIO DE LOTE -> CAPTURAR TECHO MÁXIMO DE RETIRO
-  // ==========================================
-  const handleLoteChange = (e) => {
-    const selectedLoteId = e.target.value;
-    
-    setForm((prev) => ({ ...prev, id_lote: selectedLoteId, cantidad: "" }));
+  // 3. CAPTURA MECÁNICA DESDE EL MONITOR HACIA LA FICHA DE SALIDA
+  const handleLockLoteToForm = (material, lote) => {
     setErrorMsg("");
+    setSuccessMsg("");
 
-    if (!selectedLoteId) {
-      setMaxStockDisponible(0);
-      return;
-    }
+    setForm({
+      id_material: material.id_material,
+      id_lote: lote.id_lote,
+      cantidad: "",
+      motivo: "VENCIMIENTO",
+    });
 
-    // Buscamos el lote seleccionado dentro de nuestro array en memoria
-    const loteEncontrado = lotes.find((l) => Number(l.id_lote) === Number(selectedLoteId));
-    if (loteEncontrado) {
-      setMaxStockDisponible(Number(loteEncontrado.cantidad_disponible));
-    }
+    setMetaSalida({
+      nombre_material: material.nombre_material,
+      nombre_proveedor: lote.nombre_proveedor,
+      stock_inicial: Number(lote.cantidad_inicial),
+      stock_teorico: Number(lote.cantidad_disponible),
+      fecha_caducidad: lote.fecha_caducidad || "PERMANENTE",
+    });
   };
 
-  // ==========================================
   // 4. ENVÍO DE LA BAJA TRANSACCIONAL (POST)
-  // ==========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
-
-    if (!form.id_lote || !form.cantidad || !form.motivo) {
-      setErrorMsg("Todos los campos marcados son obligatorios.");
-      return;
-    }
 
     const cantidadRetiro = Number(form.cantidad);
 
@@ -151,9 +143,9 @@ export default function RegistrarSalidas() {
       return;
     }
 
-    if (cantidadRetiro > maxStockDisponible) {
+    if (cantidadRetiro > metaSalida.stock_teorico) {
       setErrorMsg(
-        `Operación abortada: No puede retirar ${cantidadRetiro} unidades. El lote seleccionado solo dispone de ${maxStockDisponible} unidades.`
+        `Operación abortada: No puede retirar ${cantidadRetiro} unidades. El lote seleccionado solo dispone de ${metaSalida.stock_teorico} unidades.`
       );
       return;
     }
@@ -171,16 +163,14 @@ export default function RegistrarSalidas() {
       const result = await res.json();
 
       if (result.success) {
-        setSuccessMsg(result.message || "Baja registrada. Historial actualizado");
+        setSuccessMsg(result.message || "Baja registrada cocorrectamente. El inventario ha sido actualizado.");
 
-        setForm({
-          id_material: "",
-          id_lote: "",
-          cantidad: "",
-          motivo: "VENCIMIENTO",
-        });
+        // Limpieza y re-sincronización del workspace
+        setForm({ id_material: "", id_lote: "", cantidad: "", motivo: "VENCIMIENTO" });
+        setMetaSalida({ nombre_material: "", nombre_proveedor: "", stock_inicial: null, stock_teorico: null, fecha_caducidad: null });
+        setSelectedMaterialId(null);
         setLotes([]);
-        setMaxStockDisponible(0);
+        cargarMaterialesMaster();
 
         setTimeout(() => setSuccessMsg(""), 4000);
       } else {
@@ -202,18 +192,15 @@ export default function RegistrarSalidas() {
     );
   }
 
-  // REGLA LOGÍTICA EN CALIENTE: Evaluamos si el material tiene lotes creados pero absolutamente TODOS están en cero
-  const tieneLotesPeroTodosAgotados = lotes.length > 0 && lotes.every((l) => Number(l.cantidad_disponible) === 0);
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* HEADER DE LA COMPONENTE */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <h2 className="text-[#2A5C4D] font-black text-lg uppercase tracking-wide">
-          Registrar Salidas
+          Registrar Salidas de Almacén
         </h2>
         <p className="text-gray-400 text-xs mt-1">
-          En esta sección puedes registrar las salidas o retiros de materiales del inventario. Selecciona el material, el lote específico, la cantidad a retirar y el motivo de la baja.
+          En este apartado puedes gestionar las bajas de inventario por consumo clínico no registrado, vencimientos o ajustes de stock.
         </p>
       </div>
 
@@ -229,147 +216,243 @@ export default function RegistrarSalidas() {
         </div>
       )}
 
-      {/* FORMULARIO CARD PRINCIPAL */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden">
-        <div className="p-6 bg-gray-50/50 border-b border-gray-100">
-          <h3 className="text-[#2A5C4D] font-black text-xs uppercase tracking-widest">
-            Detalles de la salida de material
-          </h3>
+      {/* WORKSPACE DIVIDIDO EN DOS COLUMNAS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* =========================================================
+            PANEL IZQUIERDO (7 COLUMNAS): MONITOR ANALÍTICO DE TRAZA
+            ========================================================= */}
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-4 bg-gray-50/60 border-b border-gray-100">
+            <h3 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest">
+              Insumos disponibles en el almacén
+            </h3>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-gray-50/40 border-b border-gray-100 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="py-3 px-4">Descripción Insumo</th>
+                  <th className="py-3 px-4 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {materiales.map((m) => (
+                  <Fragment key={m.id_material}>
+                    <tr className={`hover:bg-gray-50/40 transition-colors ${selectedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
+                      <td className="py-3.5 px-4 font-bold text-[#2A5C4D] uppercase tracking-wide">
+                        {m.nombre_material} {m.expirable ? "⏳" : "📦"}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleInspectMaterial(m.id_material)}
+                          className={`font-black text-[9px] uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all ${
+                            selectedMaterialId === m.id_material
+                              ? "bg-[#2A5C4D] text-white border-[#2A5C4D]"
+                              : "text-[#148F77] bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {selectedMaterialId === m.id_material ? "✕ Ocultar" : "Consultar Lotes"}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* ACORDEÓN DESPLEGABLE DE LOTES CON BALANCES */}
+                    {selectedMaterialId === m.id_material && (
+                      <tr>
+                        <td colSpan="2" className="bg-gray-50/40 px-4 py-3 border-y border-gray-100">
+                          <div className="bg-white rounded-xl border border-gray-100 p-3 space-y-2 animate-fadeIn shadow-inner">
+                            {loadingLotes ? (
+                              <div className="text-center py-4 text-[#148F77] font-bold text-[10px] uppercase tracking-widest animate-pulse">
+                                Cargando lotes...
+                              </div>
+                            ) : lotes.length === 0 ? (
+                              <div className="text-center py-4 text-gray-400 font-medium text-[10px]">
+                                No se encontraron lotes para este insumo.
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {lotes.map((l) => (
+                                  <div 
+                                    key={l.id_lote} 
+                                    className={`p-2.5 rounded-xl border flex justify-between items-center text-[11px] font-semibold transition-all ${
+                                      Number(form.id_lote) === Number(l.id_lote)
+                                        ? "bg-red-50/60 border-red-300 shadow-sm"
+                                        : "bg-gray-50/50 border-gray-100 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    <div className="space-y-0.5">
+                                      <div className="text-gray-700 font-bold flex items-center gap-1.5">
+                                        LOTE #{l.id_lote}
+                                        {Number(l.cantidad_disponible) === 0 && (
+                                          <span className="bg-red-100 text-red-600 font-black text-[8px] px-1.5 py-0.5 rounded uppercase">AGOTADO</span>
+                                        )}
+                                      </div>
+                                      <div className="text-[9px] text-gray-400 uppercase tracking-wide">
+                                        VENCE: <span className="text-gray-600 font-bold">{l.fecha_caducidad || "PERMANENTE"}</span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* SECCIÓN ANALÍTICA DE CONTRASTE AL PASO */}
+                                    <div className="flex items-center gap-4">
+                                      <div className="flex flex-col text-right text-[10px] space-y-0.5 font-bold">
+                                        <span className="text-gray-400">COMPRADO: <strong className="text-gray-500">{l.cantidad_inicial} u.</strong></span>
+                                        <span className="text-gray-400">DISPONIBLE: <strong className={Number(l.cantidad_disponible) > 0 ? "text-emerald-600" : "text-red-400"}>{l.cantidad_disponible} u.</strong></span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        disabled={Number(l.cantidad_disponible) === 0}
+                                        onClick={() => handleLockLoteToForm(m, l)}
+                                        className={`px-3 py-1.5 font-black text-[9px] uppercase tracking-widest rounded-lg transition-all ${
+                                          Number(l.cantidad_disponible) === 0
+                                            ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                                            : Number(form.id_lote) === Number(l.id_lote)
+                                              ? "bg-red-600 text-white shadow-sm"
+                                              : "bg-[#148F77] text-white hover:bg-[#117A65]"
+                                        }`}
+                                      >
+                                        {Number(form.id_lote) === Number(l.id_lote) ? "En proceso" : "Retirar"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          
-          {/* 1. SELECCIONAR MATERIAL */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Seleccionar Insumo Clínico *
-            </label>
-            <select
-              required
-              value={form.id_material}
-              onChange={handleMaterialChange}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
-            >
-              <option value="">-- SELECCIONE MATERIAL --</option>
-              {materiales.map((m) => (
-                <option key={m.id_material} value={m.id_material}>
-                  {m.nombre_material} {m.expirable ? " (Monitoreado Vencimiento)" : " (Insumo Fijo)"}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 2. SELECCIONAR LOTE ESPECÍFICO (DINÁMICO CON TRAZABILIDAD) */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Seleccionar Lote Físico de Procedencia *
-            </label>
+        {/* =========================================================
+            PANEL DERECHO (5 COLUMNAS): FICHA TRANSACCIONAL CONTEXTUAL
+            ========================================================= */}
+        <div className="lg:col-span-5">
+          {metaSalida.stock_teorico === null ? (
             
-            <select
-              required
-              disabled={!form.id_material || loadingLotes || lotes.length === 0}
-              value={form.id_lote}
-              onChange={handleLoteChange}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              {loadingLotes ? (
-                <option value="">Cargando trazabilidad de lotes activos...</option>
-              ) : !form.id_material ? (
-                <option value="">-- Primero debe elegir un material de la lista superior --</option>
-              ) : lotes.length === 0 ? (
-                <option value="">-- No existen registros de lotes históricos para este ítem --</option>
-              ) : (
-                <>
-                  <option value="">-- Seleccione el lote damnificado/a retirar --</option>
-                  {lotes.map((l) => (
-                    <option key={l.id_lote} value={l.id_lote}>
-                      LOTE #{l.id_lote} ➔ STOCK ACTUAL: {l.cantidad_disponible} u. {Number(l.cantidad_disponible) === 0 ? "(AGOTADO)" : ""} | VENCE: {l.fecha_caducidad || "PERMANENTE"} | PROV: {l.nombre_proveedor}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-
-            {/* ERROR A: El material es nuevo y nunca ha tenido un lote registrado en la historia clínica */}
-            {form.id_material && !loadingLotes && lotes.length === 0 && (
-              <p className="text-amber-600 bg-amber-50 border border-amber-100 text-[10px] p-3 rounded-lg mt-1 font-medium animate-fadeIn">
-                ⚠️ Alerta relacional: Este material no cuenta con ningún lote asociado. Primero debe registrar una Entrada (CU26) para asignarle stock y un proveedor base.
+            /* ESTADO VACÍO (EMPTY STATE DE INSTRUCCIÓN) */
+            <div className="bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 p-8 text-center text-gray-400 space-y-3">
+              <div className="text-2xl">-</div>
+              <h4 className="font-black text-xs uppercase tracking-widest text-red-700/80">Retiro de insumos/ajustes de stock</h4>
+              <p className="text-[11px] leading-relaxed max-w-xs mx-auto">
+                Seleccione un lote activo para iniciar el proceso de retiro de inventario. Aquí podrá registrar bajas por consumo clínico, vencimientos o ajustes de stock no registrados.
               </p>
-            )}
+            </div>
+          ) : (
+            
+            /* FORMULARIO DE CONCILIACIÓN DESBLOQUEADO */
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden animate-slideUp">
+              <div className="p-4 bg-red-500/5 border-b border-red-100 px-6 flex justify-between items-center">
+                <h3 className="text-red-700 font-black text-[10px] uppercase tracking-widest">
+                  N° Lote #{form.id_lote} - {metaSalida.nombre_material}
+                </h3>
+                <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                  RETIRO
+                </span>
+              </div>
 
-            {/* ERROR B: CORREGIDO E INTELIGENTE: Los lotes existen pero están todos vacíos (Saldos en 0) */}
-            {form.id_material && !loadingLotes && tieneLotesPeroTodosAgotados && (
-              <p className="text-red-600 bg-red-50 border border-red-100 text-[10px] p-3 rounded-lg mt-1 font-medium animate-fadeIn">
-                ❌ Alerta de Almacén: Todos los lotes registrados para este insumo se encuentran totalmente AGOTADOS (Stock: 0 u.). Si desea corregir una discrepancia física, utilice el módulo de Ajustar Inventario.
-              </p>
-            )}
-          </div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                
+                {/* TARJETA INFORMATIVA FIJA CON EL ESTADO COMPLETO DEL LOTE */}
+                <div className="space-y-1.5 bg-gray-50 p-4 rounded-xl border border-gray-100 text-[11px]">
+                  <div>
+                    <span className="text-gray-400 uppercase text-[9px] font-bold block">Insumo a Retirar:</span>
+                    <span className="text-[#2A5C4D] font-black uppercase text-xs">{metaSalida.nombre_material}</span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200/60 flex justify-between text-gray-400 text-[10px] font-bold">
+                    <div className="flex flex-col">
+                      <span>PROVEEDOR: <strong className="text-gray-600 uppercase">{metaSalida.nombre_proveedor}</strong></span>
+                      <span>CADUCIDAD: <strong className="text-amber-700">{metaSalida.fecha_caducidad}</strong></span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span>COMPRA: <strong className="text-gray-600">{metaSalida.stock_inicial} u.</strong></span>
+                      <span>EXISTENCIAS: <strong className="text-emerald-600">{metaSalida.stock_teorico} u.</strong></span>
+                    </div>
+                  </div>
+                </div>
 
-          {/* INDICADOR EN VIVO DEL STOCK DISPONIBLE */}
-          {form.id_lote && (
-            <div className={`p-3 text-[10px] rounded-xl font-bold flex justify-between items-center animate-fadeIn ${
-              maxStockDisponible > 0 ? "bg-emerald-50 border border-emerald-200 text-[#148F77]" : "bg-red-50 border border-red-200 text-red-600"
-            }`}>
-              <span>STOCK EN ESTANTE DEL LOTE SELECCIONADO:</span>
-              <span className={`px-3 py-1 rounded-full font-black text-white ${maxStockDisponible > 0 ? "bg-[#148F77]" : "bg-red-500"}`}>
-                {maxStockDisponible} Unidades Disponibles
-              </span>
+                {/* VISUALIZADOR REVOLUCIONARIO DE PROYECCIÓN POST-DESPACHO */}
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center text-[11px] font-bold">
+                  <span className="text-gray-400 uppercase text-[9px] tracking-widest">Existencias proyectadas:</span>
+                  {form.cantidad === "" ? (
+                    <span className="text-gray-500">{metaSalida.stock_teorico} unidades</span>
+                  ) : (metaSalida.stock_teorico - Number(form.cantidad)) < 0 ? (
+                    <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100 font-black">Stock Insuficiente</span>
+                  ) : (
+                    <span className="text-[#148F77] bg-emerald-50 px-3 py-0.5 rounded-full border border-emerald-100 font-black text-xs">
+                      {metaSalida.stock_teorico - Number(form.cantidad)} unidades
+                    </span>
+                  )}
+                </div>
+
+                {/* SELECCIÓN DEL MOTIVO */}
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
+                    Motivo o Justificación del Retiro *
+                  </label>
+                  <select
+                    required
+                    value={form.motivo}
+                    onChange={(e) => setForm({ ...form, motivo: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                  >
+                    <option value="VENCIMIENTO">PRODUCTO EXPIRADO / CADUCADO</option>
+                    <option value="DAÑO / ROTURA">MATERIAL DAÑADO / ROTURA</option>
+                    <option value="CONSUMO CLÍNICO">DESPACHO NO REGISTRADO</option>
+                    <option value="MERMA DE CONTROL">AJUSTE POR CONTROL DE CALIDAD</option>
+                  </select>
+                </div>
+
+                {/* INPUT DE CANTIDAD A DISMINUIR */}
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
+                    Cantidad de Unidades a Dar de Baja *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    max={metaSalida.stock_teorico}
+                    placeholder={`Máximo a retirar de estantes: ${metaSalida.stock_teorico}`}
+                    value={form.cantidad}
+                    onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-red-500 font-semibold"
+                  />
+                </div>
+
+                {/* ACCIONES DE LA ORDEN */}
+                <div className="pt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({ id_material: "", id_lote: "", cantidad: "", motivo: "VENCIMIENTO" });
+                      setMetaSalida({ nombre_material: "", nombre_proveedor: "", stock_inicial: null, stock_teorico: null, fecha_caducidad: null });
+                    }}
+                    className="py-3 px-4 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting || form.cantidad === "" || (metaSalida.stock_teorico - Number(form.cantidad)) < 0}
+                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md shadow-red-900/10 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+                  >
+                    {submitting ? "Descontando del Almacén..." : "✕ Confirmar Baja del Lote"}
+                  </button>
+                </div>
+
+              </form>
             </div>
           )}
+        </div>
 
-          {/* 3. MOTIVO DEL RETIRO */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Motivo o Justificación del Retiro *
-            </label>
-            <select
-              required
-              disabled={maxStockDisponible === 0}
-              value={form.motivo}
-              onChange={(e) => setForm({ ...form, motivo: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold disabled:bg-gray-100"
-            >
-              <option value="VENCIMIENTO">PRODUCTO EXPIRED / CADUCADO</option>
-              <option value="DAÑO / ROTURA">MATERIAL DAÑADO / ROTURA EN ESTANTE</option>
-              <option value="CONSUMO CLÍNICO">DESPACHO DIARIO PARA TRATAMIENTOS</option>
-              <option value="MERMA DE CONTROL">AJUSTE POR CONTROL INTERNO DE CALIDAD</option>
-            </select>
-          </div>
-
-          {/* 4. CANTIDAD A RETIRAR */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Cantidad de Unidades a Dar de Baja *
-            </label>
-            <input
-              type="number"
-              required
-              min="1"
-              max={maxStockDisponible || undefined}
-              disabled={maxStockDisponible === 0}
-              placeholder={maxStockDisponible > 0 ? `Máximo a retirar: ${maxStockDisponible}` : "Lote sin existencias disponibles"}
-              value={form.cantidad}
-              onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold disabled:bg-gray-100 disabled:cursor-not-allowed"
-            />
-          </div>
-
-          {/* BOTÓN CRÍTICO DE EJECUCIÓN */}
-          <div className="pt-4 border-t border-gray-50">
-            <button
-              type="submit"
-              disabled={submitting || maxStockDisponible === 0}
-              className={`w-full py-4 text-white rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-md ${
-                submitting || maxStockDisponible === 0
-                  ? "bg-gray-300 cursor-not-allowed shadow-none"
-                  : "bg-red-500 hover:bg-red-600 shadow-red-900/10"
-              }`}
-            >
-              {submitting ? "Descontando del Almacén..." : "✕ Confirmar Baja del Lote"}
-            </button>
-          </div>
-
-        </form>
       </div>
     </div>
   );

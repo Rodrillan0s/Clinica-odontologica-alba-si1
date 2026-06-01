@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -6,21 +6,28 @@ const API_URL = import.meta.env.VITE_API_URL;
 export default function RegistrarEntradas() {
   const user = useAuthStore((state) => state.user);
 
+  // Estados de carga de datos maestros (Panel Inspector Izquierdo)
   const [materiales, setMateriales] = useState([]);
   const [proveedores, setProveedores] = useState([]);
+  const [lotesHistoricos, setLotesHistoricos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingLotes, setLoadingLotes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Estados de control para el Acordeón del Buscador Izquierdo
+  const [selectedMaterialId, setSelectedMaterialId] = useState(null);
 
+  // Estados de notificaciones en pantalla
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-
+  // Estados del Modal Express para Proveedores
   const [showProvModal, setShowProvModal] = useState(false);
   const [nuevoProvNombre, setNuevoProvNombre] = useState("");
   const [nuevoProvTelefono, setNuevoProvTelefono] = useState(""); 
   const [provSubmitting, setProvSubmitting] = useState(false);
 
+  // Estado unificado del Formulario Transaccional (Ficha Derecha context-locked)
   const [form, setForm] = useState({
     id_material: "",
     cantidad: "",
@@ -30,7 +37,9 @@ export default function RegistrarEntradas() {
   });
 
   const [isMaterialExpirable, setIsMaterialExpirable] = useState(false);
+  const [selectedMaterialNombre, setSelectedMaterialNombre] = useState("");
 
+  // Configuración de cabeceras seguras estándar del proyecto
   const getFetchConfig = (method = "GET", body = null) => {
     const config = {
       method,
@@ -44,7 +53,9 @@ export default function RegistrarEntradas() {
     return config;
   };
 
-  // Carga de catálogos
+  // ==========================================
+  // 1. CARGA INICIAL DE CATÁLOGOS MASTER
+  // ==========================================
   const cargarCatalogosMaster = async () => {
     try {
       setLoading(true);
@@ -62,11 +73,11 @@ export default function RegistrarEntradas() {
       if (dataProv.success) setProveedores(dataProv.data);
 
       if (!dataMat.success || !dataProv.success) {
-        setErrorMsg("Error al cargar los materiales o proveedores. Intente recargar la página.");
+        setErrorMsg("Error al cargar datos.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error al conectar con el servidor");
+      setErrorMsg("Error al conectar con el servidor!");
     } finally {
       setLoading(false);
     }
@@ -76,37 +87,59 @@ export default function RegistrarEntradas() {
     cargarCatalogosMaster();
   }, []);
 
-  const handleMaterialChange = (e) => {
-    const selectedId = e.target.value;
-    setForm((prev) => ({
-      ...prev,
-      id_material: selectedId,
-      fecha_fabricacion: "",
-      fecha_caducidad: "",
-    }));
 
-    if (!selectedId) {
+  // 2. DETECTOR: SELECCIÓN DE MATERIAL EN TABLA
+  const handleInspectMaterial = async (material) => {
+    if (selectedMaterialId === material.id_material) {
+      setSelectedMaterialId(null);
+      setLotesHistoricos([]);
       setIsMaterialExpirable(false);
+      setSelectedMaterialNombre("");
+      setForm({ id_material: "", cantidad: "", fecha_fabricacion: "", fecha_caducidad: "", id_proveedor: "" });
       return;
     }
 
-    const materialSeleccionado = materiales.find(
-      (m) => Number(m.id_material) === Number(selectedId)
-    );
+    try {
+      setSelectedMaterialId(material.id_material);
+      setSelectedMaterialNombre(material.nombre_material);
+      setIsMaterialExpirable(!!material.expirable);
+      setLoadingLotes(true);
+      setLotesHistoricos([]);
+      setErrorMsg("");
 
-    if (materialSeleccionado) {
-      setIsMaterialExpirable(!!materialSeleccionado.expirable);
+      // Inicializamos los campos base del formulario contextual derecho
+      setForm({
+        id_material: material.id_material,
+        cantidad: "",
+        fecha_fabricacion: "",
+        fecha_caducidad: "",
+        id_proveedor: "",
+      });
+
+      // Consultamos la función f_obtener_lotes_material del motor
+      const res = await fetch(`${API_URL}/inventario/lotes/${material.id_material}?todo=true`, getFetchConfig("GET"));
+      const result = await res.json();
+
+      if (result.success) {
+        setLotesHistoricos(result.data);
+      } else {
+        setErrorMsg(result.message || "No se pudieron cargar los lotes para este material.");
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Error al conectar con el servidor");
+    } finally {
+      setLoadingLotes(false);
     }
   };
 
-  // ACCIÓN: GUARDAR PROVEEDOR 
+  // 3. ACCIÓN EXPRESS: GUARDAR NUEVO PROVEEDOR
   const handleGuardarProveedorExpress = async (e) => {
     e.preventDefault();
     if (!nuevoProvNombre.trim()) return;
 
     try {
       setProvSubmitting(true);
-      
       const payloadProv = {
         nombre_proveedor: nuevoProvNombre.trim(),
         telefono: nuevoProvTelefono.trim() || null 
@@ -116,76 +149,96 @@ export default function RegistrarEntradas() {
       const result = await res.json();
 
       if (result.success) {
-        // Refrescar combo
         const resProv = await fetch(`${API_URL}/proveedores`, getFetchConfig("GET"));
         const dataProv = await resProv.json();
         if (dataProv.success) setProveedores(dataProv.data);
 
-        // Limpieza y cierre
         setNuevoProvNombre("");
         setNuevoProvTelefono("");
         setShowProvModal(false);
-        setSuccessMsg("Proveedor añadido al catálogo correctamente");
+        setSuccessMsg("Proveedor añadido con éxito.");
         setTimeout(() => setSuccessMsg(""), 3000);
       } else {
         alert(result.message || "No se pudo registrar al proveedor");
       }
     } catch (err) {
       console.error(err);
-      alert("Error al conectar con el servidor maestro de proveedores");
+      alert("Error al conectar con el servidor.");
     } finally {
       setProvSubmitting(false);
     }
   };
 
-  // Enviar Transacción Entrada
+  // ENVIAR ENTRADA (POST) - CON VALIDACIONES DE FECHAS
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
 
     if (!form.id_material || !form.cantidad) {
-      setErrorMsg("El material y la cantidad son campos obligatorios para registrar una entrada.");
+      setErrorMsg("Por favor, complete los campos obligatorios: Material y Cantidad.");
       return;
     }
 
     if (Number(form.cantidad) <= 0) {
-      setErrorMsg("La cantidad de unidades a ingresar deben ser mayor a cero.");
+      setErrorMsg("La cantidad de unidades a ingresar debe ser mayor a cero.");
       return;
     }
 
-    if (isMaterialExpirable && (!form.fecha_fabricacion || !form.fecha_caducidad)) {
-      setErrorMsg("Este insumo es expirable. Debe ingresar las fechas de fabricación y caducidad.");
-      return;
+    if (isMaterialExpirable) {
+      if (!form.fecha_fabricacion || !form.fecha_caducidad) {
+        setErrorMsg("Para materiales expirables, las fechas de fabricación y caducidad son obligatorias.");
+        return;
+      }
+      
+      // VALIDACIÓN: fecha de fabricación no puede ser mayor a fecha de vencimiento
+      if (form.fecha_fabricacion > form.fecha_caducidad) {
+        setErrorMsg("La fecha de fabricación no puede ser posterior a la fecha de vencimiento.");
+        return;
+      }
+      
+      // VALIDACIÓN: fecha de fabricación no puede ser futura
+      const hoy = new Date().toISOString().split('T')[0];
+      if (form.fecha_fabricacion > hoy) {
+        setErrorMsg("La fecha de fabricación no puede ser una fecha futura.");
+        return;
+      }
+      
+      // VALIDACIÓN: fecha de vencimiento no puede ser pasada (opcional, según regla de negocio)
+      if (form.fecha_caducidad < hoy) {
+        setErrorMsg("La fecha de vencimiento no puede ser una fecha pasada.");
+        return;
+      }
     }
-
-    setSubmitting(true);
-
-    const payload = {
-      id_material: Number(form.id_material),
-      cantidad: Number(form.cantidad),
-      fecha_fabricacion: isMaterialExpirable && form.fecha_fabricacion ? form.fecha_fabricacion : null,
-      fecha_caducidad: isMaterialExpirable && form.fecha_caducidad ? form.fecha_caducidad : null,
-      id_proveedor: form.id_proveedor ? Number(form.id_proveedor) : null,
-    };
 
     try {
+      setSubmitting(true);
+      const payload = {
+        id_material: Number(form.id_material),
+        cantidad: Number(form.cantidad),
+        fecha_fabricacion: isMaterialExpirable && form.fecha_fabricacion ? form.fecha_fabricacion : null,
+        fecha_caducidad: isMaterialExpirable && form.fecha_caducidad ? form.fecha_caducidad : null,
+        id_proveedor: form.id_proveedor ? Number(form.id_proveedor) : null,
+        nombre_material: selectedMaterialNombre
+      };
+
       const res = await fetch(`${API_URL}/inventario/entrada`, getFetchConfig("POST", payload));
       const result = await res.json();
 
       if (result.success) {
-        setSuccessMsg(result.message || "Entrada de almacén registrada.");
-        setForm({
-          id_material: "",
-          cantidad: "",
-          fecha_fabricacion: "",
-          fecha_caducidad: "",
-          id_proveedor: "",
-        });
+        setSuccessMsg(result.message || "Entrada registrada exitosamente.");
+        
+        // Limpieza total y cierre
+        setForm({ id_material: "", cantidad: "", fecha_fabricacion: "", fecha_caducidad: "", id_proveedor: "" });
         setIsMaterialExpirable(false);
+        setSelectedMaterialId(null);
+        setSelectedMaterialNombre("");
+        setLotesHistoricos([]);
+        cargarCatalogosMaster();
+
         setTimeout(() => setSuccessMsg(""), 4000);
       } else {
-        setErrorMsg(result.message || "No se pudo procesar la entrada de almacén.");
+        setErrorMsg(result.message || "No se pudo procesar la entrada. Verifique los datos e intente nuevamente.");
       }
     } catch (err) {
       console.error(err);
@@ -198,20 +251,20 @@ export default function RegistrarEntradas() {
   if (loading) {
     return (
       <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm text-center text-[#148F77] font-black text-xs uppercase tracking-widest animate-pulse">
-        Cargando datos...
+        Cargando Datos...
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* HEADER PRINCIPAL */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <h2 className="text-[#2A5C4D] font-black text-lg uppercase tracking-wide">
           Registrar Entradas al Almacén
         </h2>
         <p className="text-gray-400 text-xs mt-1">
-          Utilice este formulario para registrar la recepción física de materiales e insumos en el almacén. Asegúrese de ingresar datos precisos para garantizar la trazabilidad y control de inventarios.
+          En esta sección, puede registrar la entrada de insumos clínicos al almacén. Seleccione el material que desea ingresar desde el panel izquierdo, complete los detalles en la ficha de ingreso y confirme para actualizar el inventario.
         </p>
       </div>
 
@@ -227,147 +280,238 @@ export default function RegistrarEntradas() {
         </div>
       )}
 
-      {/* FORMULARIO CARD */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden">
-        <div className="p-6 bg-gray-50/50 border-b border-gray-100">
-          <h3 className="text-[#2A5C4D] font-black text-xs uppercase tracking-widest">
-            Detalles de la entrada de material
-          </h3>
+      {/* ARQUITECTURA DE TRABAJO DISTRIBUIDA */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* =========================================================
+            PANEL IZQUIERDO (7 COLUMNAS): EXPLORADOR HISTÓRICO DE STOCK
+            ========================================================= */}
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-4 bg-gray-50/60 border-b border-gray-100">
+            <h3 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest">
+              Insumos Disponibles en Almacén:
+            </h3>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-gray-50/40 border-b border-gray-100 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="py-3 px-4">Descripción de Insumo</th>
+                  <th className="py-3 px-4 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {materiales.map((m) => (
+                  <Fragment key={m.id_material}>
+                    <tr className={`hover:bg-gray-50/40 transition-colors ${selectedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
+                      <td className="py-3.5 px-4 font-bold text-[#2A5C4D] uppercase tracking-wide">
+                        {m.nombre_material}
+                        <span className={`inline-block ml-2 px-2 py-0.5 rounded text-[8px] font-black uppercase ${m.expirable ? "bg-amber-50 text-amber-600 border border-amber-100" : "bg-blue-50 text-blue-600 border border-blue-100"}`}>
+                          {m.expirable ? "Expirable" : "Permanente"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleInspectMaterial(m)}
+                          className={`font-black text-[9px] uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all ${
+                            selectedMaterialId === m.id_material
+                              ? "bg-[#2A5C4D] text-white border-[#2A5C4D]"
+                              : "text-[#148F77] bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {selectedMaterialId === m.id_material ? "✕ Cancelar" : "Registrar Entrada"}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* DESGLOSE ANALÍTICO DE TRAZABILIDAD DE LOTES PREVIOS */}
+                    {selectedMaterialId === m.id_material && (
+                      <tr>
+                        <td colSpan="2" className="bg-gray-50/40 px-4 py-3 border-y border-gray-100">
+                          <div className="bg-white rounded-xl border border-gray-100 p-3 space-y-2 animate-fadeIn shadow-inner">
+                            <div className="text-gray-400 font-bold text-[9px] uppercase tracking-wide border-b border-gray-50 pb-1">
+                              Historial de Lotes para: <span className="text-[#2A5C4D]">{m.nombre_material}</span>
+                            </div>
+                            
+                            {loadingLotes ? (
+                              <div className="text-center py-4 text-[#148F77] font-bold text-[10px] uppercase tracking-widest animate-pulse">
+                                Cargando Lotes...
+                              </div>
+                            ) : lotesHistoricos.length === 0 ? (
+                              <div className="text-center py-4 text-gray-400 font-medium text-[10px]">
+                                No se han registrado entradas previas para este material.
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {lotesHistoricos.map((l) => (
+                                  <div key={l.id_lote} className="p-2.5 bg-gray-50/50 border border-gray-100 rounded-xl flex justify-between items-center text-[10px] font-semibold">
+                                    <div className="space-y-0.5">
+                                      <div className="text-gray-600 font-bold">LOTE #{l.id_lote}</div>
+                                      <div className="text-gray-400 uppercase text-[8px]">PROV: {l.nombre_proveedor}</div>
+                                    </div>
+                                    <div className="flex gap-4 text-gray-400">
+                                      <span>INGRESADOS: <strong className="text-gray-600">{l.cantidad_inicial} u.</strong></span>
+                                      <span>EXISTENCIAS: <strong className="text-[#148F77]">{l.cantidad_disponible} u.</strong></span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          
-          {/* SELECT MATERIALES */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Seleccionar Material o Insumo *
-            </label>
-            <select
-              required
-              value={form.id_material}
-              onChange={handleMaterialChange}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
-            >
-              <option value="">-- Seleccione un elemento--</option>
-              {materiales.map((m) => (
-                <option key={m.id_material} value={m.id_material}>
-                  {m.nombre_material} {m.expirable ? "  - (EXPIRABLE)" : "  - (NO EXPIRABLE)"}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* CANTIDAD */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Cantidad de Unidades a Registrar*
-            </label>
-            <input
-              type="number"
-              required
-              min="1"
-              placeholder="Ej. 100"
-              value={form.cantidad}
-              onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold"
-            />
-          </div>
-
-          {/* FECHAS CONDICIONALES */}
-          {isMaterialExpirable && (
-            <div className="p-5 bg-amber-50/40 rounded-2xl border border-amber-100/70 space-y-4 animate-fadeIn">
-              <div className="border-b border-amber-100/50 pb-2">
-                <h4 className="text-amber-700 font-black text-[10px] uppercase tracking-wider">
-                  Control de Caducidad Requerido
-                </h4>
-                <p className="text-amber-600/80 text-[10px] mt-0.5">
-                  Este material es expirable. Por favor, ingrese las fechas de fabricación y caducidad para garantizar el control de inventario.
-                </p>
+        {/* =========================================================
+            PANEL DERECHO (5 COLUMNAS): FICHA TRANSACCIONAL CONTEXTUAL
+            ========================================================= */}
+        <div className="lg:col-span-5">
+          {!form.id_material ? (
+            
+            /* EMPTY STATE INFORMATIVO */
+            <div className="bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 p-8 text-center text-gray-400 space-y-3">
+              <div className="text-2xl">-</div>
+              <h4 className="font-black text-xs uppercase tracking-widest text-[#2A5C4D]">Registrar Entrada de Material</h4>
+              <p className="text-[11px] leading-relaxed max-w-xs mx-auto">
+                Seleccione un material de la lista y pulse <span className="text-[#148F77] font-bold">"Registrar Entrada"</span> para completar la ficha de ingreso del material seleccionado.
+              </p>
+            </div>
+          ) : (
+            
+            /* FORMULARIO DE INGRESO CONTEXT-LOCKED */
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden animate-slideUp">
+              <div className="p-4 bg-emerald-500/5 border-b border-emerald-100 px-6 flex justify-between items-center">
+                <h3 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest">
+                  Registro de Entrada para: <span className="text-[#148F77]">{selectedMaterialNombre}</span>
+                </h3>
+                <span className="bg-[#148F77] text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider animate-pulse">
+                  Nuevo Lote
+                </span>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                
+                {/* IDENTIFICACIÓN DEL CONTEXTO */}
+                <div className="space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-100 text-[11px]">
+                  <span className="text-gray-400 uppercase text-[9px] font-bold block">Insumo a Recibir:</span>
+                  <span className="text-[#2A5C4D] font-black uppercase text-xs block truncate">{selectedMaterialNombre}</span>
+                </div>
+
+                {/* CANTIDAD A REGISTRAR */}
                 <div className="space-y-1">
-                  <label className="text-amber-800 font-black text-[9px] uppercase tracking-widest">
-                    Fecha de Fabricación *
+                  <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
+                    Cantidad de Unidades a Ingresar *
                   </label>
                   <input
-                    type="date"
-                    required={isMaterialExpirable}
-                    value={form.fecha_fabricacion}
-                    onChange={(e) => setForm({ ...form, fecha_fabricacion: e.target.value })}
-                    className="w-full bg-white border border-amber-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] transition-all font-medium"
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="Ej. 100"
+                    value={form.cantidad}
+                    onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] font-semibold"
                   />
                 </div>
 
+                {/* FECHAS CRONOLÓGICAS (CONDICIONALES EXCLUSIVAS) */}
+                {isMaterialExpirable && (
+                  <div className="p-4 bg-amber-50/50 border border-amber-200 rounded-xl space-y-3 animate-slideUp">
+                    <div className="space-y-1">
+                      <label className="text-amber-800 font-black text-[9px] uppercase tracking-widest">Fecha de Fabricación *</label>
+                      <input
+                        type="date"
+                        required={isMaterialExpirable}
+                        value={form.fecha_fabricacion}
+                        onChange={(e) => setForm({ ...form, fecha_fabricacion: e.target.value })}
+                        className="w-full bg-white border border-amber-200 text-gray-800 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#148F77]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-amber-800 font-black text-[9px] uppercase tracking-widest">Fecha de Vencimiento *</label>
+                      <input
+                        type="date"
+                        required={isMaterialExpirable}
+                        value={form.fecha_caducidad}
+                        onChange={(e) => setForm({ ...form, fecha_caducidad: e.target.value })}
+                        className="w-full bg-white border border-amber-200 text-gray-800 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#148F77]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* SELECT PROVEEDORES + ACCIÓN DIRECTA */}
                 <div className="space-y-1">
-                  <label className="text-amber-800 font-black text-[9px] uppercase tracking-widest">
-                    Fecha de Vencimiento / Caducidad *
-                  </label>
-                  <input
-                    type="date"
-                    required={isMaterialExpirable}
-                    value={form.fecha_caducidad}
-                    onChange={(e) => setForm({ ...form, fecha_caducidad: e.target.value })}
-                    className="w-full bg-white border border-amber-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] transition-all font-medium"
-                  />
+                  <div className="flex justify-between items-center">
+                    <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">Proveedor Distribuidor (Opcional)</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowProvModal(true)}
+                      className="text-[#148F77] bg-emerald-50 hover:bg-emerald-200 font-black text-[8px] uppercase tracking-widest px-5 py-1 rounded border border-emerald-100 transition-all"
+                    >
+                      + REGISTRAR PROVEEDOR
+                    </button>
+                  </div>
+                  <select
+                    value={form.id_proveedor}
+                    onChange={(e) => setForm({ ...form, id_proveedor: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] font-semibold uppercase"
+                  >
+                    <option value=""> SIN PROVEEDOR </option>
+                    {proveedores.map((p) => (
+                      <option key={p.id_proveedor} value={p.id_proveedor}>
+                        {p.nombre_proveedor} {p.telefono ? `(${p.telefono})` : ""}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
+
+                {/* ACCIONES DE ENVÍO */}
+                <div className="pt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMaterialId(null);
+                      setLotesHistoricos([]);
+                      setIsMaterialExpirable(false);
+                      setSelectedMaterialNombre("");
+                      setForm({ id_material: "", cantidad: "", fecha_fabricacion: "", fecha_caducidad: "", id_proveedor: "" });
+                    }}
+                    className="py-3 px-4 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-[#148F77] hover:bg-[#117A65] text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md shadow-emerald-900/10"
+                  >
+                    {submitting ? "Registrando..." : "Confirmar Entrada"}
+                  </button>
+                </div>
+
+              </form>
             </div>
           )}
+        </div>
 
-          {/* SELECT PROVEEDORES + BOTÓN EN CALIENTE */}
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-                Proveedor Distribuidor (Opcional)
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowProvModal(true)}
-                className="text-[#148F77] bg-emerald-50 hover:bg-emerald-100 font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md border border-emerald-100 transition-all"
-              >
-                + Añadir Nuevo
-              </button>
-            </div>
-            <select
-              value={form.id_proveedor}
-              onChange={(e) => setForm({ ...form, id_proveedor: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
-            >
-              <option value=""> SIN PROVEEDOR </option>
-              {proveedores.map((p) => (
-                <option key={p.id_proveedor} value={p.id_proveedor}>
-                  {p.nombre_proveedor} {p.telefono ? `(${p.telefono})` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* BOTÓN REGISTRAR ENTRADA */}
-          <div className="pt-4 border-t border-gray-50">
-            <button
-              type="submit"
-              disabled={submitting}
-              className={`w-full py-4 text-white rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-md ${
-                submitting ? "bg-gray-300 cursor-not-allowed" : "bg-[#148F77] hover:bg-[#117A65]"
-              }`}
-            >
-              {submitting ? "Procesando Asiento en Kardex..." : "✓ Confirmar Entrada Física"}
-            </button>
-          </div>
-        </form>
       </div>
 
       {/* ==========================================
-      MODAL INTERNO EXPRESS PARA PROVEEDOR (ACTUALIZADO)
-      ========================================== */}
+          MODAL INTERNO EXPRESS PARA PROVEEDOR
+          ========================================== */}
       {showProvModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden">
             <div className="p-5 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-              <h4 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest">
-                Registrar Proveedor:
-              </h4>
+              <h4 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest">Registrar Proveedor:</h4>
               <button
                 type="button"
                 onClick={() => setShowProvModal(false)}
@@ -377,42 +521,29 @@ export default function RegistrarEntradas() {
               </button>
             </div>
             <form onSubmit={handleGuardarProveedorExpress} className="p-6 space-y-4">
-              
-              {/* CAMPO NOMBRE */}
               <div className="space-y-1">
-                <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-                  Nombre de la Empresa / Distribuidor *
-                </label>
+                <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">Nombre de la Empresa / Distribuidor *</label>
                 <input
                   type="text"
                   required
-                  maxLength={50} // Evita romper el VARCHAR(50) de tu BD
+                  maxLength={50}
                   placeholder="Ej. DENTAL BOLIVIA SRL"
                   value={nuevoProvNombre}
                   onChange={(e) => setNuevoProvNombre(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] uppercase font-semibold"
                 />
-                <span className="text-gray-300 text-[8px] block text-right font-medium">
-                  {nuevoProvNombre.length}/50 caracteres
-                </span>
               </div>
-
-              {/* CAMPO TELÉFONO */}
               <div className="space-y-1">
-                <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-                  Teléfono de Contacto (Opcional)
-                </label>
+                <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">Teléfono de Contacto (Opcional)</label>
                 <input
                   type="text"
-                  maxLength={20} // Respeta el VARCHAR(20) de tu BD
-                  placeholder="Ej. 77012345 o 3345566"
+                  maxLength={20}
+                  placeholder="Ej. 77012345"
                   value={nuevoProvTelefono}
                   onChange={(e) => setNuevoProvTelefono(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] font-semibold"
                 />
               </div>
-
-              {/* ACCIONES */}
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
@@ -424,7 +555,7 @@ export default function RegistrarEntradas() {
                 <button
                   type="submit"
                   disabled={provSubmitting || !nuevoProvNombre.trim()}
-                  className="flex-1 py-3 bg-[#148F77] text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-[#117A65] disabled:bg-gray-200 transition-all"
+                  className="flex-1 py-3 bg-[#148F77] text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-[#117A65] transition-all"
                 >
                   {provSubmitting ? "Guardando..." : "Guardar"}
                 </button>
