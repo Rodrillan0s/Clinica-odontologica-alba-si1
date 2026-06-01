@@ -51,6 +51,7 @@ def get_procedimiento(id):
         return jsonify({'success': False, 'message': f'Error al obtener procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos', methods=['POST'])
+@permission_required("crear_procedimiento")
 def create_procedimiento():
     """Crea un nuevo procedimiento"""
     data = request.get_json() or {}
@@ -76,6 +77,7 @@ def create_procedimiento():
         return jsonify({'success': False, 'message': f'Error al crear procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos/<int:id>', methods=['PUT'])
+@permission_required("modificar_procedimiento")
 def update_procedimiento(id):
     """Actualiza un procedimiento existente"""
     data = request.get_json() or {}
@@ -101,6 +103,7 @@ def update_procedimiento(id):
         return jsonify({'success': False, 'message': f'Error al actualizar procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos/<int:id>', methods=['DELETE'])
+@permission_required("eliminar_procedimiento")
 def delete_procedimiento(id):
     """Elimina un procedimiento existente"""
     data = request.get_json() or {}
@@ -121,6 +124,7 @@ def delete_procedimiento(id):
         return jsonify({'success': False, 'message': f'Error al eliminar procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos/asignar-todos', methods=['POST'])
+@permission_required("asignar_procedimientos")
 def asignar_procedimientos_todos():
     """Asigna un procedimiento a todos los odontólogos"""
     data = request.get_json() or {}
@@ -143,6 +147,7 @@ def asignar_procedimientos_todos():
         return jsonify({'success': False, 'message': f'Error al asignar procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos/quitar-todos', methods=['POST'])
+@permission_required("asignar_procedimientos")
 def quitar_procedimientos_todos():
     """Quita un procedimiento a todos los odontólogos"""
     data = request.get_json() or {}

@@ -95,7 +95,7 @@ def listar_pacientes():
             FROM {Config.SCHEMA}.t_paciente a
             INNER JOIN {Config.SCHEMA}.t_persona b 
                 ON b.id_persona = a.id_paciente
-            WHERE a.estado = 'ACTIVO'
+            
         """
 
         params = []

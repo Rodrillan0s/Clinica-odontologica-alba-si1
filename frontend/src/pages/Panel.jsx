@@ -261,12 +261,12 @@ export default function Panel() {
           )}
 
           {/* PROCEDIMIENTOS */}
-          {activeMenu === "Procedimientos" && (
+          {activeMenu === "Procedimientos" && userRolId < 5 && (
             <ModuloProcedimientos dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
           )}
 
           {/* REPORTES */}
-          {activeMenu === "Reportes" && (
+          {activeMenu === "Reportes" && userRolId < 5 && (
             <ReporteCitas dataMaster={dataMaster} user={user} />
           )}
 

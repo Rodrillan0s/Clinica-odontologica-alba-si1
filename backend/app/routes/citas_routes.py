@@ -229,6 +229,7 @@ def get_cita(id):
         
 
 @citas_routes.route('/api/citas/odontologos-por-procedimiento/<int:id_procedimiento>', methods=['GET'])
+
 def get_odontologos_por_procedimiento(id_procedimiento):
     try:
         
@@ -247,6 +248,7 @@ def get_odontologos_por_procedimiento(id_procedimiento):
         
 
 @citas_routes.route('/api/citas/reporte_paciente', methods=['GET'])
+@permission_required("generar_reporte_citas")
 def get_reporte_paciente():
     try:
         id_paciente = request.args.get('id_paciente')
@@ -312,6 +314,7 @@ def get_reporte_paciente():
         return jsonify({'success': False, 'message': f'Error al generar reporte: {e}'}), 500
 
 @citas_routes.route('/api/citas/reporte_odontologo', methods=['GET'])
+@permission_required("generar_reporte_citas")
 def get_reporte_odontologo():
     try:
         id_odontologo = request.args.get('id_odontologo')
@@ -374,6 +377,70 @@ def get_reporte_odontologo():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error al generar reporte de odontólogo: {e}'}), 500
+
+@citas_routes.route('/api/citas/reporte_citas_global_paciente', methods=['GET'])
+@permission_required("generar_reporte_citas")
+def get_reporte_citas_global_paciente():
+    try:
+        fecha_desde = request.args.get('fecha_desde') or None
+        fecha_hasta = request.args.get('fecha_hasta') or None
+        
+        query = f"SELECT * FROM {Config.SCHEMA}.f_reporte_resumen_pacientes(%s, %s)"
+        results = db.execute_query(query, (fecha_desde, fecha_hasta), fetchall=True)
+        
+        report_list = []
+        if results:
+            for row in results:
+                report_list.append({
+                    "id_paciente": row[0],
+                    "total_citas": int(row[1]) if row[1] is not None else 0,
+                    "programadas": int(row[2]) if row[2] is not None else 0,
+                    "canceladas": int(row[3]) if row[3] is not None else 0,
+                    "reprogramadas": int(row[4]) if row[4] is not None else 0,
+                    "completadas": int(row[5]) if row[5] is not None else 0,
+                    "no_asistio": int(row[6]) if row[6] is not None else 0
+                })
+                
+        return jsonify({
+            'success': True,
+            'data': report_list
+        }), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error al generar reporte global de pacientes: {e}'}), 500
+
+@citas_routes.route('/api/citas/reporte_citas_global_odontologos', methods=['GET'])
+@permission_required("generar_reporte_citas")
+def get_reporte_citas_global_odontologos():
+    try:
+        fecha_desde = request.args.get('fecha_desde') or None
+        fecha_hasta = request.args.get('fecha_hasta') or None
+        
+        query = f"SELECT * FROM {Config.SCHEMA}.f_reporte_resumen_odontologos(%s, %s)"
+        results = db.execute_query(query, (fecha_desde, fecha_hasta), fetchall=True)
+        
+        report_list = []
+        if results:
+            for row in results:
+                report_list.append({
+                    "id_personal": row[0],
+                    "total_citas": int(row[1]) if row[1] is not None else 0,
+                    "programadas": int(row[2]) if row[2] is not None else 0,
+                    "canceladas": int(row[3]) if row[3] is not None else 0,
+                    "reprogramadas": int(row[4]) if row[4] is not None else 0,
+                    "completadas": int(row[5]) if row[5] is not None else 0,
+                    "no_asistio": int(row[6]) if row[6] is not None else 0
+                })
+                
+        return jsonify({
+            'success': True,
+            'data': report_list
+        }), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error al generar reporte global de odontólogos: {e}'}), 500
 
 @citas_routes.route('/api/citas/disponibilidad', methods=['GET'])
 def get_disponibilidad():
