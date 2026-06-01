@@ -16,11 +16,13 @@ import AgendaCitas from "../components/UIs/AgendaCitas";
 import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
-import ModuloInventario from "../components/UIs/ModuloInventario"; 
-import RegistrarEntradas from "../components/UIs/RegistrarEntradas"; 
+import ModuloInventario from "../components/UIs/ModuloInventario";
+import RegistrarEntradas from "../components/UIs/RegistrarEntradas";
 import RegistrarSalidas from "../components/UIs/RegistrarSalidas"; // <-- Adición exclusiva: Importamos el componente del CU27
 import AjustarInventario from "../components/UIs/AjustarInventario"; // <-- Adición exclusiva: Importamos el componente del CU28
-import ModuloPersonal from "../components/UIs/ModuloPersonal";
+import ModuloPersonal from "../components/UIs/ModuloPersonal";import ModuloProcedimientos from "../components/UIs/ModuloProcedimientos";
+import ReporteCitas from "../components/UIs/ReporteCitas";
+
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
   ADMINISTRADOR: 1,
@@ -104,7 +106,9 @@ export default function Panel() {
 
       const [resProc, resDoc, resUsu, resSalas, resPacientes] =
         await Promise.all([
-          fetch(`${API_URL}/procedimientos`, config).then((r) => r.json()),
+          fetch(`${API_URL}/procedimientos?t=${Date.now()}`, config).then((r) =>
+            r.json(),
+          ),
           fetch(`${API_URL}/odontologos`, config).then((r) => r.json()),
           fetchUsuarios,
           fetch(`${API_URL}/salas`, config).then((r) => r.json()),
@@ -256,6 +260,16 @@ export default function Panel() {
             <AjustarInventario />
           )}
 
+          {/* PROCEDIMIENTOS */}
+          {activeMenu === "Procedimientos" && userRolId < 5 && (
+            <ModuloProcedimientos dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
+          )}
+
+          {/* REPORTES */}
+          {activeMenu === "Reportes" && userRolId < 5 && (
+            <ReporteCitas dataMaster={dataMaster} user={user} />
+          )}
+
           {/* PERSONAL */}
           {activeMenu === "Gestión de Personal" &&
           userRolId === ROLES.ADMINISTRADOR && (
@@ -275,6 +289,8 @@ export default function Panel() {
             "Registrar Entradas",
             "Registrar Salidas", // <-- Adición exclusiva: Desbloqueamos la vista de mermas y bajas
             "Ajustar Inventario", 
+            "Procedimientos",
+            "Reportes"
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>

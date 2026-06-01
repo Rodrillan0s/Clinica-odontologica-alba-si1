@@ -4,7 +4,7 @@ import traceback
 from ..config import db, Config
 from ..classes.security import admin_required, permission_required
 from ..services.bitacora import Bitacora
-from backend.app.services import bitacora
+
 
 paciente_routes = Blueprint('paciente_routes', __name__)
 
@@ -241,7 +241,7 @@ def modificar_paciente(id_paciente):
             commit=True
         )
 
-        bitacora.registrar(
+        Bitacora.registrar(
             "PACIENTE",
             "ACTUALIZAR",
             f"Paciente actualizado: {id_paciente}"
@@ -277,7 +277,7 @@ def inhabilitar_paciente(id_paciente):
 
         query = f"""
             UPDATE {Config.SCHEMA}.t_paciente
-            SET estado = FALSE
+            SET estado = 'INACTIVO'
             WHERE id_paciente = %s
         """
 
@@ -286,7 +286,7 @@ def inhabilitar_paciente(id_paciente):
             (id_paciente,),
             commit=True
         )
-        bitacora.registrar(
+        Bitacora.registrar(
             "PACIENTE",
             "INHABILITAR",
             f"Paciente inhabilitado: {id_paciente}"
@@ -394,7 +394,7 @@ def registrar_historial(id_paciente):
             ),
             commit=True
         )
-        bitacora.registrar(
+        Bitacora.registrar(
             "PACIENTE",
             "REGISTRAR HISTORIAL",
             f"Historial clínico registrado para el paciente: {id_paciente}" 

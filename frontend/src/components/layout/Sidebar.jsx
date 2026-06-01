@@ -175,6 +175,8 @@ export default function Sidebar({
             {openMenus.citas && (
               <div className="mt-2 space-y-2">
                 <MenuButton title="Citas" />
+                {Number(userRolId) < 5 && <MenuButton title="Procedimientos" />}
+                {Number(userRolId) < 5 && <MenuButton title="Reportes" />}
               </div>
             )}
           </div>
