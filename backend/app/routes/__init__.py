@@ -4,3 +4,4 @@ from .citas_routes import citas_routes
 from .usuario_routes import usuario_routes
 from .pacientes_routes import paciente_routes
 from .inventario_routes import inventario_routes
+from .personal_routes import personal_routes
