@@ -51,7 +51,7 @@ def get_procedimiento(id):
         return jsonify({'success': False, 'message': f'Error al obtener procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos', methods=['POST'])
-@permission_required("crear_procedimiento")
+@permission_required("crear_procedimientos")
 def create_procedimiento():
     """Crea un nuevo procedimiento"""
     data = request.get_json() or {}
@@ -77,7 +77,7 @@ def create_procedimiento():
         return jsonify({'success': False, 'message': f'Error al crear procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos/<int:id>', methods=['PUT'])
-@permission_required("modificar_procedimiento")
+@permission_required("modificar_procedimientos")
 def update_procedimiento(id):
     """Actualiza un procedimiento existente"""
     data = request.get_json() or {}
