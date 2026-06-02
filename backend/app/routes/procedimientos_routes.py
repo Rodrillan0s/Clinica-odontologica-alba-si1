@@ -103,7 +103,7 @@ def update_procedimiento(id):
         return jsonify({'success': False, 'message': f'Error al actualizar procedimiento: {e}'}), 500
 
 @procedimientos_routes_routes.route('/api/procedimientos/<int:id>', methods=['DELETE'])
-@permission_required("eliminar_procedimiento")
+@permission_required("eliminar_procedimientos")
 def delete_procedimiento(id):
     """Elimina un procedimiento existente"""
     data = request.get_json() or {}

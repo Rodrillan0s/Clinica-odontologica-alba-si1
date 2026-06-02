@@ -49,32 +49,8 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
     }
   };
 
-  const handleTryDelete = async (proc) => {
-    try {
-      const res = await fetch(`${API_URL}/usuarios/mis-permisos`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Error al verificar permisos");
-      }
-
-      const tienePermiso = data.permisos?.includes("eliminar_procedimiento");
-      if (!tienePermiso) {
-        setNoPermissionMessage("No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador.");
-        setShowNoPermissionModal(true);
-        return;
-      }
-
-      setProcToDelete(proc);
-    } catch (err) {
-      setNoPermissionMessage("No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador.");
-      setShowNoPermissionModal(true);
-    }
+  const handleTryDelete = (proc) => {
+    setProcToDelete(proc);
   };
 
   return (
