@@ -7,11 +7,18 @@ import HistorialClinico from './HistorialClinico';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+
 export default function ModuloPacientes() {
 
   const [pacientes, setPacientes] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem("token");
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`
+  };
+
 
   // MENSAJES VISUALES
   const [mensaje, setMensaje] = useState('');
@@ -45,8 +52,11 @@ const verHistorial = async (paciente) => {
   try {
 
     const res = await fetch(
-      `${API_URL}/pacientes/${paciente.id}/historial`
-    );
+  `${API_URL}/pacientes/${paciente.id}/historial`,
+  {
+    headers
+  }
+);
 
     const data = await res.json();
 
@@ -78,9 +88,11 @@ const recargarHistorial = async (idPaciente) => {
   try {
 
     const res = await fetch(
-      `${API_URL}/pacientes/${idPaciente}/historial`
-    );
-
+  `${API_URL}/pacientes/${idPaciente}/historial`,
+  {
+    headers
+  }
+);
     const data = await res.json();
 
     if (!res.ok || data.success === false) {
@@ -117,7 +129,9 @@ const recargarHistorial = async (idPaciente) => {
         url += `?nombre=${encodeURIComponent(nombre)}`;
       }
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+  headers
+});
 
       const data = await res.json();
 
@@ -160,12 +174,12 @@ const recargarHistorial = async (idPaciente) => {
       setTipoMensaje('');
 
       const res = await fetch(
-        `${API_URL}/pacientes/${pacienteEliminar.id}`,
-        {
-          method: 'DELETE'
-        }
-      );
-
+  `${API_URL}/pacientes/${pacienteEliminar.id}`,
+  {
+    method: 'DELETE',
+    headers
+  }
+);
       const data = await res.json();
 
       if (!res.ok || data.success === false) {

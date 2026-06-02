@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -6,27 +6,35 @@ const API_URL = import.meta.env.VITE_API_URL;
 export default function AjustarInventario() {
   const user = useAuthStore((state) => state.user);
 
-  // Estados de carga de datos maestros
+  // Estados de carga de datos maestros (Panel Inspector Izquierdo)
   const [materiales, setMateriales] = useState([]);
   const [lotes, setLotes] = useState([]);
   const [loadingMateriales, setLoadingMateriales] = useState(true);
   const [loadingLotes, setLoadingLotes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Estado de control para el Acordeón del Buscador Izquierdo
+  const [selectedMaterialId, setSelectedMaterialId] = useState(null);
+
   // Estados de alertas reactivas en la UI
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Estado del Formulario unificado de Auditoría (CU28)
+  // Estado del Formulario unificado de Auditoría (Ficha Derecha context-locked)
   const [form, setForm] = useState({
     id_material: "",
     id_lote: "",
     nuevo_stock: "",
-    motivo: "ERROR DE REGISTRO", // Razón por defecto
+    motivo: "ERROR DE REGISTRO",
   });
 
-  // Estado de control para calcular la variación en tiempo real
-  const [stockTeoricoActual, setStockTeoricoActual] = useState(null);
+  // Metadatos ampliados para el control del lote actualmente auditado
+  const [metaAudit, setMetaAudit] = useState({
+    nombre_material: "",
+    nombre_proveedor: "",
+    stock_inicial: null,  
+    stock_teorico: null,  
+  });
 
   // Configuración de cabeceras seguras nativas de tu app
   const getFetchConfig = (method = "GET", body = null) => {
@@ -42,129 +50,106 @@ export default function AjustarInventario() {
     return config;
   };
 
-  // ==========================================
   // 1. CARGAR CATÁLOGO DE MATERIALES BASE
-  // ==========================================
   const cargarMaterialesMaster = async () => {
     try {
       setLoadingMateriales(true);
       setErrorMsg("");
       const res = await fetch(`${API_URL}/materiales`, getFetchConfig("GET"));
       const result = await res.json();
-
       if (result.success) {
         setMateriales(result.data);
       } else {
-        setErrorMsg("Error de sincronización con el catálogo maestro.");
+        setErrorMsg("Error al cargar datos.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error de red al conectar con el servidor logístico.");
+      setErrorMsg("Error de conexión con el servidor.");
     } finally {
       setLoadingMateriales(false);
     }
-    // CORREGIDO: Se removió la línea suelta de fetch que generaba conflicto de scope aquí
   };
 
   useEffect(() => {
     cargarMaterialesMaster();
   }, []);
 
-  // ==========================================
-  // 2. MANEJADOR REACTIVO: CAMBIO DE MATERIAL -> TRAER LOTES
-  // ==========================================
-  const handleMaterialChange = async (e) => {
-    const selectedId = e.target.value;
 
-    // Reseteamos cascada de estados por consistencia de UI
-    setLotes([]);
-    setStockTeoricoActual(null);
-    setForm((prev) => ({
-      ...prev,
-      id_material: selectedId,
-      id_lote: "",
-      nuevo_stock: "",
-    }));
-    setErrorMsg("");
-
-    if (!selectedId) return;
+  // 2. DETECTOR: SELECCIÓN DE MATERIAL EN TABLA -> SE DESLIZAN SUS LOTES
+  const handleInspectMaterial = async (id_material) => {
+    if (selectedMaterialId === id_material) {
+      setSelectedMaterialId(null);
+      setLotes([]);
+      return;
+    }
 
     try {
-      setLoadingLotes(true);
+      setSelectedMaterialId(id_material);
+      loadingLotes ? null : setLoadingLotes(true);
+      setLotes([]);
       
-      // CORREGIDO: Ahora inyectamos ?todo=true para que la API retorne también lotes en cero (0) indispensables para auditoría
-      const res = await fetch(`${API_URL}/inventario/lotes/${selectedId}?todo=true`, getFetchConfig("GET"));
+      // Invocamos el endpoint amarrado a la subconsulta del Kardex histórico
+      const res = await fetch(`${API_URL}/inventario/lotes/${id_material}?todo=true`, getFetchConfig("GET"));
       const result = await res.json();
 
       if (result.success) {
         setLotes(result.data);
       } else {
-        setErrorMsg(result.message || "No se detectaron lotes cargados para este insumo.");
+        setErrorMsg(result.message || " Error al cargar datos.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error al consultar la trazabilidad del material.");
+      setErrorMsg("Error al cargar datos.");
     } finally {
       setLoadingLotes(false);
     }
   };
 
-  // ==========================================
-  // 3. MANEJADOR REACTIVO: SELECCIÓN DE LOTE -> CAPTURAR STOCK TEÓRICO
-  // ==========================================
-  const handleLoteChange = (e) => {
-    const selectedLoteId = e.target.value;
+  const handleLockLoteToForm = (material, lote) => {
     setErrorMsg("");
-    setForm((prev) => ({ ...prev, id_lote: selectedLoteId, nuevo_stock: "" }));
+    setSuccessMsg("");
+  
+    setForm({
+      id_material: material.id_material,
+      id_lote: lote.id_lote,
+      nuevo_stock: "",
+      motivo: "ERROR DE REGISTRO",
+    });
 
-    if (!selectedLoteId) {
-      setStockTeoricoActual(null);
-      return;
-    }
-
-    // Buscamos el lote en memoria para saber qué cantidad dice el sistema que hay
-    const loteEncontrado = lotes.find((l) => Number(l.id_lote) === Number(selectedLoteId));
-    if (loteEncontrado) {
-      setStockTeoricoActual(Number(loteEncontrado.cantidad_disponible));
-    }
+    setMetaAudit({
+      nombre_material: material.nombre_material,
+      nombre_proveedor: lote.nombre_proveedor,
+      stock_inicial: Number(lote.cantidad_inicial),
+      stock_teorico: Number(lote.cantidad_disponible), 
+    });
   };
 
-  // ==========================================
-  // 4. CALCULAR VARIACIÓN EN CALIENTE (UX PREMIUM)
-  // ==========================================
-  const calcularVariacionKardex = () => {
-    if (stockTeoricoActual === null || form.nuevo_stock === "") return null;
-    return Number(form.nuevo_stock) - stockTeoricoActual;
-  };
+  // 4. CALCULAR VARIACIÓN 
+  const deltaVariacion = form.nuevo_stock !== "" && metaAudit.stock_teorico !== null
+    ? Number(form.nuevo_stock) - metaAudit.stock_teorico
+    : null;
 
-  const deltaVariacion = calcularVariacionKardex();
-
-  // ==========================================
   // 5. ENVIAR TRANSACCIÓN DE CONCILIACIÓN (POST)
-  // ==========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
 
-    // Validaciones rígidas de Precondición
     if (!form.id_lote || form.nuevo_stock === "" || !form.motivo) {
-      setErrorMsg("Por favor, rellena todos los campos obligatorios del formulario.");
+      setErrorMsg("Rellene todos los campos obligatorios para procesar el ajuste.");
       return;
     }
 
     const nuevoStockValor = Number(form.nuevo_stock);
 
-    // Mapeo directo de la Excepción 5a de tu documento técnico
     if (nuevoStockValor < 0) {
-      setErrorMsg("Excepción 5a: El nuevo saldo real verificado no puede ser un número negativo.");
+      setErrorMsg("El nuevo stock no puede ser negativo.");
       return;
     }
 
     try {
       setSubmitting(true);
 
-      // Payload purgado emparejado con tu backend en Flask
       const payload = {
         id_lote: Number(form.id_lote),
         nuevo_stock: nuevoStockValor,
@@ -175,27 +160,22 @@ export default function AjustarInventario() {
       const result = await res.json();
 
       if (result.success) {
-        // Imprime cartel verde esmeralda corporativo
-        setSuccessMsg(result.message || "Conciliación física procesada correctamente.");
+        setSuccessMsg(result.message || "Ajuste aplicado exitosamente. El inventario se ha actualizado.");
 
-        // Limpieza completa y re-sincronización del módulo
-        setForm({
-          id_material: "",
-          id_lote: "",
-          nuevo_stock: "",
-          motivo: "ERROR DE REGISTRO",
-        });
+        // Limpieza de estados y re-sincronización en caliente de las grillas de consulta
+        setForm({ id_material: "", id_lote: "", nuevo_stock: "", motivo: "ERROR DE REGISTRO" });
+        setMetaAudit({ nombre_material: "", nombre_proveedor: "", stock_inicial: null, stock_teorico: null });
+        setSelectedMaterialId(null);
         setLotes([]);
-        setStockTeoricoActual(null);
+        cargarMaterialesMaster();
 
-        // Oculta el banner a los 4 segundos
         setTimeout(() => setSuccessMsg(""), 4000);
       } else {
-        setErrorMsg(result.message || "No se pudo impactar el ajuste en el almacén.");
+        setErrorMsg(result.message || "No se pudo registrar el ajuste. Intente nuevamente.");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Error crítico de comunicación con el servidor relacional.");
+      setErrorMsg("Error de conexión con el servidor. No se pudo procesar el ajuste.");
     } finally {
       setSubmitting(false);
     }
@@ -204,24 +184,24 @@ export default function AjustarInventario() {
   if (loadingMateriales) {
     return (
       <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm text-center text-[#148F77] font-black text-xs uppercase tracking-widest animate-pulse">
-        Abriendo consola de auditoría física y balances...
+        Cargando datos...
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* SECCIÓN TITULAR */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <h2 className="text-[#2A5C4D] font-black text-lg uppercase tracking-wide">
-          Ajustar Inventario / Auditoría
+          Ajuste y Revisión de Inventario
         </h2>
         <p className="text-gray-400 text-xs mt-1">
-          Módulo de Reconciliación: Ajustes Mecánicos de Saldos contra Conteo Físico Real (CU28)
+           Esta sección permite consultar y actualizar las existencias reales de los insumos del almacén.
         </p>
       </div>
 
-      {/* NOTIFICACIONES BANNERS */}
+      {/* ALERTAS REACTIVAS GENERALES */}
       {successMsg && (
         <div className="bg-emerald-50 border border-emerald-200 text-[#148F77] text-xs font-bold px-5 py-4 rounded-xl shadow-sm animate-fadeIn">
           ✓ {successMsg}
@@ -229,151 +209,237 @@ export default function AjustarInventario() {
       )}
       {errorMsg && (
         <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold px-5 py-4 rounded-xl shadow-sm animate-fadeIn">
-          ⚠ {errorMsg}
+          ☡ {errorMsg}
         </div>
       )}
 
-      {/* TARJETA DE FORMULARIO */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden">
-        <div className="p-6 bg-gray-50/50 border-b border-gray-100">
-          <h3 className="text-[#2A5C4D] font-black text-xs uppercase tracking-widest">
-            Ficha de Cuadre Ciego de Stock
-          </h3>
+      {/* ARQUITECTURA DISTRIBUIDA EN DOS PANELES TRABAJO */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* =========================================================
+            PANEL IZQUIERDO (7 COLUMNAS): MONITOR INTERACTIVO DE LOTES
+            ========================================================= */}
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-4 bg-gray-50/60 border-b border-gray-100">
+            <h3 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest">
+              Insumos disponibles en Almacén
+            </h3>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-gray-50/40 border-b border-gray-100 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="py-3 px-4">Descripción Insumo</th>
+                  <th className="py-3 px-4 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {materiales.map((m) => (
+                  <Fragment key={m.id_material}>
+                    <tr className={`hover:bg-gray-50/50 transition-colors ${selectedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
+                      <td className="py-3.5 px-4 font-bold text-[#2A5C4D] uppercase tracking-wide">
+                        {m.nombre_material}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleInspectMaterial(m.id_material)}
+                          className={`font-black text-[9px] uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all ${
+                            selectedMaterialId === m.id_material
+                              ? "bg-[#2A5C4D] text-white border-[#2A5C4D]"
+                              : "text-[#148F77] bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {selectedMaterialId === m.id_material ? "✕ Cerrar" : "Ver Lotes"}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* ACORDEÓN INTERNO DE LOTES PARA COMPAÑÍA EN VIVO */}
+                    {selectedMaterialId === m.id_material && (
+                      <tr>
+                        <td colSpan="2" className="bg-gray-50/40 px-4 py-3 border-y border-gray-100">
+                          <div className="bg-white rounded-xl border border-gray-100 p-3 space-y-2 animate-fadeIn shadow-inner">
+                            {loadingLotes ? (
+                              <div className="text-center py-4 text-[#148F77] font-bold text-[10px] uppercase tracking-widest animate-pulse">
+                                Cargando lotes para {m.nombre_material}...
+                              </div>
+                            ) : lotes.length === 0 ? (
+                              <div className="text-center py-4 text-gray-400 font-medium text-[10px]">
+                                No se encontraron lotes disponibles para este insumo.
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {lotes.map((l) => (
+                                  <div 
+                                    key={l.id_lote} 
+                                    className={`p-2.5 rounded-xl border flex justify-between items-center text-[11px] font-semibold transition-all ${
+                                      Number(form.id_lote) === Number(l.id_lote)
+                                        ? "bg-amber-50/60 border-amber-300 shadow-sm"
+                                        : "bg-gray-50/50 border-gray-100 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    <div className="space-y-0.5">
+                                      <div className="text-gray-700 font-bold">LOTE #{l.id_lote}</div>
+                                      <div className="text-[10px] text-gray-400 uppercase">
+                                        PROV: <span className="text-gray-600 font-bold">{l.nombre_proveedor}</span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* FIJADO AQUÍ: Despliegue de los dos estados de stock en la sub-tabla */}
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex flex-col text-right text-[10px] space-y-0.5 font-bold">
+                                        <span className="text-gray-400">COMPRA: <strong className="text-gray-500">{l.cantidad_inicial} u.</strong></span>
+                                        <span className="text-gray-400">EXISTENCIAS: <strong className="text-[#148F77]">{l.cantidad_disponible} u.</strong></span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleLockLoteToForm(m, l)}
+                                        className={`px-3 py-1.5 font-black text-[9px] uppercase tracking-widest rounded-lg transition-all ${
+                                          Number(form.id_lote) === Number(l.id_lote)
+                                            ? "bg-amber-500 text-white"
+                                            : "bg-[#148F77] text-white hover:bg-[#117A65]"
+                                        }`}
+                                      >
+                                        {Number(form.id_lote) === Number(l.id_lote) ? "En Proceso" : "Ajustar Inventario"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          
-          {/* SELECT 1: MATERIALES */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Seleccionar Insumo Maestro *
-            </label>
-            <select
-              required
-              value={form.id_material}
-              onChange={handleMaterialChange}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold"
-            >
-              <option value="">-- Elija el producto para auditar sus estantes --</option>
-              {materiales.map((m) => (
-                <option key={m.id_material} value={m.id_material}>
-                  {m.nombre_material}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* SELECT 2: LOTES FISICOS (CON TRAZABILIDAD COMPLETA) */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Seleccionar Código de Lote Auditado *
-            </label>
-            <select
-              required
-              disabled={!form.id_material || loadingLotes || lotes.length === 0}
-              value={form.id_lote}
-              onChange={handleLoteChange}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all uppercase font-semibold disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              {loadingLotes ? (
-                <option value="">Abriendo hilos de trazabilidad activa...</option>
-              ) : !form.id_material ? (
-                <option value="">-- Requiere seleccionar un material primero --</option>
-              ) : lotes.length === 0 ? (
-                <option value="">-- No existen lotes registrados o activos para este ítem --</option>
-              ) : (
-                <>
-                  <option value="">-- Seleccione el lote físico a conciliar --</option>
-                  {lotes.map((l) => (
-                    <option key={l.id_lote} value={l.id_lote}>
-                      LOTE #{l.id_lote} ➔ SISTEMA: {l.cantidad_disponible} u. | PROV: {l.nombre_proveedor}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-          </div>
-
-          {/* PANEL INFORMATIVO DE SALDOS ANTES/DESPUÉS */}
-          {stockTeoricoActual !== null && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 animate-fadeIn">
-              <div className="flex flex-col justify-center">
-                <span className="text-gray-400 font-black text-[9px] uppercase tracking-widest">Stock Teórico (Sistema)</span>
-                <span className="text-gray-700 font-extrabold text-sm mt-1">{stockTeoricoActual} Unidades</span>
+        {/* =========================================================
+            PANEL DERECHO (5 COLUMNAS): FICHA TRANSACCIONAL CONTEXTUAL
+            ========================================================= */}
+        <div className="lg:col-span-5">
+          {metaAudit.stock_teorico === null ? (
+            
+            /* ESTADO VACÍO (EMPTY STATE INTUITIVO) */
+            <div className="bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 p-8 text-center text-gray-400 space-y-3">
+              <div className="text-2xl">-</div>
+              <h4 className="font-black text-xs uppercase tracking-widest text-[#2A5C4D]">AJUSTES DE INVENTARIO</h4>
+              <p className="text-[11px] leading-relaxed max-w-xs mx-auto">
+                Seleccione un insumo y lote para iniciar el proceso de ajuste de inventario. 
+              </p>
+            </div>
+          ) : (
+            
+            /* FORMULARIO DE CONCILIACIÓN DESBLOQUEADO */
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden animate-slideUp">
+              <div className="p-4 bg-amber-500/5 border-b border-amber-100 px-6 flex justify-between items-center">
+                <h3 className="text-amber-700 font-black text-[10px] uppercase tracking-widest">
+                  Ajustes para el LOTE #{form.id_lote} del insumo "{metaAudit.nombre_material}"
+                </h3>
+                <span className="bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                  En Proceso
+                </span>
               </div>
-              
-              {/* CÁLCULO DEL DELTA MATEMÁTICO EN TIEMPO REAL */}
-              <div className="flex flex-col justify-center md:items-end">
-                <span className="text-gray-400 font-black text-[9px] uppercase tracking-widest">Variación en Kardex (Delta)</span>
-                {deltaVariacion === null ? (
-                  <span className="text-gray-300 font-bold text-xs mt-1">Esperando conteo...</span>
-                ) : deltaVariacion === 0 ? (
-                  <span className="text-gray-500 font-black text-xs bg-gray-200 px-3 py-1 rounded-full mt-1">0 (Sin Cambios)</span>
-                ) : deltaVariacion > 0 ? (
-                  <span className="text-emerald-600 font-black text-xs bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full mt-1">
-                    +{deltaVariacion} u. (Sobrante Interno)
-                  </span>
-                ) : (
-                  <span className="text-red-600 font-black text-xs bg-red-50 border border-red-100 px-3 py-1 rounded-full mt-1">
-                    {deltaVariacion} u. (Faltante / Merma)
-                  </span>
-                )}
-              </div>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                
+                {/* METADATOS FIJOS DEL CONTEXTO (CON COMPARATIVA DE BALANCES) */}
+                <div className="space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-100 text-[11px]">
+                  <div>
+                    <span className="text-gray-400 uppercase text-[9px] font-bold block">Insumo Seleccionado:</span>
+                    <span className="text-[#2A5C4D] font-black uppercase text-xs">{metaAudit.nombre_material}</span>
+                  </div>
+                  <div className="pt-2 flex justify-between text-gray-400 text-[10px] font-bold">
+                    <span>PROVEEDOR: <strong className="text-gray-600 uppercase">{metaAudit.nombre_proveedor}</strong></span>
+                    <span>COMPRA INICIAL: <strong className="text-gray-600">{metaAudit.stock_inicial} u.</strong></span>
+                    <span>EXISTENCIAS: <strong className="text-[#148F77]">{metaAudit.stock_teorico} u.</strong></span>
+                  </div>
+                </div>
+
+                {/* VISUALIZADOR DEL DELTA EN TIEMPO REAL */}
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
+                  <span className="text-gray-400 font-black text-[9px] uppercase tracking-widest">Ajuste esperado de existencias: </span>
+                  {deltaVariacion === null ? (
+                    <span className="text-gray-400 text-xs font-bold">NA...</span>
+                  ) : deltaVariacion === 0 ? (
+                    <span className="text-gray-500 bg-gray-200 font-black text-[10px] px-3 py-1 rounded-full">0 (Sin Cambios)</span>
+                  ) : deltaVariacion > 0 ? (
+                    <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 font-black text-[10px] px-3 py-1 rounded-full">
+                      +{deltaVariacion} u. (Sobrante)
+                    </span>
+                  ) : (
+                    <span className="text-red-600 bg-red-50 border border-red-100 font-black text-[10px] px-3 py-1 rounded-full">
+                      {deltaVariacion} u. (Faltante)
+                    </span>
+                  )}
+                </div>
+
+                {/* SELECCIÓN DEL MOTIVO */}
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
+                    Razón o Justificación Técnica *
+                  </label>
+                  <select
+                    required
+                    value={form.motivo}
+                    onChange={(e) => setForm({ ...form, motivo: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] font-semibold"
+                  >
+                    <option value="ERROR DE REGISTRO">ERROR DE REGISTRO / TRANSACCIÓN</option>
+                    <option value="PÉRDIDA / ROBO">EXISTENCIA FALTANTE POR PÉRDIDA / ROBO</option>
+                    <option value="DAÑO / ROTURA">EXISTENCIA DAÑADA / ROTA</option>
+                    <option value="INVENTARIO ANUAL">BALANCE MAL REALIZADO</option>
+                  </select>
+                </div>
+
+                {/* NUEVO STOCK REAL CONSTATADO */}
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
+                    Existencias de Stock a Ajustar *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder={`Conteo real en lote (Actual: ${metaAudit.stock_teorico})`}
+                    value={form.nuevo_stock}
+                    onChange={(e) => setForm({ ...form, nuevo_stock: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] font-semibold"
+                  />
+                </div>
+
+                {/* ACCIONES DE LA FICHA */}
+                <div className="pt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({ id_material: "", id_lote: "", nuevo_stock: "", motivo: "ERROR DE REGISTRO" });
+                      setMetaAudit({ nombre_material: "", nombre_proveedor: "", stock_inicial: null, stock_teorico: null });
+                    }}
+                    className="py-3 px-4 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md shadow-amber-900/10"
+                  >
+                    {submitting ? "Procesando Ajuste..." : "Aplicar Ajuste"}
+                  </button>
+                </div>
+
+              </form>
             </div>
           )}
+        </div>
 
-          {/* INPUT 3: MOTIVO TÉCNICO */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Razón o Motivo del Ajuste Mecánico *
-            </label>
-            <select
-              required
-              disabled={stockTeoricoActual === null}
-              value={form.motivo}
-              onChange={(e) => setForm({ ...form, motivo: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold disabled:bg-gray-100"
-            >
-              <option value="ERROR DE REGISTRO">DIFERENCIA POR ERROR DE TRANSACCIÓN / DIGITACIÓN</option>
-              <option value="PÉRDIDA / ROBO">FALTANTE POR PÉRDIDA NO DETECTADA</option>
-              <option value="DAÑO / ROTURA">MERMA POR DESCARTE MATERIAL EN AUDITORÍA</option>
-              <option value="INVENTARIO ANUAL">CONCILIACIÓN POR BALANCE GENERAL CLÍNICO</option>
-            </select>
-          </div>
-
-          {/* INPUT 4: NUEVO STOCK REAL */}
-          <div className="space-y-1">
-            <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest">
-              Nuevo Saldo Físico Real Constatado *
-            </label>
-            <input
-              type="number"
-              required
-              min="0"
-              disabled={stockTeoricoActual === null}
-              placeholder={stockTeoricoActual !== null ? `Stock actual en sistema: ${stockTeoricoActual}` : "Ej. 45"}
-              value={form.nuevo_stock}
-              onChange={(e) => setForm({ ...form, nuevo_stock: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-4 py-3.5 rounded-xl focus:outline-none focus:border-[#148F77] focus:bg-white transition-all font-semibold disabled:bg-gray-100"
-            />
-          </div>
-
-          {/* BOTÓN TRANSACCIONAL DEFINITIVO */}
-          <div className="pt-4 border-t border-gray-50">
-            <button
-              type="submit"
-              disabled={submitting || stockTeoricoActual === null}
-              className={`w-full py-4 text-white rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-md ${
-                submitting || stockTeoricoActual === null
-                  ? "bg-gray-300 cursor-not-allowed shadow-none"
-                  : "bg-[#148F77] hover:bg-[#117A65] shadow-emerald-900/10"
-              }`}
-            >
-              {submitting ? "Sincronizando Base de Datos..." : "⚙ Reconciliar Stock de Lote"}
-            </button>
-          </div>
-
-        </form>
       </div>
     </div>
   );
