@@ -52,7 +52,7 @@ export default function AgendarCitas({
   const abortSlots = useRef(null);
   const hoy = new Date().toISOString().split("T")[0];
 
-  const salas = dataMaster?.salas || [];
+  const salas = (dataMaster?.salas || []).filter(s => s.estado_sala === 'ACTIVA' || s.estado_sala === 'DISPONIBLE');
 
   useEffect(() => {
     const source = pacientes.length > 0 ? pacientes : dataMaster?.pacientes;

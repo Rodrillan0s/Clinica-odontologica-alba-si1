@@ -330,7 +330,7 @@ export default function DetallesCitas({
     await handleStatusUpdate(ESTADO_CITA.REPROGRAMADA, false);
   };
 
-  const pacientesResult = (dataMaster?.pacientes || []).filter(p => p.id_rol === 5);
+  const pacientesResult = dataMaster?.pacientes || [];
 
   return (
     <div className="fixed inset-0 bg-[#2A5C4D]/90 backdrop-blur-md z-[110] flex items-center justify-center p-4">
@@ -438,7 +438,7 @@ export default function DetallesCitas({
                     }
                   >
                     <option value="">Seleccione Sala</option>
-                    {dataMaster?.salas?.map((s) => (
+                    {(dataMaster?.salas || []).filter(s => s.estado_sala === 'ACTIVA' || s.estado_sala === 'DISPONIBLE' || s.id_sala == formData.id_sala).map((s) => (
                       <option key={s.id_sala} value={s.id_sala}>
                         {s.nombre}
                       </option>

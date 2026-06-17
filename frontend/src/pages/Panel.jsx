@@ -22,6 +22,7 @@ import RegistrarSalidas from "../components/UIs/RegistrarSalidas"; // <-- Adici�
 import AjustarInventario from "../components/UIs/AjustarInventario"; // <-- Adición exclusiva: Importamos el componente del CU28
 import ModuloPersonal from "../components/UIs/ModuloPersonal";import ModuloProcedimientos from "../components/UIs/ModuloProcedimientos";
 import ReporteCitas from "../components/UIs/ReporteCitas";
+import ModuloConsultorios from "../components/UIs/ModuloConsultorios";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -270,6 +271,11 @@ export default function Panel() {
             <ReporteCitas dataMaster={dataMaster} user={user} />
           )}
 
+          {/* CONSULTORIOS */}
+          {activeMenu === "Consultorios" && userRolId < 5 && (
+            <ModuloConsultorios dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
+          )}
+
           {/* PERSONAL */}
           {activeMenu === "Gestión de Personal" &&
           userRolId === ROLES.ADMINISTRADOR && (
@@ -290,7 +296,8 @@ export default function Panel() {
             "Registrar Salidas", // <-- Adición exclusiva: Desbloqueamos la vista de mermas y bajas
             "Ajustar Inventario", 
             "Procedimientos",
-            "Reportes"
+            "Reportes",
+            "Consultorios"
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>

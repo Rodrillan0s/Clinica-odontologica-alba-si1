@@ -177,6 +177,7 @@ export default function Sidebar({
                 <MenuButton title="Citas" />
                 {Number(userRolId) < 5 && <MenuButton title="Procedimientos" />}
                 {Number(userRolId) < 5 && <MenuButton title="Reportes" />}
+                {Number(userRolId) < 5 && <MenuButton title="Consultorios" />}
               </div>
             )}
           </div>

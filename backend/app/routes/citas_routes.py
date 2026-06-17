@@ -38,7 +38,6 @@ def create_cita():
 
     try:
 
-        
         # Ejecución del Procedure en Supabase
         query = f"CALL {Config.SCHEMA}.p_crear_cita(%s, %s, %s, %s, %s)"
         params = (id_odontologo, id_paciente, fecha_agendamiento, id_sala, cita_obs)
@@ -449,8 +448,11 @@ def get_disponibilidad():
         id_sala = request.args.get('id_sala')
         fecha_str = request.args.get('fecha')
         
-        if not all([id_personal, id_sala, fecha_str]):
-            return jsonify({'success': False, 'message': 'Faltan parámetros'}), 400
+        if id_personal in ('null', '', 'undefined'): id_personal = None
+        if id_sala in ('null', '', 'undefined'): id_sala = None
+
+        if not fecha_str or (not id_personal and not id_sala):
+            return jsonify({'success': False, 'message': 'Faltan parámetros (fecha y al menos id_personal o id_sala)'}), 400
 
   
         query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_slots_libres(%s, %s, %s, 30)"
@@ -458,6 +460,34 @@ def get_disponibilidad():
         
         lista_resultados = results if results is not None else []
         data = [{'inicio': str(r[0])[:5], 'fin': str(r[1])[:5]} for r in lista_resultados]
+        
+        return jsonify({'success': True, 'data': data}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@citas_routes.route('/api/citas/ocupadas', methods=['GET'])
+def get_ocupadas():
+    try:
+        id_personal = request.args.get('id_personal')
+        id_sala = request.args.get('id_sala')
+        fecha_str = request.args.get('fecha')
+        
+        if id_personal in ('null', '', 'undefined'): id_personal = None
+        if id_sala in ('null', '', 'undefined'): id_sala = None
+
+        if not fecha_str or (not id_personal and not id_sala):
+            return jsonify({'success': False, 'message': 'Faltan parámetros (fecha y al menos id_personal o id_sala)'}), 400
+
+        fecha_inicio = f"{fecha_str} 00:00:00"
+        fecha_fin = f"{fecha_str} 23:59:59"
+
+        query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_citas_ocupadas(%s, %s, %s, %s)"
+        results = db.execute_query(query, (id_personal, id_sala, fecha_inicio, fecha_fin), fetchall=True)
+        
+        lista_resultados = results if results is not None else []
+        # devuelve las horas en formato HH:mm
+        data = [{'inicio': str(r[0])[11:16], 'fin': str(r[1])[11:16]} for r in lista_resultados]
         
         return jsonify({'success': True, 'data': data}), 200
 
