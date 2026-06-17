@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -26,6 +26,9 @@ export default function RegistrarEntradas() {
   const [nuevoProvNombre, setNuevoProvNombre] = useState("");
   const [nuevoProvTelefono, setNuevoProvTelefono] = useState(""); 
   const [provSubmitting, setProvSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const formPanelRef = useRef(null);
+  const cantidadInputRef = useRef(null);
 
   // Estado unificado del Formulario Transaccional (Ficha Derecha context-locked)
   const [form, setForm] = useState({
@@ -38,6 +41,25 @@ export default function RegistrarEntradas() {
 
   const [isMaterialExpirable, setIsMaterialExpirable] = useState(false);
   const [selectedMaterialNombre, setSelectedMaterialNombre] = useState("");
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredMateriales = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return materiales;
+    return materiales.filter((m) =>
+      String(m.id_material).toLowerCase().includes(q) || (m.nombre_material || "").toLowerCase().includes(q)
+    );
+  }, [materiales, searchTerm]);
+
+  const displayMateriales = useMemo(() => {
+    if (!selectedMaterialId) return filteredMateriales;
+    const idx = filteredMateriales.findIndex((m) => m.id_material === selectedMaterialId);
+    if (idx === -1) return filteredMateriales;
+    const sel = filteredMateriales[idx];
+    const rest = filteredMateriales.filter((m) => m.id_material !== selectedMaterialId);
+    return [sel, ...rest];
+  }, [filteredMateriales, selectedMaterialId]);
 
   // Configuración de cabeceras seguras estándar del proyecto
   const getFetchConfig = (method = "GET", body = null) => {
@@ -133,6 +155,48 @@ export default function RegistrarEntradas() {
     }
   };
 
+  useEffect(() => {
+    if (!selectedMaterialId || !formPanelRef.current) return;
+
+    const scrollToShowBoth = () => {
+      const row = document.querySelector(`[data-material-id="${selectedMaterialId}"]`);
+      const rightEl = formPanelRef.current;
+      if (!row || !rightEl) return;
+
+      const pageOffset = window.pageYOffset || document.documentElement.scrollTop;
+
+      // include expanded details row (next sibling) when present
+      const elems = [row];
+      const next = row.nextElementSibling;
+      if (next && next.querySelector && next.querySelector('div')) elems.push(next);
+
+      const rects = elems.map((el) => el.getBoundingClientRect());
+
+      const leftTop = Math.min(...rects.map((r) => r.top + pageOffset));
+      const leftBottom = Math.max(...rects.map((r) => r.top + pageOffset + r.height));
+
+      const rightRect = rightEl.getBoundingClientRect();
+      const rightTop = rightRect.top + pageOffset;
+      const rightBottom = rightTop + rightRect.height;
+
+      const topMost = Math.min(leftTop, rightTop);
+      const bottomMost = Math.max(leftBottom, rightBottom);
+      const viewportH = window.innerHeight;
+      const padding = 60;
+
+      // center the combined area in the viewport when possible
+      let targetTop = Math.max(0, Math.floor((topMost + bottomMost - viewportH) / 2));
+      // if centering would put top above topMost, clamp to topMost - padding
+      if (targetTop > topMost - padding) targetTop = Math.max(0, topMost - padding);
+
+      window.scrollTo({ top: targetTop, behavior: 'smooth' });
+
+      setTimeout(() => cantidadInputRef.current?.focus(), 350);
+    };
+
+    window.requestAnimationFrame(() => window.requestAnimationFrame(scrollToShowBoth));
+  }, [selectedMaterialId, lotesHistoricos]);
+
   // 3. ACCIÓN EXPRESS: GUARDAR NUEVO PROVEEDOR
   const handleGuardarProveedorExpress = async (e) => {
     e.preventDefault();
@@ -211,6 +275,8 @@ export default function RegistrarEntradas() {
       }
     }
 
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     try {
       setSubmitting(true);
       const payload = {
@@ -245,6 +311,7 @@ export default function RegistrarEntradas() {
       setErrorMsg("Error de comunicación con el Servidor.");
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -293,18 +360,30 @@ export default function RegistrarEntradas() {
             </h3>
           </div>
 
+          <div className="p-3 border-b border-gray-100 bg-white">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por id o nombre..."
+              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-[#148F77]"
+            />
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-gray-50/40 border-b border-gray-100 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="py-3 px-4">ID</th>
                   <th className="py-3 px-4">Descripción de Insumo</th>
                   <th className="py-3 px-4 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {materiales.map((m) => (
+                {displayMateriales.map((m) => (
                   <Fragment key={m.id_material}>
-                    <tr className={`hover:bg-gray-50/40 transition-colors ${selectedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
+                    <tr data-material-id={m.id_material} className={`hover:bg-gray-50/40 transition-colors ${selectedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
+                      <td className="py-3.5 px-4 font-bold text-[#2A5C4D] uppercase tracking-wide"> {m.id_material}</td>
                       <td className="py-3.5 px-4 font-bold text-[#2A5C4D] uppercase tracking-wide">
                         {m.nombre_material}
                         <span className={`inline-block ml-2 px-2 py-0.5 rounded text-[8px] font-black uppercase ${m.expirable ? "bg-amber-50 text-amber-600 border border-amber-100" : "bg-blue-50 text-blue-600 border border-blue-100"}`}>
@@ -329,7 +408,7 @@ export default function RegistrarEntradas() {
                     {/* DESGLOSE ANALÍTICO DE TRAZABILIDAD DE LOTES PREVIOS */}
                     {selectedMaterialId === m.id_material && (
                       <tr>
-                        <td colSpan="2" className="bg-gray-50/40 px-4 py-3 border-y border-gray-100">
+                        <td colSpan="3" className="bg-gray-50/40 px-4 py-3 border-y border-gray-100">
                           <div className="bg-white rounded-xl border border-gray-100 p-3 space-y-2 animate-fadeIn shadow-inner">
                             <div className="text-gray-400 font-bold text-[9px] uppercase tracking-wide border-b border-gray-50 pb-1">
                               Historial de Lotes para: <span className="text-[#2A5C4D]">{m.nombre_material}</span>
@@ -373,7 +452,7 @@ export default function RegistrarEntradas() {
         {/* =========================================================
             PANEL DERECHO (5 COLUMNAS): FICHA TRANSACCIONAL CONTEXTUAL
             ========================================================= */}
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-5" ref={formPanelRef}>
           {!form.id_material ? (
             
             /* EMPTY STATE INFORMATIVO */
@@ -411,6 +490,7 @@ export default function RegistrarEntradas() {
                     Cantidad de Unidades a Ingresar *
                   </label>
                   <input
+                    ref={cantidadInputRef}
                     type="number"
                     required
                     min="1"
