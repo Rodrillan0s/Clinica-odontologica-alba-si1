@@ -218,6 +218,7 @@ export default function AgendarCitas({
       id_odontologo: Number(formData.id_odontologo),
       id_sala: Number(formData.id_sala),
       cita_obs: formData.cita_obs,
+      id_procedimiento: formData.id_procedimiento ? Number(formData.id_procedimiento) : null,
       // Inyectamos el ID del usuario y la sesión desde las props
       id_usuario: user?.id_usuario,
       id_sesion: user?.id_sesion,

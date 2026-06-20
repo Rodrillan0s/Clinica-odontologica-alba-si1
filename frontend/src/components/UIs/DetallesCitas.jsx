@@ -33,6 +33,7 @@ export default function DetallesCitas({
     hora_seleccionada: "",
     estado_cita: "",
     cita_obs: "",
+    id_procedimiento: "",
   });
 
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -87,13 +88,14 @@ export default function DetallesCitas({
       }
 
       setFormData({
-        id_personal: originalCita.id_personal || "",
-        id_paciente: originalCita.id_paciente || "",
-        id_sala: originalCita.id_sala || "",
+        id_personal: originalCita.id_personal || cita?.id_personal || "",
+        id_paciente: originalCita.id_paciente || cita?.id_paciente || "",
+        id_sala: originalCita.id_sala || cita?.id_sala || "",
         fecha_base: initialFechaBase,
         hora_seleccionada: initialHora,
-        estado_cita: originalCita.id_estado_cita || "",
-        cita_obs: originalCita.cita_obs || "",
+        estado_cita: originalCita.id_estado_cita || cita?.id_estado_cita || "",
+        cita_obs: originalCita.cita_obs || cita?.cita_obs || "",
+        id_procedimiento: originalCita.id_procedimiento || cita?.id_procedimiento || "",
       });
       setSaveError("");
     }
@@ -210,6 +212,7 @@ export default function DetallesCitas({
           : null,
       id_usuario: user?.id_usuario || null,
       id_sesion: user?.id_sesion || null,
+      id_procedimiento: formData.id_procedimiento ? Number(formData.id_procedimiento) : null,
     };
 
     try {
@@ -233,6 +236,7 @@ export default function DetallesCitas({
           originalCita.fecha_agendamiento = fecha_agendamiento;
           originalCita.id_estado_cita = formData.estado_cita;
           originalCita.cita_obs = formData.cita_obs;
+          originalCita.id_procedimiento = formData.id_procedimiento;
         }
       } else {
         setSaveError(data.message || "Error al actualizar la cita.");
@@ -270,6 +274,7 @@ export default function DetallesCitas({
       fecha_finalizacion: setFinalization ? new Date().toISOString() : null,
       id_usuario: user?.id_usuario || null,
       id_sesion: user?.id_sesion || null,
+      id_procedimiento: originalCita?.id_procedimiento || cita?.id_procedimiento || null,
     };
 
     try {
@@ -548,6 +553,26 @@ export default function DetallesCitas({
                     <option value={ESTADO_CITA.NO_ASISTIO}>No Asistió</option>
                   </select>
                 </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                    Tratamiento / Procedimiento
+                  </label>
+                  <select
+                    className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
+                    value={formData.id_procedimiento || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, id_procedimiento: e.target.value })
+                    }
+                  >
+                    <option value="">Cualquier servicio...</option>
+                    {(dataMaster?.procedimientos || []).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.descripcion}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -649,26 +674,38 @@ export default function DetallesCitas({
                 </div>
               </div>
 
-              <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                  Estado Actual
-                </p>
-                {(() => {
-                  const colors =
-                    ESTADO_CITA_COLORS[cita.id_estado_cita] ||
-                    ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA];
-                  const label =
-                    cita.nombre_estado ||
-                    ESTADO_CITA_LABELS[cita.id_estado_cita] ||
-                    `Estado ${cita.id_estado_cita}`;
-                  return (
-                    <span
-                      className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${colors.badge}`}
-                    >
-                      {label}
-                    </span>
-                  );
-                })()}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    Estado Actual
+                  </p>
+                  {(() => {
+                    const colors =
+                      ESTADO_CITA_COLORS[cita.id_estado_cita] ||
+                      ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA];
+                    const label =
+                      cita.nombre_estado ||
+                      ESTADO_CITA_LABELS[cita.id_estado_cita] ||
+                      `Estado ${cita.id_estado_cita}`;
+                    return (
+                      <span
+                        className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${colors.badge}`}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    Tratamiento / Procedimiento
+                  </p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {cita.nombre_procedimiento || (
+                      <span className="italic opacity-50">Sin tratamiento asignado</span>
+                    )}
+                  </p>
+                </div>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">

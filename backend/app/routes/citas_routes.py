@@ -30,6 +30,9 @@ def create_cita():
     id_odontologo = data.get('id_odontologo')
     id_sala = data.get('id_sala')
     cita_obs = data.get('cita_obs')   
+    id_procedimiento = data.get('id_procedimiento') or None
+    if id_procedimiento in ('null', 'undefined'):
+        id_procedimiento = None
 
     # 3. Datos para bitácora (enviados desde el Front)
     # Si no vienen (None), se guardarán como NULL en la DB hasta que actualices el Front
@@ -39,8 +42,8 @@ def create_cita():
     try:
 
         # Ejecución del Procedure en Supabase
-        query = f"CALL {Config.SCHEMA}.p_crear_cita(%s, %s, %s, %s, %s)"
-        params = (id_odontologo, id_paciente, fecha_agendamiento, id_sala, cita_obs)
+        query = f"CALL {Config.SCHEMA}.p_crear_cita(%s, %s, %s, %s, %s, %s)"
+        params = (id_odontologo, id_paciente, fecha_agendamiento, id_sala, cita_obs, id_procedimiento)
         db.execute_query(query, params, commit=True)
     
         descripcion_log = f"Nueva cita: Paciente {id_paciente} | Doc {id_odontologo} | Sala {id_sala}"
@@ -90,7 +93,11 @@ def get_citas():
                 id_estado = estado_map.get(estado_raw)
 
         # Llamada a la función f_obtener_citas con 12 parámetros
-        query = f"SELECT * FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        query = f"""
+            SELECT f.*, c.id_procedimiento 
+            FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) f
+            JOIN {Config.SCHEMA}.t_citas c ON f.id_cita = c.id_cita
+        """
         params = (
             filters.get('id_personal'),
             filters.get('id_paciente'),
@@ -120,7 +127,8 @@ def get_citas():
                     "id_estado_cita":     row[6],
                     "nombre_estado":      row[7],
                     "id_sala":            row[8],
-                    "cita_obs":           row[9]
+                    "cita_obs":           row[9],
+                    "id_procedimiento":   row[10]
                 })
 
         response = {
@@ -156,6 +164,9 @@ def update_cita(id):
     fecha_agendamiento = data.get('fecha_agendamiento')
     id_sala = data.get('id_sala')
     cita_obs = data.get('cita_obs')
+    id_procedimiento = data.get('id_procedimiento') or None
+    if id_procedimiento in ('null', 'undefined'):
+        id_procedimiento = None
 
     # Datos para bitácora
     id_u = data.get('id_usuario')
@@ -176,8 +187,8 @@ def update_cita(id):
         id_estado_cita = estado_map.get(id_estado_cita, id_estado_cita)
 
     try:
-        query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s, %s, %s)"
-        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs, id_estado_cita, fecha_finalizacion)
+        query = f"CALL {Config.SCHEMA}.p_actualizar_cita(%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        params = (id, id_personal, id_paciente, fecha_agendamiento, id_sala, cita_obs, id_estado_cita, fecha_finalizacion, id_procedimiento)
 
         db.execute_query(query, params, commit=True)
 
@@ -218,7 +229,9 @@ def get_cita(id):
             "id_estado_cita":     result[6],
             "nombre_estado":      result[7],
             "nombre_sala":        result[8],
-            "cita_obs":           result[9]
+            "cita_obs":           result[9],
+            "id_procedimiento":   result[10],
+            "nombre_procedimiento": result[11]
         }
 
         return jsonify({'success': True, 'data': cita}), 200
