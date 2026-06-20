@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useAuthStore } from "../../store/auth_store";
+import { useAuthStore } from "../../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -57,29 +57,6 @@ export default function ModalProcedimiento({ procedure, onClose, onSuccess }) {
         throw new Error(data.message || "Error al guardar el procedimiento.");
       }
 
-      const idProcedimiento = isEdit ? procedure.id : data.data.id_procedimiento;
-
-      // 2. Si es una creación, asignarlo automáticamente a todos los odontólogos (manteniendo lógica del negocio original)
-      if (!isEdit) {
-        const resAsignar = await fetch(`${API_URL}/procedimientos/asignar-todos`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            id_procedimiento: idProcedimiento,
-            id_usuario: user?.id_usuario,
-            id_sesion: user?.id_sesion,
-          }),
-        });
-
-        const dataAsignar = await resAsignar.json();
-        if (!dataAsignar.success) {
-          throw new Error(dataAsignar.message || "Error al asignar a todos los odontólogos.");
-        }
-      }
-
       onSuccess();
     } catch (err) {
       setError(err.message);
@@ -98,7 +75,7 @@ export default function ModalProcedimiento({ procedure, onClose, onSuccess }) {
               {isEdit ? "Modificar Procedimiento" : "Nuevo Procedimiento"}
             </h2>
             <p className="text-xs text-emerald-600/70 font-bold mt-1">
-              {isEdit ? "Actualice la descripción y precio sugerido." : "Se asignará automáticamente a todos los odontólogos."}
+              {isEdit ? "Actualice la descripción y precio sugerido." : "Complete el formulario para dar de alta el procedimiento."}
             </p>
           </div>
           <button

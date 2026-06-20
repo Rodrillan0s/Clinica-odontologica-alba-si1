@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import ModalProcedimiento from "./ModalProcedimiento";
 import ModalAsignarOdontologos from "./ModalAsignarOdontologos";
-import { useAuthStore } from "../../store/auth_store";
+import { useAuthStore } from "../../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -115,13 +115,13 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                  className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest w-px whitespace-nowrap"
                 >
                   Precio
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-right text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                  className="px-6 py-4 text-center text-[10px] font-black text-[#148F77] uppercase tracking-widest w-px whitespace-nowrap"
                 >
                   Acciones
                 </th>
@@ -139,13 +139,13 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#2A5C4D]">
                       {proc.descripcion}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-[#148F77]">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-[#148F77] w-px">
                       {proc.precio !== undefined ? `${proc.precio} Bs` : "0.00 Bs"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2 w-px">
                       <button
                         onClick={() => setProcToAssign(proc)}
-                        className="text-orange-500 hover:text-orange-700 font-bold px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                        className="text-blue-500 hover:text-blue-700 font-bold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
                       >
                         Asignar
                       </button>

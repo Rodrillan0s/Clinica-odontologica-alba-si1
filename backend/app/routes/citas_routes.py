@@ -539,6 +539,7 @@ def get_odontologos():
             FROM {Config.SCHEMA}.t_personal pers
             JOIN {Config.SCHEMA}.t_persona per ON pers.id_personal = per.id_persona
             WHERE pers.id_cargo = 2
+            ORDER BY per.nombre ASC
         """
         doctores = db.execute_query(sql, fetchall=True)
 

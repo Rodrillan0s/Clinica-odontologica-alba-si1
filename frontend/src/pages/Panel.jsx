@@ -5,15 +5,15 @@ import { useAuthStore } from "../store/auth_store";
 import Sidebar from "../components/layout/Sidebar";
 
 import DashboardAdmin from "../components/dashboards/DashboardAdmin";
-import ModuloCitas from "../components/UIs/ModuloCitas";
+import ModuloCitas from "../components/UIs/citas/ModuloCitas";
 import DashboardOdontologo from "../components/dashboards/DashboardOdontologo";
 import DashboardRecepcionista from "../components/dashboards/DashboardRecepcionista";
 import DashboardPaciente from "../components/dashboards/DashboardPaciente";
 
 import CambioPasswordUI from "../components/UIs/CambioPassword";
-import AgendarCitas from "../components/UIs/AgendarCitas";
-import AgendaCitas from "../components/UIs/AgendaCitas";
-import DetallesCitas from "../components/UIs/DetallesCitas";
+import AgendarCitas from "../components/UIs/citas/AgendarCitas";
+import AgendaCitas from "../components/UIs/citas/AgendaCitas";
+import DetallesCitas from "../components/UIs/citas/DetallesCitas";
 import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
@@ -21,10 +21,11 @@ import ModuloInventario from "../components/UIs/ModuloInventario";
 import RegistrarEntradas from "../components/UIs/RegistrarEntradas";
 import RegistrarSalidas from "../components/UIs/RegistrarSalidas"; // <-- Adición exclusiva: Importamos el componente del CU27
 import AjustarInventario from "../components/UIs/AjustarInventario"; // <-- Adición exclusiva: Importamos el componente del CU28
-import ModuloPersonal from "../components/UIs/ModuloPersonal";import ModuloProcedimientos from "../components/UIs/ModuloProcedimientos";
-import ReporteCitas from "../components/UIs/ReporteCitas";
-import ModuloConsultorios from "../components/UIs/ModuloConsultorios";
-import ModuloServicios from "../components/UIs/ModuloServicios";
+import ModuloPersonal from "../components/UIs/ModuloPersonal";
+import ModuloProcedimientos from "../components/UIs/procedimientos/ModuloProcedimientos";
+import ReporteCitas from "../components/UIs/citas/ReporteCitas";
+import ModuloConsultorios from "../components/UIs/consultorios/ModuloConsultorios";
+import ModuloServicios from "../components/UIs/servicios/ModuloServicios";
 
 
 const API_URL = import.meta.env.VITE_API_URL;
