@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import DetallesCitas from "./DetallesCitas";
 import {
   ESTADO_CITA,
   ESTADO_CITA_LABELS,
@@ -8,7 +7,7 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function AgendaCitas({ onClose, dataMaster, user }) {
+export default function AgendaCitas({ onClose, dataMaster, user, onVerDetalles }) {
   const [citas, setCitas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -28,7 +27,6 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [pacientes, setPacientes] = useState([]);
-  const [selectedCitaDetalle, setSelectedCitaDetalle] = useState(null);
   const limit = 10;
 
   useEffect(() => {
@@ -131,23 +129,25 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-[#2A5C4D]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[3rem] w-full max-w-6xl shadow-2xl overflow-hidden animate-fade-in-up max-h-[95vh] flex flex-col">
-        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-          <div>
-            <p className="text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
-              Listado de citas registradas
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all focus:outline-none"
-          >
-            ✕
-          </button>
+    <div className="bg-white rounded-[3rem] w-full shadow-xl overflow-hidden animate-fade-in-up flex flex-col">
+      <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
+        <div>
+          <h3 className="text-2xl font-black text-[#2A5C4D] italic tracking-tighter">
+            Consultar Citas
+          </h3>
+          <p className="text-[#148F77] text-xs font-bold uppercase tracking-widest mt-1">
+            Listado de citas registradas
+          </p>
         </div>
+        <button
+          onClick={onClose}
+          className="px-6 py-2.5 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-sm flex items-center gap-2 cursor-pointer focus:outline-none"
+        >
+          ← Volver
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
           <div className="px-8 pt-6 pb-2 space-y-4">
             {/* Fila 1: Filtros principales */}
             <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -465,9 +465,9 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
                           </span>
                         </td>
                         {user?.rol < 5 && (
-                          <td className="py-2 px-4 text-center">
+                           <td className="py-2 px-4 text-center">
                             <button
-                              onClick={() => setSelectedCitaDetalle(cita)}
+                              onClick={() => onVerDetalles(cita)}
                               className="px-4 py-2 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
                             >
                               Detalles
@@ -517,19 +517,5 @@ export default function AgendaCitas({ onClose, dataMaster, user }) {
           </div>
         </div>
       </div>
-
-      {selectedCitaDetalle && (
-        <DetallesCitas
-          idCita={selectedCitaDetalle.id_cita}
-          originalCita={selectedCitaDetalle}
-          user={user}
-          dataMaster={dataMaster}
-          onClose={() => {
-            setSelectedCitaDetalle(null);
-            fetchCitas(currentPage); // refresh list in case it was modified
-          }}
-        />
-      )}
-    </div>
   );
 }

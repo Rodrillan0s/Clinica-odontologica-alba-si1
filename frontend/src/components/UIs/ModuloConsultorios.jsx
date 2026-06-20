@@ -13,7 +13,7 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
   const [showDetallesModal, setShowDetallesModal] = useState(false);
   const [showNoPermissionModal, setShowNoPermissionModal] = useState(false);
   const [noPermissionMessage, setNoPermissionMessage] = useState("");
-  
+
   const user = useAuthStore((state) => state.user);
 
   const fetchConsultorios = async () => {
@@ -38,7 +38,7 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
   }, []);
 
   const filteredConsultorios = consultorios.filter((c) =>
-    c.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+    c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleSuccess = () => {
@@ -69,7 +69,7 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
 
   return (
     <div className="flex flex-col bg-white rounded-3xl shadow-sm border border-emerald-50 relative h-full animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 lg:p-8 border-b border-gray-50 bg-gray-50/30">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 p-6 lg:p-8 border-b border-gray-50 bg-gray-50/30 flex-wrap">
         <div>
           <h2 className="text-2xl font-black text-[#2A5C4D]">
             Consultorios / Salas
@@ -79,7 +79,7 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
           </p>
         </div>
 
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+        <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-3">
           <div className="relative">
             <input
               type="text"
@@ -95,15 +95,7 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
             }}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#148F77] text-white text-sm font-bold rounded-xl hover:bg-[#0f6b59] transition-all shadow-sm"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Agregar consultorio
+            Agregar Consultorio
           </button>
         </div>
       </div>
@@ -113,19 +105,34 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
           <table className="min-w-full divide-y divide-gray-50">
             <thead className="bg-emerald-50/50">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                >
                   ID
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                >
                   Nombre
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                >
                   Tipo
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                >
                   Estado
                 </th>
-                <th scope="col" className="px-6 py-4 text-right text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-right text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                >
                   Acciones
                 </th>
               </tr>
@@ -151,11 +158,15 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 py-1 rounded font-semibold text-xs ${
-                        c.estado_sala === 'ACTIVA' ? 'bg-green-50 text-green-600' :
-                        c.estado_sala === 'MANTENIMIENTO' ? 'bg-orange-50 text-orange-600' :
-                        'bg-red-50 text-red-600'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded font-semibold text-xs ${
+                          c.estado_sala === "ACTIVA"
+                            ? "bg-green-50 text-green-600"
+                            : c.estado_sala === "MANTENIMIENTO"
+                              ? "bg-orange-50 text-orange-600"
+                              : "bg-red-50 text-red-600"
+                        }`}
+                      >
                         {c.estado_sala}
                       </span>
                     </td>
@@ -174,7 +185,10 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="px-6 py-16 text-center text-gray-400 text-sm font-medium">
+                  <td
+                    colSpan="5"
+                    className="px-6 py-16 text-center text-gray-400 text-sm font-medium"
+                  >
                     <div className="flex flex-col items-center justify-center gap-2">
                       <span>No se encontraron consultorios.</span>
                     </div>
@@ -198,13 +212,21 @@ export default function ModuloConsultorios({ dataMaster, onRefresh }) {
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col transform transition-all">
             <div className="p-6 flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-xl font-black text-gray-800 mb-2">
-                Aviso
-              </h3>
+              <h3 className="text-xl font-black text-gray-800 mb-2">Aviso</h3>
               <p className="text-sm text-gray-500 font-medium">
                 {noPermissionMessage}
               </p>

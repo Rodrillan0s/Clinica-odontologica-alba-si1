@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import DetallesCitas from "./DetallesCitas";
 import {
   ESTADO_CITA,
   ESTADO_CITA_LABELS,
@@ -8,7 +7,7 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function AgendaPersonal({ onClose, dataMaster, user }) {
+export default function AgendaPersonal({ onClose, dataMaster, user, onVerDetalles }) {
   const [loading, setLoading] = useState(false);
   const [selectedOdontologo, setSelectedOdontologo] = useState("");
   const [selectedDate, setSelectedDate] = useState(
@@ -16,7 +15,6 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
   );
   const [citas, setCitas] = useState([]);
   const [error, setError] = useState(null);
-  const [selectedCitaDetalle, setSelectedCitaDetalle] = useState(null);
 
   const fetchCitas = useCallback(async () => {
     setLoading(true);
@@ -288,7 +286,7 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
                       </span>
                       {user?.rol < 5 && (
                         <button
-                          onClick={() => setSelectedCitaDetalle(cita)}
+                          onClick={() => onVerDetalles(cita)}
                           className="px-4 py-1.5 bg-gray-100 hover:bg-emerald-50 text-[#148F77] rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm whitespace-nowrap"
                         >
                           Detalles
@@ -302,19 +300,6 @@ export default function AgendaPersonal({ onClose, dataMaster, user }) {
           )}
         </div>
       </div>
-
-      {selectedCitaDetalle && (
-        <DetallesCitas
-          idCita={selectedCitaDetalle.id_cita}
-          originalCita={selectedCitaDetalle}
-          user={user}
-          dataMaster={dataMaster}
-          onClose={() => {
-            setSelectedCitaDetalle(null);
-            fetchCitas();
-          }}
-        />
-      )}
     </div>
   );
 }

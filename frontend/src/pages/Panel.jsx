@@ -13,6 +13,7 @@ import DashboardPaciente from "../components/dashboards/DashboardPaciente";
 import CambioPasswordUI from "../components/UIs/CambioPassword";
 import AgendarCitas from "../components/UIs/AgendarCitas";
 import AgendaCitas from "../components/UIs/AgendaCitas";
+import DetallesCitas from "../components/UIs/DetallesCitas";
 import ModuloPacientes from "../components/UIs/ModuloPacientes";
 import Bitacora from "../components/UIs/Bitacora";
 import ModuloUsuarios from "../components/UIs/ModuloUsuarios";
@@ -42,7 +43,10 @@ export default function Panel() {
   const [activeMenu, setActiveMenu] = useState("Panel de Control");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showModalCita, setShowModalCita] = useState(false);
-  const [showAgendaModal, setShowAgendaModal] = useState(false);
+  const [selectedCitaId, setSelectedCitaId] = useState(null);
+  const [originalCitaData, setOriginalCitaData] = useState(null);
+  const [returnToView, setReturnToView] = useState(null);
+  const [showAgendaPersonalState, setShowAgendaPersonalState] = useState(false);
   const [dataMaster, setDataMaster] = useState({
     procedimientos: [],
     odontologos: [],
@@ -235,9 +239,55 @@ export default function Panel() {
           {activeMenu === "Citas" && (
             <ModuloCitas
               openModal={() => setShowModalCita(true)}
-              openAgendaModal={() => setShowAgendaModal(true)}
+              openAgendaModal={() => {
+                setActiveMenu("Consultar Cita");
+              }}
               dataMaster={dataMaster}
               user={user}
+              defaultShowAgendaPersonal={showAgendaPersonalState}
+              onCloseAgendaPersonal={() => setShowAgendaPersonalState(false)}
+              onVerDetalles={(cita, fromAgendaPersonal = false) => {
+                setSelectedCitaId(cita.id_cita);
+                setOriginalCitaData(cita);
+                setReturnToView({ menu: "Citas", showAgendaPersonal: fromAgendaPersonal, showAgendaModal: false });
+                setActiveMenu("Detalle Cita");
+              }}
+            />
+          )}
+
+          {/* CONSULTAR CITAS PAGE */}
+          {activeMenu === "Consultar Cita" && (
+            <AgendaCitas
+              onClose={() => setActiveMenu("Citas")}
+              dataMaster={dataMaster}
+              user={user}
+              onVerDetalles={(cita) => {
+                setSelectedCitaId(cita.id_cita);
+                setOriginalCitaData(cita);
+                setReturnToView({ menu: "Consultar Cita", showAgendaPersonal: false, showAgendaModal: false });
+                setActiveMenu("Detalle Cita");
+              }}
+            />
+          )}
+
+          {/* DETALLES DE CITA PAGE */}
+          {activeMenu === "Detalle Cita" && (
+            <DetallesCitas
+              idCita={selectedCitaId}
+              originalCita={originalCitaData}
+              user={user}
+              dataMaster={dataMaster}
+              onClose={() => {
+                setActiveMenu(returnToView?.menu || "Citas");
+                if (returnToView?.showAgendaPersonal) {
+                  setShowAgendaPersonalState(true);
+                } else {
+                  setShowAgendaPersonalState(false);
+                }
+                setSelectedCitaId(null);
+                setOriginalCitaData(null);
+                setReturnToView(null);
+              }}
             />
           )}
 
@@ -297,7 +347,9 @@ export default function Panel() {
             "Ajustar Inventario", 
             "Procedimientos",
             "Reportes",
-            "Consultorios"
+            "Consultorios",
+            "Consultar Cita",
+            "Detalle Cita"
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>
@@ -320,14 +372,7 @@ export default function Panel() {
         />
       )}
 
-      {/* MODAL AGENDA */}
-      {showAgendaModal && (
-        <AgendaCitas
-          onClose={() => setShowAgendaModal(false)}
-          dataMaster={dataMaster}
-          user={user}
-        />
-      )}
+
     </div>
   );
 }

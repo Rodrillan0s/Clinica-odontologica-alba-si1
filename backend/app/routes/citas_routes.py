@@ -542,3 +542,110 @@ def get_salas():
         return jsonify({'success': True, 'data': salas}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener salas: {e}'}), 500
+
+
+@citas_routes.route('/api/servicios', methods=['GET'])
+def get_servicios_master():
+    try:
+        query = f"SELECT id_servicio, nombre, precio_consumidor, detalle FROM {Config.SCHEMA}.t_servicio ORDER BY nombre"
+        results = db.execute_query(query, fetchall=True)
+        servicios = [{
+            "id": row[0],
+            "nombre": row[1],
+            "precio": float(row[2]) if row[2] is not None else 0.0,
+            "detalle": row[3]
+        } for row in (results or [])]
+        return jsonify({'success': True, 'data': servicios}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@citas_routes.route('/api/citas/<int:id_cita>/servicios', methods=['GET'])
+@permission_required("visualizar_citas")
+def get_cita_servicios(id_cita):
+    try:
+        query = f"""
+            SELECT cs.id_cita_servicio, cs.id_servicio, s.nombre, cs.precio, cs.fecha_creacion
+            FROM {Config.SCHEMA}.t_cita_servicio cs
+            JOIN {Config.SCHEMA}.t_servicio s ON cs.id_servicio = s.id_servicio
+            WHERE cs.id_cita = %s
+            ORDER BY cs.fecha_creacion DESC
+        """
+        results = db.execute_query(query, (id_cita,), fetchall=True)
+        servicios = [{
+            "id_cita_servicio": row[0],
+            "id_servicio": row[1],
+            "nombre": row[2],
+            "precio": float(row[3]) if row[3] is not None else 0.0,
+            "fecha_creacion": row[4].strftime("%d/%m/%y %H:%M") if row[4] else None
+        } for row in (results or [])]
+        return jsonify({'success': True, 'data': servicios}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@citas_routes.route('/api/citas/<int:id_cita>/servicios', methods=['POST'])
+@permission_required("modificar_cita")
+def add_cita_servicio(id_cita):
+    data = request.get_json() or {}
+    id_servicio = data.get('id_servicio')
+    precio = data.get('precio')
+    id_u = data.get('id_usuario')
+    id_s = data.get('id_sesion')
+    
+    if not id_servicio:
+        return jsonify({'success': False, 'message': 'Falta el campo requerido: id_servicio'}), 400
+        
+    try:
+        if precio is None or precio == "":
+            query_precio = f"SELECT precio_consumidor FROM {Config.SCHEMA}.t_servicio WHERE id_servicio = %s"
+            res_precio = db.execute_query(query_precio, (id_servicio,), fetchone=True)
+            if not res_precio:
+                return jsonify({'success': False, 'message': 'Servicio no encontrado'}), 404
+            precio = res_precio[0] or 0.0
+
+        query = f"""
+            INSERT INTO {Config.SCHEMA}.t_cita_servicio (id_cita, id_servicio, precio)
+            VALUES (%s, %s, %s)
+            RETURNING id_cita_servicio
+        """
+        result = db.execute_query(query, (id_cita, id_servicio, precio), fetchone=True, commit=True)
+        
+        # Log en bitácora
+        Bitacora.registrar('CITAS_SERVICIOS', 'AGREGAR_SERVICIO', f'Servicio ID: {id_servicio} agregado a Cita ID: {id_cita}. Precio: {precio}', id_u, id_s)
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Servicio agregado a la cita exitosamente',
+            'data': {'id_cita_servicio': result[0], 'precio': float(precio)}
+        }), 201
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@citas_routes.route('/api/citas/servicios/<int:id_cita_servicio>', methods=['DELETE'])
+@permission_required("modificar_cita")
+def delete_cita_servicio(id_cita_servicio):
+    data = request.args or {}  # fallback to query params or JSON
+    if not data:
+        try:
+            data = request.get_json() or {}
+        except Exception:
+            data = {}
+    id_u = data.get('id_usuario')
+    id_s = data.get('id_sesion')
+    try:
+        query_info = f"SELECT id_cita, id_servicio FROM {Config.SCHEMA}.t_cita_servicio WHERE id_cita_servicio = %s"
+        info = db.execute_query(query_info, (id_cita_servicio,), fetchone=True)
+        if not info:
+            return jsonify({'success': False, 'message': 'Asociación de servicio no encontrada'}), 404
+            
+        query = f"DELETE FROM {Config.SCHEMA}.t_cita_servicio WHERE id_cita_servicio = %s"
+        db.execute_query(query, (id_cita_servicio,), commit=True)
+        
+        # Log en bitácora
+        Bitacora.registrar('CITAS_SERVICIOS', 'ELIMINAR_SERVICIO', f'Servicio ID: {info[1]} removido de Cita ID: {info[0]}', id_u, id_s)
+        
+        return jsonify({'success': True, 'message': 'Servicio removido de la cita exitosamente'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500

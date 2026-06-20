@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AgendaPersonal from "./AgendaPersonal";
 
 export default function ModuloCitas({
@@ -6,8 +6,15 @@ export default function ModuloCitas({
   openAgendaModal,
   dataMaster,
   user,
+  onVerDetalles,
+  defaultShowAgendaPersonal = false,
+  onCloseAgendaPersonal,
 }) {
-  const [showAgendaPersonal, setShowAgendaPersonal] = useState(false);
+  const [showAgendaPersonal, setShowAgendaPersonal] = useState(defaultShowAgendaPersonal);
+
+  useEffect(() => {
+    setShowAgendaPersonal(defaultShowAgendaPersonal);
+  }, [defaultShowAgendaPersonal]);
 
   const actions = [
     {
@@ -74,15 +81,25 @@ export default function ModuloCitas({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="relative bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6">
             <button
-              onClick={() => setShowAgendaPersonal(false)}
+              onClick={() => {
+                setShowAgendaPersonal(false);
+                if (onCloseAgendaPersonal) onCloseAgendaPersonal();
+              }}
               className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-500 font-bold z-10 transition-colors"
             >
               ✕
             </button>
             <AgendaPersonal
-              onClose={() => setShowAgendaPersonal(false)}
+              onClose={() => {
+                setShowAgendaPersonal(false);
+                if (onCloseAgendaPersonal) onCloseAgendaPersonal();
+              }}
               dataMaster={dataMaster}
               user={user}
+              onVerDetalles={(cita) => {
+                setShowAgendaPersonal(false);
+                onVerDetalles(cita, true);
+              }}
             />
           </div>
         </div>

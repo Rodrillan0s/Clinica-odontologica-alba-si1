@@ -60,9 +60,6 @@ export default function ModalConsultorio({ onClose, onSuccess, consultorioToEdit
           >
             ✕
           </button>
-          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
-            <span className="text-3xl text-white">🏥</span>
-          </div>
           <h2 className="text-2xl font-black text-white italic tracking-tight">
             {consultorioToEdit ? "Editar Consultorio" : "Nuevo Consultorio"}
           </h2>

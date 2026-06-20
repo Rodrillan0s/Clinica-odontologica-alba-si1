@@ -44,7 +44,9 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
       if (onRefresh) onRefresh();
     } catch (err) {
       setProcToDelete(null);
-      setNoPermissionMessage("No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador.");
+      setNoPermissionMessage(
+        "No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador.",
+      );
       setShowNoPermissionModal(true);
     }
   };
@@ -55,7 +57,7 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
 
   return (
     <div className="flex flex-col bg-white rounded-3xl shadow-sm border border-emerald-50 relative">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 lg:p-8 border-b border-gray-50 bg-gray-50/30">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 p-6 lg:p-8 border-b border-gray-50 bg-gray-50/30 flex-wrap">
         <div>
           <h2 className="text-2xl font-black text-[#2A5C4D]">
             Procedimientos Clínicos
@@ -66,7 +68,7 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
         </div>
 
         {/* Buscador y Botón */}
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+        <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-3">
           <div className="relative">
             <input
               type="text"
@@ -80,20 +82,6 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
             onClick={() => setShowAddModal(true)}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#148F77] text-white text-sm font-bold rounded-xl hover:bg-[#0f6b59] transition-all shadow-sm"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
             Agregar procedimiento
           </button>
         </div>
@@ -238,7 +226,8 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
                 Acceso Restringido
               </h3>
               <p className="text-sm text-gray-500 font-medium">
-                {noPermissionMessage || "No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador."}
+                {noPermissionMessage ||
+                  "No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador."}
               </p>
             </div>
             <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
