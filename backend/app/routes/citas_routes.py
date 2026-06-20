@@ -9,6 +9,30 @@ from ..classes.security import permission_required
 from ..services.bitacora import Bitacora
 citas_routes = Blueprint('citas_routes', __name__)
 
+def _get_log_context():
+    """Helper local para obtener id_usuario e id_sesion y evitar boilerplate."""
+    data = request.get_json(silent=True) or {}
+    id_u = data.get('id_usuario') or request.args.get('id_usuario')
+    id_s = data.get('id_sesion') or request.args.get('id_sesion')
+    
+    if not id_u:
+        from ..classes.security import Security
+        user = Security.decode_token()
+        if user:
+            id_u = user.get("id_usuario")
+            
+    if id_u and not id_s:
+        try:
+            query = f"SELECT id_sesion FROM {Config.SCHEMA}.t_sesiones WHERE id_usuario = %s AND estado = 'ACTIVA' ORDER BY fecha_inicio DESC LIMIT 1"
+            res = db.execute_query(query, (id_u,), fetchone=True)
+            if res:
+                id_s = res[0]
+        except Exception:
+            pass
+            
+    return id_u, id_s
+
+
 
 
 @citas_routes.route('/api/citas', methods=['POST'])
@@ -35,9 +59,8 @@ def create_cita():
         id_procedimiento = None
 
     # 3. Datos para bitácora (enviados desde el Front)
-    # Si no vienen (None), se guardarán como NULL en la DB hasta que actualices el Front
-    id_u = data.get('id_usuario')
-    id_s = data.get('id_sesion')
+    # Si no vienen (None), se resolverán automáticamente
+    id_u, id_s = _get_log_context()
 
     try:
 
@@ -169,8 +192,7 @@ def update_cita(id):
         id_procedimiento = None
 
     # Datos para bitácora
-    id_u = data.get('id_usuario')
-    id_s = data.get('id_sesion')
+    id_u, id_s = _get_log_context()
     fecha_finalizacion = data.get('fecha_finalizacion')
 
    
@@ -193,7 +215,7 @@ def update_cita(id):
         db.execute_query(query, params, commit=True)
 
         # REGISTRO EN BITÁCORA
-        Bitacora.registrar('CITAS', 'ACTUALIZAR_CITA', f'Cita ID: {id} actualizada. Nueva fecha: {fecha_agendamiento}', id_u, id_s)
+        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Cita ID: {id} actualizada. Nueva fecha: {fecha_agendamiento}', id_u, id_s)
 
         return jsonify({
             'success': True,
@@ -544,20 +566,7 @@ def get_salas():
         return jsonify({'success': False, 'message': f'Error al obtener salas: {e}'}), 500
 
 
-@citas_routes.route('/api/servicios', methods=['GET'])
-def get_servicios_master():
-    try:
-        query = f"SELECT id_servicio, nombre, precio_consumidor, detalle FROM {Config.SCHEMA}.t_servicio ORDER BY nombre"
-        results = db.execute_query(query, fetchall=True)
-        servicios = [{
-            "id": row[0],
-            "nombre": row[1],
-            "precio": float(row[2]) if row[2] is not None else 0.0,
-            "detalle": row[3]
-        } for row in (results or [])]
-        return jsonify({'success': True, 'data': servicios}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 
 @citas_routes.route('/api/citas/<int:id_cita>/servicios', methods=['GET'])
@@ -590,8 +599,7 @@ def add_cita_servicio(id_cita):
     data = request.get_json() or {}
     id_servicio = data.get('id_servicio')
     precio = data.get('precio')
-    id_u = data.get('id_usuario')
-    id_s = data.get('id_sesion')
+    id_u, id_s = _get_log_context()
     
     if not id_servicio:
         return jsonify({'success': False, 'message': 'Falta el campo requerido: id_servicio'}), 400
@@ -612,7 +620,7 @@ def add_cita_servicio(id_cita):
         result = db.execute_query(query, (id_cita, id_servicio, precio), fetchone=True, commit=True)
         
         # Log en bitácora
-        Bitacora.registrar('CITAS_SERVICIOS', 'AGREGAR_SERVICIO', f'Servicio ID: {id_servicio} agregado a Cita ID: {id_cita}. Precio: {precio}', id_u, id_s)
+        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Servicio ID: {id_servicio} agregado a Cita ID: {id_cita}. Precio: {precio}', id_u, id_s)
         
         return jsonify({
             'success': True, 
@@ -626,14 +634,7 @@ def add_cita_servicio(id_cita):
 @citas_routes.route('/api/citas/servicios/<int:id_cita_servicio>', methods=['DELETE'])
 @permission_required("modificar_cita")
 def delete_cita_servicio(id_cita_servicio):
-    data = request.args or {}  # fallback to query params or JSON
-    if not data:
-        try:
-            data = request.get_json() or {}
-        except Exception:
-            data = {}
-    id_u = data.get('id_usuario')
-    id_s = data.get('id_sesion')
+    id_u, id_s = _get_log_context()
     try:
         query_info = f"SELECT id_cita, id_servicio FROM {Config.SCHEMA}.t_cita_servicio WHERE id_cita_servicio = %s"
         info = db.execute_query(query_info, (id_cita_servicio,), fetchone=True)
@@ -644,7 +645,7 @@ def delete_cita_servicio(id_cita_servicio):
         db.execute_query(query, (id_cita_servicio,), commit=True)
         
         # Log en bitácora
-        Bitacora.registrar('CITAS_SERVICIOS', 'ELIMINAR_SERVICIO', f'Servicio ID: {info[1]} removido de Cita ID: {info[0]}', id_u, id_s)
+        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Servicio ID: {info[1]} removido de Cita ID: {info[0]}', id_u, id_s)
         
         return jsonify({'success': True, 'message': 'Servicio removido de la cita exitosamente'}), 200
     except Exception as e:

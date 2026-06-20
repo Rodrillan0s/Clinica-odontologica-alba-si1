@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import ModalAgregarProcedimiento from "./ModalAgregarProcedimiento";
+import ModalProcedimiento from "./ModalProcedimiento";
+import ModalAsignarOdontologos from "./ModalAsignarOdontologos";
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -7,7 +8,9 @@ const API_URL = import.meta.env.VITE_API_URL;
 export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [procToDelete, setProcToDelete] = useState(null);
+  const [procToAssign, setProcToAssign] = useState(null);
   const [showNoPermissionModal, setShowNoPermissionModal] = useState(false);
   const [noPermissionMessage, setNoPermissionMessage] = useState("");
   const user = useAuthStore((state) => state.user);
@@ -18,8 +21,19 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
     proc.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  const handleOpenAdd = () => {
+    setSelectedProcedure(null);
+    setShowAddModal(true);
+  };
+
+  const handleOpenEdit = (proc) => {
+    setSelectedProcedure(proc);
+    setShowAddModal(true);
+  };
+
   const handleSuccess = () => {
     setShowAddModal(false);
+    setSelectedProcedure(null);
     if (onRefresh) onRefresh();
   };
 
@@ -45,7 +59,7 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
     } catch (err) {
       setProcToDelete(null);
       setNoPermissionMessage(
-        "No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador.",
+        err.message || "No tienes los permisos necesarios para realizar esta acción. Por favor, contacta al administrador.",
       );
       setShowNoPermissionModal(true);
     }
@@ -79,7 +93,7 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
             />
           </div>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={handleOpenAdd}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#148F77] text-white text-sm font-bold rounded-xl hover:bg-[#0f6b59] transition-all shadow-sm"
           >
             Agregar procedimiento
@@ -101,6 +115,12 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-4 text-left text-[10px] font-black text-[#148F77] uppercase tracking-widest"
+                >
+                  Precio
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-4 text-right text-[10px] font-black text-[#148F77] uppercase tracking-widest"
                 >
                   Acciones
@@ -119,12 +139,27 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#2A5C4D]">
                       {proc.descripcion}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-[#148F77]">
+                      {proc.precio !== undefined ? `${proc.precio} Bs` : "0.00 Bs"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => setProcToAssign(proc)}
+                        className="text-orange-500 hover:text-orange-700 font-bold px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                      >
+                        Asignar
+                      </button>
+                      <button
+                        onClick={() => handleOpenEdit(proc)}
+                        className="text-[#148F77] hover:text-[#0f6b59] font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                      >
+                        Modificar
+                      </button>
                       <button
                         onClick={() => handleTryDelete(proc)}
                         className="text-red-400 hover:text-red-600 font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
                       >
-                        Eliminar procedimiento
+                        Eliminar
                       </button>
                     </td>
                   </tr>
@@ -146,13 +181,31 @@ export default function ModuloProcedimientos({ dataMaster, onRefresh }) {
         </div>
       </div>
 
-      {/* MODAL AGREGAR PROCEDIMIENTO */}
+      {/* MODAL AGREGAR / EDITAR PROCEDIMIENTO */}
       {showAddModal && (
-        <ModalAgregarProcedimiento
-          onClose={() => setShowAddModal(false)}
+        <ModalProcedimiento
+          procedure={selectedProcedure}
+          onClose={() => {
+            setShowAddModal(false);
+            setSelectedProcedure(null);
+          }}
           onSuccess={handleSuccess}
         />
       )}
+
+      {/* MODAL ASIGNAR ODONTÓLOGOS */}
+      {procToAssign && (
+        <ModalAsignarOdontologos
+          procedure={procToAssign}
+          odontologos={dataMaster?.odontologos || []}
+          onClose={() => setProcToAssign(null)}
+          onSuccess={() => {
+            setProcToAssign(null);
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
+
       {/* MODAL CONFIRMAR ELIMINACIÓN */}
       {procToDelete && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">

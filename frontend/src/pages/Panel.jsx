@@ -24,6 +24,8 @@ import AjustarInventario from "../components/UIs/AjustarInventario"; // <-- Adic
 import ModuloPersonal from "../components/UIs/ModuloPersonal";import ModuloProcedimientos from "../components/UIs/ModuloProcedimientos";
 import ReporteCitas from "../components/UIs/ReporteCitas";
 import ModuloConsultorios from "../components/UIs/ModuloConsultorios";
+import ModuloServicios from "../components/UIs/ModuloServicios";
+
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -326,6 +328,11 @@ export default function Panel() {
             <ModuloConsultorios dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
           )}
 
+          {/* SERVICIOS */}
+          {activeMenu === "Servicios" && userRolId < 5 && (
+            <ModuloServicios />
+          )}
+
           {/* PERSONAL */}
           {activeMenu === "Gestión de Personal" &&
           userRolId === ROLES.ADMINISTRADOR && (
@@ -346,6 +353,7 @@ export default function Panel() {
             "Registrar Salidas", // <-- Adición exclusiva: Desbloqueamos la vista de mermas y bajas
             "Ajustar Inventario", 
             "Procedimientos",
+            "Servicios",
             "Reportes",
             "Consultorios",
             "Consultar Cita",

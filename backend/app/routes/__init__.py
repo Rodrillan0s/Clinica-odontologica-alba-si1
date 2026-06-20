@@ -7,3 +7,4 @@ from .inventario_routes import inventario_routes
 from .personal_routes import personal_routes
 from .procedimientos_routes import procedimientos_routes_routes
 from .consultorios_routes import consultorios_routes
+from .servicios_routes import servicios_routes

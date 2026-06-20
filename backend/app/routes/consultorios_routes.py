@@ -5,9 +5,31 @@ from ..services.bitacora import Bitacora
 
 consultorios_routes = Blueprint('consultorios_routes', __name__)
 
-# =========================================================
-# 1. OBTENER TODOS LOS CONSULTORIOS (GET)
-# =========================================================
+def _get_log_context():
+    """Helper local para obtener id_usuario e id_sesion y evitar boilerplate."""
+    data = request.get_json(silent=True) or {}
+    id_u = data.get('id_usuario') or request.args.get('id_usuario')
+    id_s = data.get('id_sesion') or request.args.get('id_sesion')
+    
+    if not id_u:
+        from ..classes.security import Security
+        user = Security.decode_token()
+        if user:
+            id_u = user.get("id_usuario")
+            
+    if id_u and not id_s:
+        try:
+            query = f"SELECT id_sesion FROM {Config.SCHEMA}.t_sesiones WHERE id_usuario = %s AND estado = 'ACTIVA' ORDER BY fecha_inicio DESC LIMIT 1"
+            res = db.execute_query(query, (id_u,), fetchone=True)
+            if res:
+                id_s = res[0]
+        except Exception:
+            pass
+            
+    return id_u, id_s
+
+
+
 @consultorios_routes.route('/api/consultorios', methods=['GET'])
 def get_consultorios():
     try:
@@ -25,9 +47,7 @@ def get_consultorios():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# =========================================================
-# 2. OBTENER UN CONSULTORIO (GET)
-# =========================================================
+
 @consultorios_routes.route('/api/consultorios/<int:id_sala>', methods=['GET'])
 def get_consultorio(id_sala):
     try:
@@ -47,9 +67,7 @@ def get_consultorio(id_sala):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# =========================================================
-# 3. CREAR UN CONSULTORIO (POST)
-# =========================================================
+
 @consultorios_routes.route('/api/consultorios', methods=['POST'])
 def create_consultorio():
     try:
@@ -64,14 +82,13 @@ def create_consultorio():
         query = f"INSERT INTO {Config.SCHEMA}.t_sala (nombre, tipo_sala, estado_sala) VALUES (%s, %s, %s)"
         db.execute_query(query, (str(nombre), str(tipo_sala), str(estado_sala)), commit=True)
         
-        Bitacora.registrar("CONSULTORIOS", "CREATE", f"Consultorio creado: {nombre}")
+        id_u, id_s = _get_log_context()
+        Bitacora.registrar("CONSULTORIOS", "CREATE", f"Consultorio creado: {nombre}", id_u, id_s)
         return jsonify({'success': True, 'message': 'Consultorio creado exitosamente'}), 201
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# =========================================================
-# 4. ACTUALIZAR UN CONSULTORIO (PUT)
-# =========================================================
+
 @consultorios_routes.route('/api/consultorios/<int:id_sala>', methods=['PUT'])
 def update_consultorio(id_sala):
     try:
@@ -86,14 +103,13 @@ def update_consultorio(id_sala):
         query = f"UPDATE {Config.SCHEMA}.t_sala SET nombre = %s, tipo_sala = %s, estado_sala = %s WHERE id_sala = %s"
         db.execute_query(query, (str(nombre), str(tipo_sala), str(estado_sala), int(id_sala)), commit=True)
         
-        Bitacora.registrar("CONSULTORIOS", "UPDATE", f"Consultorio actualizado: {id_sala}")
+        id_u, id_s = _get_log_context()
+        Bitacora.registrar("CONSULTORIOS", "UPDATE", f"Consultorio actualizado: {id_sala}", id_u, id_s)
         return jsonify({'success': True, 'message': 'Consultorio actualizado exitosamente'}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# =========================================================
-# 5. ELIMINAR UN CONSULTORIO (DELETE)
-# =========================================================
+
 @consultorios_routes.route('/api/consultorios/<int:id_sala>', methods=['DELETE'])
 def delete_consultorio(id_sala):
     try:
@@ -105,7 +121,8 @@ def delete_consultorio(id_sala):
         query = f"DELETE FROM {Config.SCHEMA}.t_sala WHERE id_sala = %s"
         db.execute_query(query, (int(id_sala),), commit=True)
         
-        Bitacora.registrar("CONSULTORIOS", "DELETE", f"Consultorio eliminado: {row[0]}")
+        id_u, id_s = _get_log_context()
+        Bitacora.registrar("CONSULTORIOS", "DELETE", f"Consultorio eliminado: {row[0]}", id_u, id_s)
         return jsonify({'success': True, 'message': 'Consultorio eliminado exitosamente'}), 200
     except Exception as e:
         err_msg = str(e)

@@ -1,65 +1,63 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function ModalAgregarProcedimiento({ onClose, onSuccess }) {
-  const [descripcion, setDescripcion] = useState("");
+export default function ModalServicio({ service, onClose, onSuccess }) {
+  const [nombre, setNombre] = useState("");
+  const [precio, setPrecio] = useState("");
+  const [detalle, setDetalle] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const user = useAuthStore((state) => state.user);
 
+  const isEdit = !!service;
+
+  useEffect(() => {
+    if (service) {
+      setNombre(service.nombre || "");
+      setPrecio(service.precio !== undefined ? service.precio : "");
+      setDetalle(service.detalle || "");
+    }
+  }, [service]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!descripcion.trim()) {
-      setError("La descripción es obligatoria.");
+    if (!nombre.trim()) {
+      setError("El nombre del servicio es obligatorio.");
+      return;
+    }
+    if (precio === "" || isNaN(precio) || parseFloat(precio) < 0) {
+      setError("El precio debe ser un número válido y no negativo.");
       return;
     }
 
     setLoading(true);
     setError(null);
 
+    const url = isEdit ? `${API_URL}/servicios/${service.id}` : `${API_URL}/servicios`;
+    const method = isEdit ? "PUT" : "POST";
+
     try {
-      // 1. Crear el procedimiento
-      const resCrear = await fetch(`${API_URL}/procedimientos`, {
-        method: "POST",
+      const res = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
-          descripcion: descripcion.trim(),
+          nombre: nombre.trim(),
+          precio_sugerido: parseFloat(precio),
+          detalle: detalle.trim(),
+
           id_usuario: user?.id_usuario,
           id_sesion: user?.id_sesion,
         }),
       });
 
-      const dataCrear = await resCrear.json();
-
-      if (!dataCrear.success) {
-        throw new Error(dataCrear.message || "Error al crear el procedimiento.");
-      }
-
-      const idProcedimiento = dataCrear.data.id_procedimiento;
-
-      // 2. Asignarlo a todos los odontólogos
-      const resAsignar = await fetch(`${API_URL}/procedimientos/asignar-todos`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          id_procedimiento: idProcedimiento,
-          id_usuario: user?.id_usuario,
-          id_sesion: user?.id_sesion,
-        }),
-      });
-
-      const dataAsignar = await resAsignar.json();
-
-      if (!dataAsignar.success) {
-        throw new Error(dataAsignar.message || "Error al asignar a todos los odontólogos.");
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.message || "Error al guardar el servicio.");
       }
 
       onSuccess();
@@ -76,9 +74,11 @@ export default function ModalAgregarProcedimiento({ onClose, onSuccess }) {
         {/* HEADER */}
         <div className="bg-emerald-50 px-6 py-5 border-b border-emerald-100 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-black text-[#148F77]">Nuevo Procedimiento</h2>
+            <h2 className="text-xl font-black text-[#148F77]">
+              {isEdit ? "Modificar Servicio" : "Nuevo Servicio"}
+            </h2>
             <p className="text-xs text-emerald-600/70 font-bold mt-1">
-              Se asignará automáticamente a los odontólogos.
+              {isEdit ? "Actualice los datos del servicio seleccionado." : "Complete el formulario para dar de alta el servicio."}
             </p>
           </div>
           <button
@@ -111,15 +111,43 @@ export default function ModalAgregarProcedimiento({ onClose, onSuccess }) {
           <div className="space-y-4">
             <div>
               <label className="block text-[11px] font-black text-[#148F77] uppercase tracking-widest mb-1.5 ml-1">
-                Descripción
+                Nombre del Servicio
               </label>
               <input
                 type="text"
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                placeholder="Ej. Limpieza Dental, Extracción..."
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ej. Profilaxis, Endodoncia, Limpieza..."
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#148F77]/20 focus:border-[#148F77] transition-all font-semibold text-gray-700"
                 autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black text-[#148F77] uppercase tracking-widest mb-1.5 ml-1">
+                Precio (Bs)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={precio}
+                onChange={(e) => setPrecio(e.target.value)}
+                placeholder="Ej. 150.00"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#148F77]/20 focus:border-[#148F77] transition-all font-semibold text-gray-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black text-[#148F77] uppercase tracking-widest mb-1.5 ml-1">
+                Detalle / Descripción
+              </label>
+              <textarea
+                value={detalle}
+                onChange={(e) => setDetalle(e.target.value)}
+                placeholder="Detalle o descripción de lo que cubre el servicio..."
+                rows="3"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#148F77]/20 focus:border-[#148F77] transition-all font-semibold text-gray-700 resize-none"
               />
             </div>
           </div>

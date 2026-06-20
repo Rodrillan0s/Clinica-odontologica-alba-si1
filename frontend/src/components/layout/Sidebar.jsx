@@ -176,8 +176,10 @@ export default function Sidebar({
               <div className="mt-2 space-y-2">
                 <MenuButton title="Citas" />
                 {Number(userRolId) < 5 && <MenuButton title="Procedimientos" />}
+                {Number(userRolId) < 5 && <MenuButton title="Servicios" />}
                 {Number(userRolId) < 5 && <MenuButton title="Reportes" />}
                 {Number(userRolId) < 5 && <MenuButton title="Consultorios" />}
+
               </div>
             )}
           </div>
