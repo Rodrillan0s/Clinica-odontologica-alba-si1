@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth_store";
 
@@ -58,6 +58,40 @@ export default function Panel() {
     salas: [],
     loading: true,
   });
+
+  const returnToViewRef = useRef(returnToView);
+  useEffect(() => {
+    returnToViewRef.current = returnToView;
+  }, [returnToView]);
+
+  useEffect(() => {
+    if (activeMenu === "Detalle Cita") {
+      let exitedViaPopstate = false;
+      window.history.pushState({ noExit: true }, "");
+
+      const handlePopState = (event) => {
+        exitedViaPopstate = true;
+        const targetView = returnToViewRef.current;
+        setActiveMenu(targetView?.menu || "Citas");
+        if (targetView?.showAgendaPersonal) {
+          setShowAgendaPersonalState(true);
+        } else {
+          setShowAgendaPersonalState(false);
+        }
+        setSelectedCitaId(null);
+        setOriginalCitaData(null);
+        setReturnToView(null);
+      };
+
+      window.addEventListener("popstate", handlePopState);
+      return () => {
+        window.removeEventListener("popstate", handlePopState);
+        if (!exitedViaPopstate) {
+          window.history.back();
+        }
+      };
+    }
+  }, [activeMenu]);
 
   // =========================
   // FETCH CONFIG
@@ -281,15 +315,19 @@ export default function Panel() {
               user={user}
               dataMaster={dataMaster}
               onClose={() => {
-                setActiveMenu(returnToView?.menu || "Citas");
-                if (returnToView?.showAgendaPersonal) {
-                  setShowAgendaPersonalState(true);
+                if (window.history.state && window.history.state.noExit) {
+                  window.history.back();
                 } else {
-                  setShowAgendaPersonalState(false);
+                  setActiveMenu(returnToView?.menu || "Citas");
+                  if (returnToView?.showAgendaPersonal) {
+                    setShowAgendaPersonalState(true);
+                  } else {
+                    setShowAgendaPersonalState(false);
+                  }
+                  setSelectedCitaId(null);
+                  setOriginalCitaData(null);
+                  setReturnToView(null);
                 }
-                setSelectedCitaId(null);
-                setOriginalCitaData(null);
-                setReturnToView(null);
               }}
             />
           )}

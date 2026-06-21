@@ -115,11 +115,10 @@ def get_citas():
                 }
                 id_estado = estado_map.get(estado_raw)
 
-        # Llamada a la función f_obtener_citas con 12 parámetros
+      
         query = f"""
-            SELECT f.*, c.id_procedimiento 
-            FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) f
-            JOIN {Config.SCHEMA}.t_citas c ON f.id_cita = c.id_cita
+            SELECT * 
+            FROM {Config.SCHEMA}.f_obtener_citas(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         params = (
             filters.get('id_personal'),
@@ -133,7 +132,8 @@ def get_citas():
             filters.get('id_sala'),
             id_estado,
             limit,
-            offset
+            offset,
+            filters.get('id_procedimiento')
         )
         results = db.execute_query(query, params, fetchall=True)
 

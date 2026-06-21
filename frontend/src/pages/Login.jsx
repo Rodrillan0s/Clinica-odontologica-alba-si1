@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/LOGO.png';
 import fondoWelcome from '../assets/Fondo_Welcome.jpg';
@@ -27,6 +27,13 @@ export default function Login() {
 
   const navigate = useNavigate();
   const { login } = useAuthStore();
+  const loggedInUser = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    if (loggedInUser) {
+      navigate('/panel', { replace: true });
+    }
+  }, [loggedInUser, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
