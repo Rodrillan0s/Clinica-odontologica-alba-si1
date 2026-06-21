@@ -606,27 +606,17 @@ def add_cita_servicio(id_cita):
         return jsonify({'success': False, 'message': 'Falta el campo requerido: id_servicio'}), 400
         
     try:
-        if precio is None or precio == "":
-            query_precio = f"SELECT precio_consumidor FROM {Config.SCHEMA}.t_servicio WHERE id_servicio = %s"
-            res_precio = db.execute_query(query_precio, (id_servicio,), fetchone=True)
-            if not res_precio:
-                return jsonify({'success': False, 'message': 'Servicio no encontrado'}), 404
-            precio = res_precio[0] or 0.0
+       
+        precio_val = None if (precio is None or precio == "") else float(precio)
 
-        query = f"""
-            INSERT INTO {Config.SCHEMA}.t_cita_servicio (id_cita, id_servicio, precio)
-            VALUES (%s, %s, %s)
-            RETURNING id_cita_servicio
-        """
-        result = db.execute_query(query, (id_cita, id_servicio, precio), fetchone=True, commit=True)
-        
-        # Log en bitácora
-        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Servicio ID: {id_servicio} agregado a Cita ID: {id_cita}. Precio: {precio}', id_u, id_s)
+        query = f"CALL {Config.SCHEMA}.p_agregar_servicio_cita(%s, %s, %s)"
+        db.execute_query(query, (id_cita, id_servicio, precio_val), commit=True)
+
+        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Servicio ID: {id_servicio} agregado a Cita ID: {id_cita}.', id_u, id_s)
         
         return jsonify({
             'success': True, 
-            'message': 'Servicio agregado a la cita exitosamente',
-            'data': {'id_cita_servicio': result[0], 'precio': float(precio)}
+            'message': 'Servicio agregado a la cita exitosamente'
         }), 201
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -637,16 +627,17 @@ def add_cita_servicio(id_cita):
 def delete_cita_servicio(id_cita_servicio):
     id_u, id_s = _get_log_context()
     try:
-        query_info = f"SELECT id_cita, id_servicio FROM {Config.SCHEMA}.t_cita_servicio WHERE id_cita_servicio = %s"
-        info = db.execute_query(query_info, (id_cita_servicio,), fetchone=True)
+        query = f"""
+            DELETE FROM {Config.SCHEMA}.t_cita_servicio 
+            WHERE id_cita_servicio = %s 
+            RETURNING id_cita, id_servicio
+        """
+        info = db.execute_query(query, (id_cita_servicio,), fetchone=True, commit=True)
+        
         if not info:
             return jsonify({'success': False, 'message': 'Asociación de servicio no encontrada'}), 404
             
-        query = f"DELETE FROM {Config.SCHEMA}.t_cita_servicio WHERE id_cita_servicio = %s"
-        db.execute_query(query, (id_cita_servicio,), commit=True)
-        
-        # Log en bitácora
-        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Servicio ID: {info[1]} removido de Cita ID: {info[0]}', id_u, id_s)
+        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Servicio ID: {info[1]} removido de Cita ID: {info[0]}.', id_u, id_s)
         
         return jsonify({'success': True, 'message': 'Servicio removido de la cita exitosamente'}), 200
     except Exception as e:
