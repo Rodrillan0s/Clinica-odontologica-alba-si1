@@ -59,6 +59,11 @@ export default function ModuloInventario() {
   const [form, setForm] = useState({ nombre_material: "", precio: "", expirable: false, precio_venta:"" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Estados para alertas de inventario
+  const [alertasStock, setAlertasStock] = useState([]);
+  const [alertasVencimiento, setAlertasVencimiento] = useState([]);
+  const [showAlertsModal, setShowAlertsModal] = useState(false);
+
   // Función para ocultar mensajes automáticamente
   const autoHideMessages = () => {
     setTimeout(() => {
@@ -84,15 +89,21 @@ export default function ModuloInventario() {
     try {
       setLoading(true);
       setErrorMsg("");
-      const [resMat, resProv] = await Promise.all([
+      const [resMat, resProv, resAlerts] = await Promise.all([
         fetch(`${API_URL}/materiales`, getFetchConfig("GET")),
-        fetch(`${API_URL}/proveedores`, getFetchConfig("GET"))
+        fetch(`${API_URL}/proveedores`, getFetchConfig("GET")),
+        fetch(`${API_URL}/inventario/alertas`, getFetchConfig("GET"))
       ]);
       const dataMat = await resMat.json();
       const dataProv = await resProv.json();
+      const dataAlerts = await resAlerts.json();
 
       if (dataMat.success && Array.isArray(dataMat.data)) setMateriales(dataMat.data);
       if (dataProv.success && Array.isArray(dataProv.data)) setProveedores(dataProv.data);
+      if (dataAlerts.success) {
+        setAlertasStock(dataAlerts.stock_bajo || []);
+        setAlertasVencimiento(dataAlerts.por_vencer || []);
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg("No se pudo conectar con el servidor!");
@@ -404,6 +415,29 @@ export default function ModuloInventario() {
           <button onClick={() => setActiveTab("reportes")} className={`px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${activeTab === "reportes" ? "bg-white text-[#148F77] shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>REPORTE DE INVENTARIO</button>
         </div>
       </div>
+
+      {/* ALERTA DE STOCK Y VENCIMIENTOS - Premium Glassmorphism */}
+      {(alertasStock.length > 0 || alertasVencimiento.length > 0) && (
+        <div className="bg-gradient-to-r from-red-50 to-rose-50/50 border border-red-200/60 p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-600 text-lg font-black animate-pulse">
+              ⚠️
+            </div>
+            <div>
+              <h4 className="text-red-900 font-black text-xs uppercase tracking-wide">Atención: Diagnóstico de Inventario</h4>
+              <p className="text-red-700 text-[11px] mt-0.5 font-medium">
+                Se detectaron {alertasStock.length} insumos con stock bajo y {alertasVencimiento.length} lotes próximos a vencer o caducados.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowAlertsModal(true)} 
+            className="self-start sm:self-center px-4 py-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all cursor-pointer border-none outline-none"
+          >
+            Ver Detalles de Alertas
+          </button>
+        </div>
+      )}
 
       {/* NOTIFICACIONES - Se ocultan en impresión */}
       {(successMsg || errorMsg) && (
@@ -831,6 +865,93 @@ export default function ModuloInventario() {
                 <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all">Cancelar</button>
                 <button onClick={handleConfirmDelete} className="flex-1 py-3.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 shadow-md transition-all">Eliminar</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DETALLES DE ALERTAS DE INVENTARIO */}
+      {showAlertsModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn print:hidden">
+          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden transform scale-100 transition-transform flex flex-col max-h-[85vh]">
+            <div className="p-6 bg-red-50/50 border-b border-red-100 flex justify-between items-center">
+              <h3 className="text-red-900 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                <span>⚠️</span> Alertas del Sistema de Suministros
+              </h3>
+              <button onClick={() => setShowAlertsModal(false)} className="text-gray-400 hover:text-red-500 font-black text-sm transition-colors cursor-pointer border-none bg-transparent">✕</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              {/* SECCIÓN 1: STOCK BAJO */}
+              <div className="space-y-3">
+                <h4 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest border-b pb-2">
+                  📉 Insumos con Existencias Críticas (Bajo 15% / Piso de 2 unidades)
+                </h4>
+                {alertasStock.length === 0 ? (
+                  <p className="text-gray-400 italic py-2">No hay insumos con stock crítico.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {alertasStock.map((a) => (
+                      <div key={a.id_material} className="flex justify-between items-center p-3.5 bg-red-50/20 border border-red-100/50 rounded-2xl">
+                        <div>
+                          <p className="font-bold text-gray-800 uppercase">{a.nombre_material}</p>
+                          <p className="text-[9px] text-gray-400 mt-0.5">Código Insumo: #{a.id_material}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="bg-red-50 text-red-600 font-black px-2.5 py-1 rounded-md text-[10px] border border-red-100">
+                            {a.cantidad_disponible} / {a.cantidad_inicial} u ({a.porcentaje}%)
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* SECCIÓN 2: VENCIMIENTOS PROXIMOS */}
+              <div className="space-y-3">
+                <h4 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest border-b pb-2">
+                  ⏳ Lotes Próximos a Vencer (Límite de 30 Días o Caducados)
+                </h4>
+                {alertasVencimiento.length === 0 ? (
+                  <p className="text-gray-400 italic py-2">No hay lotes con fecha de vencimiento próxima.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {alertasVencimiento.map((l) => {
+                      const diasRestantes = Math.ceil(
+                        (new Date(l.fecha_caducidad).getTime() - new Date().getTime()) / (1000 * 3600 * 24)
+                      );
+                      const esCaducado = diasRestantes <= 0;
+                      return (
+                        <div key={l.id_lote} className="flex justify-between items-center p-3.5 bg-red-50/20 border border-red-100/50 rounded-2xl">
+                          <div>
+                            <p className="font-bold text-gray-800 uppercase">{l.nombre_material}</p>
+                            <p className="text-[9px] text-gray-400 mt-0.5">Lote #{l.id_lote} | Stock en Lote: {l.cantidad_disponible} u</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`font-black px-2.5 py-1 rounded-md text-[10px] border ${
+                              esCaducado 
+                                ? 'bg-red-50 text-red-600 border-red-100' 
+                                : 'bg-rose-50 text-rose-600 border-rose-100'
+                            }`}>
+                              {esCaducado ? "Vencido" : `Vence en ${diasRestantes} días`} ({l.fecha_caducidad})
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+              <button 
+                onClick={() => setShowAlertsModal(false)} 
+                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer border-none"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import logo from "../../assets/LOGOTIPO.png";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ROLES = {
   ADMINISTRADOR: 1,
@@ -20,6 +22,27 @@ export default function Sidebar({
   isOpen,
   setIsOpen,
 }) {
+
+  const [alertasCount, setAlertasCount] = useState(0);
+
+  useEffect(() => {
+    if (Number(userRolId) === 1) {
+      fetch(`${API_URL}/inventario/alertas`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            const stock = data.stock_bajo?.length || 0;
+            const venc = data.por_vencer?.length || 0;
+            setAlertasCount(stock + venc);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [userRolId]);
 
   // =========================
   // SUBMENUS
@@ -71,13 +94,13 @@ export default function Sidebar({
   // MENU BUTTON
   // =========================
 
-  const MenuButton = ({ title }) => (
+  const MenuButton = ({ title, badge }) => (
     <button
       onClick={() => {
         setActiveMenu(title);
         setIsOpen(false);
       }}
-      className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all ${
+      className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all ${
         activeMenu === title
           ? "bg-[#148F77] text-white shadow-xl"
           : "text-gray-400 hover:bg-emerald-50 hover:text-[#148F77]"
@@ -86,6 +109,7 @@ export default function Sidebar({
       <span className="font-bold text-xs">
         {title}
       </span>
+      {badge}
     </button>
   );
 
@@ -259,7 +283,12 @@ export default function Sidebar({
                 onClick={() => toggleMenu("inventario")}
                 className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
               >
-                <span>Inventario</span>
+                <div className="flex items-center gap-2">
+                  <span>Inventario</span>
+                  {alertasCount > 0 && (
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm"></span>
+                  )}
+                </div>
 
                 <span className="text-lg">
                   {openMenus.inventario ? "−" : "+"}
@@ -268,7 +297,14 @@ export default function Sidebar({
 
               {openMenus.inventario && (
                 <div className="mt-2 space-y-2">
-                  <MenuButton title="Gestionar Inventario" />
+                  <MenuButton 
+                    title="Gestionar Inventario" 
+                    badge={alertasCount > 0 && (
+                      <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">
+                        {alertasCount}
+                      </span>
+                    )} 
+                  />
                   <MenuButton title="Registrar Entradas" />
                   <MenuButton title="Registrar Salidas" /> 
                   <MenuButton title="Ajustar Inventario" /> 

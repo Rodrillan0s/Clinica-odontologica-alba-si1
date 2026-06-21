@@ -223,6 +223,42 @@ def registrar_proveedor_express():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+
+@inventario_routes.route('/api/inventario/alertas', methods=['GET'])
+@permission_required("visualizar_materiales")
+def obtener_alertas_inventario():
+    try:
+        # Invocar funciones almacenadas en base de datos para recuperar diagnósticos
+        query_stock = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_alertas_stock()"
+        query_venc = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_alertas_vencimiento()"
+        
+        res_stock = db.execute_query(query_stock, fetchall=True) or []
+        res_venc = db.execute_query(query_venc, fetchall=True) or []
+        
+        alertas_stock = [{
+            "id_material": r[0],
+            "nombre_material": r[1],
+            "cantidad_inicial": int(r[2]),
+            "cantidad_disponible": int(r[3]),
+            "porcentaje": round((float(r[3]) / float(r[2])) * 100, 2) if r[2] else 0.0
+        } for r in res_stock]
+        
+        alertas_vencimiento = [{
+            "id_lote": r[0],
+            "nombre_material": r[1],
+            "cantidad_disponible": int(r[2]),
+            "fecha_caducidad": r[3].strftime("%Y-%m-%d") if r[3] else None
+        } for r in res_venc]
+        
+        return jsonify({
+            "success": True,
+            "stock_bajo": alertas_stock,
+            "por_vencer": alertas_vencimiento
+        }), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 # =========================================================
 # 8. OBTENER LOTES DE UN MATERIAL (GET ADAPTADO AL PIPELINE MAESTRO)
 # =========================================================
