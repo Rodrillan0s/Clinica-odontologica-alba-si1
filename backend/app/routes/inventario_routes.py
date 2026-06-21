@@ -70,7 +70,6 @@ def ejecutar_query_reporte_filtrado(tipo, expirable, estado, f_inicio, f_fin, pa
 # 1. CONSULTAR CATÁLOGO DE MATERIALES (GET)
 # =========================================================
 @inventario_routes.route('/api/materiales', methods=['GET'])
-@admin_required
 @permission_required("visualizar_materiales")
 def consultar_materiales():
     try:
@@ -228,7 +227,6 @@ def registrar_proveedor_express():
 # 8. OBTENER LOTES DE UN MATERIAL (GET ADAPTADO AL PIPELINE MAESTRO)
 # =========================================================
 @inventario_routes.route('/api/inventario/lotes/<int:id_material>', methods=['GET'])
-@admin_required
 def obtener_lotes_material(id_material):
     try:
         # Consulta SQL directa para evitar dependencias de funciones externas inexistentes

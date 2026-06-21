@@ -651,3 +651,102 @@ def delete_cita_servicio(id_cita_servicio):
         return jsonify({'success': True, 'message': 'Servicio removido de la cita exitosamente'}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+
+# MATERIALES DE UNA CITA 
+
+@citas_routes.route('/api/citas/<int:id_cita>/materiales', methods=['GET'])
+@permission_required("visualizar_citas")
+def get_cita_materiales(id_cita):
+    try:
+        query = f"SELECT * FROM {Config.SCHEMA}.fn_obtener_materiales_cita(%s)"
+        results = db.execute_query(query, (id_cita,), fetchall=True)
+        materiales = [{
+            "id_movimiento": row[0],
+            "id_material": row[1],
+            "nombre_material": row[2],
+            "id_lote": row[3],
+            "cantidad": int(row[4]) if row[4] is not None else 0,
+            "fecha_movimiento": row[5].strftime("%d/%m/%y %H:%M") if row[5] else None,
+            "precio_venta": float(row[6]) if row[6] is not None else 0.0,
+            "subtotal": (int(row[4]) if row[4] is not None else 0) * (float(row[6]) if row[6] is not None else 0.0),
+            "observacion": row[7] or "",
+            "id_servicio": row[8],
+            "nombre_servicio": row[9] or "",
+            "codigo_diente": row[10],
+            "nombre_diente": row[11] or ""
+        } for row in (results or [])]
+        return jsonify({'success': True, 'data': materiales}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@citas_routes.route('/api/citas/<int:id_cita>/materiales', methods=['POST'])
+@permission_required("modificar_cita")
+def add_cita_material(id_cita):
+    data = request.get_json() or {}
+    id_lote = data.get('id_lote')
+    cantidad = data.get('cantidad')
+    id_servicio = data.get('id_servicio')
+    codigo_diente = data.get('codigo_diente')
+    observacion = data.get('observacion')
+    id_u, id_s = _get_log_context()
+    
+    if not id_lote or not cantidad:
+        return jsonify({'success': False, 'message': 'Faltan campos requeridos: id_lote y cantidad'}), 400
+        
+    try:
+        
+        sql = f"SELECT * FROM {Config.SCHEMA}.fn_registrar_consumo_material_cita(%s, %s, %s, %s, %s, %s)"
+        result = db.execute_query(sql, (
+            id_cita,
+            int(id_lote),
+            int(cantidad),
+            int(id_servicio) if id_servicio else None,
+            int(codigo_diente) if codigo_diente else None,
+            str(observacion) if observacion else None
+        ), fetchone=True, commit=True)
+        
+        if not result:
+            return jsonify({'success': False, 'message': 'No se pudo registrar el consumo del material.'}), 500
+            
+        id_movimiento, id_material = result[0], result[1]
+        
+        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Material ID: {id_material} (Lote #{id_lote}, Cantidad: {cantidad}) consumido en Cita ID: {id_cita}', id_u, id_s)
+        
+        return jsonify({'success': True, 'message': 'Material consumido registrado en la cita con éxito'}), 201
+    except Exception as e:
+        error_msg = str(e).split("CONTEXT:")[0] if "CONTEXT:" in str(e) else str(e)
+        return jsonify({'success': False, 'message': error_msg}), 500
+
+
+@citas_routes.route('/api/citas/materiales/<int:id_movimiento>', methods=['DELETE'])
+@permission_required("modificar_cita")
+def delete_cita_material(id_movimiento):
+    id_u, id_s = _get_log_context()
+    try:
+       
+        sql = f"SELECT * FROM {Config.SCHEMA}.fn_eliminar_consumo_material_cita(%s)"
+        result = db.execute_query(sql, (id_movimiento,), fetchone=True, commit=True)
+        
+        if not result:
+            return jsonify({'success': False, 'message': 'Detalle de consumo no encontrado'}), 404
+            
+        id_cita, id_lote, cantidad, id_material = result[0], result[1], int(result[2]), result[3]
+        Bitacora.registrar('CITAS', 'MODIFICAR_CITA', f'Material ID: {id_material} (Lote #{id_lote}, Cantidad: {cantidad}) devuelto al almacén desde Cita ID: {id_cita}', id_u, id_s)
+        
+        return jsonify({'success': True, 'message': 'Consumo de material eliminado y stock devuelto exitosamente'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@citas_routes.route('/api/dientes', methods=['GET'])
+def get_dientes():
+    try:
+        query = f"SELECT codigo, nombre FROM {Config.SCHEMA}.t_diente ORDER BY codigo ASC"
+        results = db.execute_query(query, fetchall=True)
+        dientes = [{"codigo": r[0], "nombre": r[1]} for r in (results or [])]
+        return jsonify({'success': True, 'data': dientes}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500

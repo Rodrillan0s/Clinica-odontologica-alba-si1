@@ -50,6 +50,25 @@ export default function DetallesCitas({
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
   const [servicesError, setServicesError] = useState("");
 
+  // Estados para materiales
+  const [activeTabDerecha, setActiveTabDerecha] = useState("servicios"); // "servicios" o "materiales"
+  const [materialesCita, setMaterialesCita] = useState([]);
+  const [catalogoMateriales, setCatalogoMateriales] = useState([]);
+  const [lotesMaterial, setLotesMaterial] = useState([]);
+  const [loadingMateriales, setLoadingMateriales] = useState(false);
+  const [addingMaterial, setAddingMaterial] = useState(false);
+  const [selectedMaterialId, setSelectedMaterialId] = useState("");
+  const [selectedLoteId, setSelectedLoteId] = useState("");
+  const [cantidadMaterial, setCantidadMaterial] = useState("");
+  const [showConfirmDeleteMaterial, setShowConfirmDeleteMaterial] = useState(null);
+  const [materialsError, setMaterialsError] = useState("");
+
+  // Nuevos estados para detalles de consumos de materiales
+  const [catalogoDientes, setCatalogoDientes] = useState([]);
+  const [selectedServicioIdForMaterial, setSelectedServicioIdForMaterial] = useState("");
+  const [selectedDienteCodigo, setSelectedDienteCodigo] = useState("");
+  const [materialObservacion, setMaterialObservacion] = useState("");
+
   const fetchCita = async () => {
     setLoading(true);
     try {
@@ -168,11 +187,157 @@ export default function DetallesCitas({
     }
   };
 
+  const fetchMaterialesCita = async () => {
+    setLoadingMateriales(true);
+    try {
+      const res = await fetch(`${API_URL}/citas/${idCita}/materiales`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMaterialesCita(data.data);
+      }
+    } catch (err) {
+      console.error("Error al cargar materiales de la cita", err);
+    } finally {
+      setLoadingMateriales(false);
+    }
+  };
+
+  const fetchCatalogoMateriales = async () => {
+    try {
+      const res = await fetch(`${API_URL}/materiales`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCatalogoMateriales(data.data);
+      }
+    } catch (err) {
+      console.error("Error al cargar catálogo de materiales", err);
+    }
+  };
+
+  const fetchCatalogoDientes = async () => {
+    try {
+      const res = await fetch(`${API_URL}/dientes`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCatalogoDientes(data.data);
+      }
+    } catch (err) {
+      console.error("Error al cargar catálogo de dientes", err);
+    }
+  };
+
+  const fetchLotesMaterial = async (idMaterial) => {
+    if (!idMaterial) {
+      setLotesMaterial([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/inventario/lotes/${idMaterial}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Solo conservar los lotes que tengan stock disponible
+        setLotesMaterial((data.data || []).filter(l => l.cantidad_disponible > 0));
+      }
+    } catch (err) {
+      console.error("Error al cargar lotes del material", err);
+    }
+  };
+
+  const handleAddMaterial = async (e) => {
+    e.preventDefault();
+    if (!selectedLoteId || !cantidadMaterial || Number(cantidadMaterial) <= 0) return;
+    
+    setAddingMaterial(true);
+    setMaterialsError("");
+    try {
+      const res = await fetch(`${API_URL}/citas/${idCita}/materiales`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          id_lote: Number(selectedLoteId),
+          cantidad: Number(cantidadMaterial),
+          id_servicio: selectedServicioIdForMaterial ? Number(selectedServicioIdForMaterial) : null,
+          codigo_diente: selectedDienteCodigo ? Number(selectedDienteCodigo) : null,
+          observacion: materialObservacion.trim() || null,
+          id_usuario: user?.id_usuario || null,
+          id_sesion: user?.id_sesion || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchMaterialesCita();
+        fetchLotesMaterial(selectedMaterialId);
+        setCantidadMaterial("");
+        setSelectedLoteId("");
+        setSelectedServicioIdForMaterial("");
+        setSelectedDienteCodigo("");
+        setMaterialObservacion("");
+      } else {
+        setMaterialsError(data.message || "Error al registrar material");
+      }
+    } catch (err) {
+      setMaterialsError("Error de conexión al registrar material");
+    } finally {
+      setAddingMaterial(false);
+    }
+  };
+
+  const handleDeleteMaterial = (idMovimiento) => {
+    setMaterialsError("");
+    setShowConfirmDeleteMaterial(idMovimiento);
+  };
+
+  const confirmDeleteMaterial = async () => {
+    if (!showConfirmDeleteMaterial) return;
+    const idMovimiento = showConfirmDeleteMaterial;
+    setShowConfirmDeleteMaterial(null);
+    setMaterialsError("");
+    try {
+      const payload = {
+        id_usuario: user?.id_usuario || null,
+        id_sesion: user?.id_sesion || null,
+      };
+      const res = await fetch(`${API_URL}/citas/materiales/${idMovimiento}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchMaterialesCita();
+        if (selectedMaterialId) {
+          fetchLotesMaterial(selectedMaterialId);
+        }
+      } else {
+        setMaterialsError(data.message || "Error al eliminar consumo de material");
+      }
+    } catch (err) {
+      setMaterialsError("Error de conexión al eliminar material");
+    }
+  };
+
   useEffect(() => {
     if (idCita) {
       fetchCita();
       fetchServiciosCita();
       fetchCatalogoServicios();
+      fetchMaterialesCita();
+      fetchCatalogoMateriales();
+      fetchCatalogoDientes();
     }
   }, [idCita]);
 
@@ -933,150 +1098,418 @@ export default function DetallesCitas({
               ) : null}
             </div>
 
-            {/* Columna Derecha: Servicios Realizados */}
+            {/* Columna Derecha: Servicios / Materiales Realizados */}
             <div className="lg:col-span-5">
               <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm space-y-6">
-                <div className="flex justify-between items-center border-b border-gray-50 pb-4">
-                  <div>
-                    <h4 className="text-lg font-black text-[#2A5C4D] italic tracking-tight">
-                      Servicios Realizados
-                    </h4>
-                    <p className="text-[9px] text-[#148F77] font-black uppercase tracking-widest mt-0.5">
-                      Cargos aplicados
-                    </p>
-                  </div>
+                
+                {/* Tabs */}
+                <div className="flex border-b border-gray-100 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabDerecha("servicios")}
+                    className={`flex-1 pb-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all cursor-pointer ${
+                      activeTabDerecha === "servicios"
+                        ? "border-[#148F77] text-[#148F77]"
+                        : "border-transparent text-gray-400 hover:text-gray-600"
+                    }`}
+                  >
+                    Servicios
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabDerecha("materiales")}
+                    className={`flex-1 pb-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all cursor-pointer ${
+                      activeTabDerecha === "materiales"
+                        ? "border-[#148F77] text-[#148F77]"
+                        : "border-transparent text-gray-400 hover:text-gray-600"
+                    }`}
+                  >
+                    Materiales
+                  </button>
                 </div>
 
-                {servicesError && (
-                  <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase rounded-r-xl">
-                    ⚠️ {servicesError}
-                  </div>
-                )}
-
-                {loadingServicios ? (
-                  <div className="flex justify-center py-6">
-                    <div className="w-6 h-6 border-2 border-[#148F77] border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : serviciosCita.length === 0 ? (
-                  <p className="text-center text-gray-400 text-xs italic py-6">
-                    No se han registrado servicios en esta cita.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                      {serviciosCita.map((serv) => (
-                        <div
-                          key={serv.id_cita_servicio}
-                          className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/10 transition-colors"
-                        >
-                          <div>
-                            <p className="text-xs font-bold text-gray-700">
-                              {serv.nombre}
-                            </p>
-                            <p className="text-[9px] text-gray-400 font-medium">
-                              Registrado: {serv.fecha_creacion}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-black text-[#2A5C4D]">
-                              Bs {serv.precio.toFixed(2)}
-                            </span>
-                            {!isCitaTerminada && (
-                              <button
-                                onClick={() =>
-                                  handleDeleteServicio(serv.id_cita_servicio)
-                                }
-                                className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center text-xs transition-colors focus:outline-none cursor-pointer"
-                                title="Remover de la cita"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                {/* TAB SERVICIOS */}
+                {activeTabDerecha === "servicios" && (
+                  <>
+                    <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+                      <div>
+                        <h4 className="text-lg font-black text-[#2A5C4D] italic tracking-tight">
+                          Servicios Realizados
+                        </h4>
+                        <p className="text-[9px] text-[#148F77] font-black uppercase tracking-widest mt-0.5">
+                          Cargos aplicados
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="border-t border-gray-100 pt-4 flex justify-between items-center px-2">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        Total Servicios:
-                      </span>
-                      <span className="text-xl font-black text-[#2A5C4D]">
-                        Bs{" "}
-                        {serviciosCita
-                          .reduce((acc, curr) => acc + curr.precio, 0)
-                          .toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                    {servicesError && (
+                      <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase rounded-r-xl">
+                        ⚠️ {servicesError}
+                      </div>
+                    )}
 
-                {/* Formulario para agregar servicios */}
-                {!isCitaTerminada && (
-                  <form
-                    onSubmit={handleAddServicio}
-                    className="border-t border-gray-100 pt-6 space-y-4"
-                  >
-                    <p className="text-[10px] font-black text-[#148F77] uppercase tracking-widest">
-                      Agregar Servicio a la Cita
-                    </p>
-
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                          Servicio
-                        </label>
-                        <select
-                          required
-                          className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                          value={selectedServicioId}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setSelectedServicioId(val);
-                            // Pre-llenar el precio sugerido
-                            const selected = catalogoServicios.find(
-                              (s) => String(s.id) === String(val),
-                            );
-                            if (selected) {
-                              setCustomPrecio(selected.precio);
-                            } else {
-                              setCustomPrecio("");
-                            }
-                          }}
-                        >
-                          <option value="">Seleccione un servicio...</option>
-                          {catalogoServicios.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.nombre} (Bs {s.precio.toFixed(2)})
-                            </option>
+                    {loadingServicios ? (
+                      <div className="flex justify-center py-6">
+                        <div className="w-6 h-6 border-2 border-[#148F77] border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : serviciosCita.length === 0 ? (
+                      <p className="text-center text-gray-400 text-xs italic py-6">
+                        No se han registrado servicios en esta cita.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                          {serviciosCita.map((serv) => (
+                            <div
+                              key={serv.id_cita_servicio}
+                              className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/10 transition-colors"
+                            >
+                              <div>
+                                <p className="text-xs font-bold text-gray-700">
+                                  {serv.nombre}
+                                </p>
+                                <p className="text-[9px] text-gray-400 font-medium">
+                                  Registrado: {serv.fecha_creacion}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-black text-[#2A5C4D]">
+                                  Bs {serv.precio.toFixed(2)}
+                                </span>
+                                {!isCitaTerminada && (
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteServicio(serv.id_cita_servicio)
+                                    }
+                                    className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center text-xs transition-colors focus:outline-none cursor-pointer"
+                                    title="Remover de la cita"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           ))}
-                        </select>
-                      </div>
+                        </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                          Precio Cobrado (Bs)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          placeholder="0.00"
-                          className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                          value={customPrecio}
-                          onChange={(e) => setCustomPrecio(e.target.value)}
-                        />
+                        <div className="border-t border-gray-100 pt-4 flex justify-between items-center px-2">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            Total Servicios:
+                          </span>
+                          <span className="text-xl font-black text-[#2A5C4D]">
+                            Bs{" "}
+                            {serviciosCita
+                              .reduce((acc, curr) => acc + curr.precio, 0)
+                              .toFixed(2)}
+                          </span>
+                        </div>
                       </div>
+                    )}
 
-                      <button
-                        type="submit"
-                        disabled={addingServicio || !selectedServicioId}
-                        className="w-full py-4 bg-[#148F77] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#0f6b59] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                    {/* Formulario para agregar servicios */}
+                    {!isCitaTerminada && (
+                      <form
+                        onSubmit={handleAddServicio}
+                        className="border-t border-gray-100 pt-6 space-y-4"
                       >
-                        {addingServicio ? "Agregando..." : "+ Agregar Servicio"}
-                      </button>
+                        <p className="text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                          Agregar Servicio a la Cita
+                        </p>
+
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                              Servicio
+                            </label>
+                            <select
+                              required
+                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
+                              value={selectedServicioId}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSelectedServicioId(val);
+                                // Pre-llenar el precio sugerido
+                                const selected = catalogoServicios.find(
+                                  (s) => String(s.id) === String(val),
+                                );
+                                if (selected) {
+                                  setCustomPrecio(selected.precio);
+                                } else {
+                                  setCustomPrecio("");
+                                }
+                              }}
+                            >
+                              <option value="">Seleccione un servicio...</option>
+                              {catalogoServicios.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.nombre} (Bs {s.precio.toFixed(2)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                              Precio Cobrado (Bs)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
+                              value={customPrecio}
+                              onChange={(e) => setCustomPrecio(e.target.value)}
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={addingServicio || !selectedServicioId}
+                            className="w-full py-4 bg-[#148F77] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#0f6b59] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                          >
+                            {addingServicio ? "Agregando..." : "+ Agregar Servicio"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </>
+                )}
+
+                {/* TAB MATERIALES */}
+                {activeTabDerecha === "materiales" && (
+                  <>
+                    <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+                      <div>
+                        <h4 className="text-lg font-black text-[#2A5C4D] italic tracking-tight">
+                          Materiales Consumidos
+                        </h4>
+                        <p className="text-[9px] text-[#148F77] font-black uppercase tracking-widest mt-0.5">
+                          Insumos clínicos utilizados
+                        </p>
+                      </div>
                     </div>
-                  </form>
+
+                    {materialsError && (
+                      <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase rounded-r-xl">
+                        ⚠️ {materialsError}
+                      </div>
+                    )}
+
+                    {loadingMateriales ? (
+                      <div className="flex justify-center py-6">
+                        <div className="w-6 h-6 border-2 border-[#148F77] border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : materialesCita.length === 0 ? (
+                      <p className="text-center text-gray-400 text-xs italic py-6">
+                        No se han registrado materiales en esta cita.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                          {materialesCita.map((mat) => (
+                            <div
+                              key={mat.id_movimiento}
+                              className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/10 transition-colors"
+                            >
+                              <div>
+                                <p className="text-xs font-bold text-gray-700">
+                                  {mat.nombre_material}
+                                </p>
+                                <p className="text-[9px] text-gray-400 font-medium">
+                                  Lote: #{mat.id_lote} | Cantidad: {mat.cantidad} u
+                                </p>
+                                {(mat.nombre_servicio || mat.codigo_diente || mat.observacion) && (
+                                  <div className="mt-1.5 space-y-0.5 border-t border-gray-100 pt-1">
+                                    {mat.nombre_servicio && (
+                                      <p className="text-[9px] text-emerald-700 font-semibold flex items-center gap-1">
+                                        📋 <span className="font-bold">Servicio:</span> {mat.nombre_servicio}
+                                      </p>
+                                    )}
+                                    {mat.codigo_diente && (
+                                      <p className="text-[9px] text-[#2A5C4D] font-semibold flex items-center gap-1">
+                                        🦷 <span className="font-bold">Diente:</span> {mat.codigo_diente} - {mat.nombre_diente}
+                                      </p>
+                                    )}
+                                    {mat.observacion && (
+                                      <p className="text-[9px] text-gray-500 font-medium italic flex items-center gap-1">
+                                        💬 <span className="font-bold">Obs:</span> {mat.observacion}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-black text-[#2A5C4D]">
+                                  Bs {mat.subtotal.toFixed(2)}
+                                </span>
+                                {!isCitaTerminada && (
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteMaterial(mat.id_movimiento)
+                                    }
+                                    className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center text-xs transition-colors focus:outline-none cursor-pointer"
+                                    title="Remover de la cita"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="border-t border-gray-100 pt-4 flex justify-between items-center px-2">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            Total Materiales:
+                          </span>
+                          <span className="text-xl font-black text-[#2A5C4D]">
+                            Bs{" "}
+                            {materialesCita
+                              .reduce((acc, curr) => acc + curr.subtotal, 0)
+                              .toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Formulario para agregar materiales */}
+                    {!isCitaTerminada && (
+                      <form
+                        onSubmit={handleAddMaterial}
+                        className="border-t border-gray-100 pt-6 space-y-4"
+                      >
+                        <p className="text-[10px] font-black text-[#148F77] uppercase tracking-widest">
+                          Registrar Consumo de Material
+                        </p>
+
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                              Material
+                            </label>
+                            <select
+                              required
+                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
+                              value={selectedMaterialId}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSelectedMaterialId(val);
+                                setSelectedLoteId("");
+                                fetchLotesMaterial(val);
+                              }}
+                            >
+                              <option value="">Seleccione un material...</option>
+                              {catalogoMateriales.map((m) => (
+                                <option key={m.id_material} value={m.id_material}>
+                                  {m.nombre_material} (Bs {m.precio_venta.toFixed(2)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                              Lote de Inventario (Stock Disponible)
+                            </label>
+                            <select
+                              required
+                              disabled={!selectedMaterialId}
+                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
+                              value={selectedLoteId}
+                              onChange={(e) => setSelectedLoteId(e.target.value)}
+                            >
+                              <option value="">Seleccione un lote...</option>
+                              {lotesMaterial.map((l) => (
+                                <option key={l.id_lote} value={l.id_lote}>
+                                  Lote #{l.id_lote} (Stock: {l.cantidad_disponible} u) {l.fecha_caducidad ? `| Vence: ${l.fecha_caducidad}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                              Cantidad a Consumir
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              placeholder="0"
+                              disabled={!selectedLoteId}
+                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
+                              value={cantidadMaterial}
+                              onChange={(e) => setCantidadMaterial(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                                Servicio Relacionado (Opcional)
+                              </label>
+                              <select
+                                disabled={!selectedLoteId}
+                                className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
+                                value={selectedServicioIdForMaterial}
+                                onChange={(e) => setSelectedServicioIdForMaterial(e.target.value)}
+                              >
+                                <option value="">Ninguno...</option>
+                                {serviciosCita.map((s) => (
+                                  <option key={s.id_cita_servicio} value={s.id_servicio}>
+                                    {s.nombre}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                                Diente Relacionado (Opcional)
+                              </label>
+                              <select
+                                disabled={!selectedLoteId}
+                                className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
+                                value={selectedDienteCodigo}
+                                onChange={(e) => setSelectedDienteCodigo(e.target.value)}
+                              >
+                                <option value="">Ninguno...</option>
+                                {catalogoDientes.map((d) => (
+                                  <option key={d.codigo} value={d.codigo}>
+                                    {d.codigo} - {d.nombre}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
+                              Observación (Opcional)
+                            </label>
+                            <input
+                              type="text"
+                              maxLength="250"
+                              placeholder="Notas u observaciones sobre el uso de este material..."
+                              disabled={!selectedLoteId}
+                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
+                              value={materialObservacion}
+                              onChange={(e) => setMaterialObservacion(e.target.value)}
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={addingMaterial || !selectedLoteId || !cantidadMaterial}
+                            className="w-full py-4 bg-[#148F77] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#0f6b59] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                          >
+                            {addingMaterial ? "Registrando..." : "+ Registrar Consumo"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1119,6 +1552,32 @@ export default function DetallesCitas({
               </button>
               <button
                 onClick={() => setShowConfirmDelete(null)}
+                className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer active:scale-95"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showConfirmDeleteMaterial && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[130] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl border border-gray-100">
+            <h4 className="text-lg font-black text-[#2A5C4D] text-center mb-4 italic">
+              ¿Eliminar Material?
+            </h4>
+            <p className="text-gray-600 text-xs font-semibold text-center mb-6">
+              ¿Está seguro de remover este material de la cita? El stock será devuelto al almacén y el saldo se recalculará.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={confirmDeleteMaterial}
+                className="flex-1 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer hover:shadow-lg active:scale-95"
+              >
+                Sí, Eliminar
+              </button>
+              <button
+                onClick={() => setShowConfirmDeleteMaterial(null)}
                 className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer active:scale-95"
               >
                 Cancelar

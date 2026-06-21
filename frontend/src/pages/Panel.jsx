@@ -277,17 +277,32 @@ export default function Panel() {
           {activeMenu === "Citas" && (
             <ModuloCitas
               openModal={() => setShowModalCita(true)}
-              openAgendaModal={() => setShowAgendaModal(true)}
+              openAgendaModal={() => {
+                setActiveMenu("Consultar Cita");
+              }}
+              dataMaster={dataMaster}
+              user={user}
+              defaultShowAgendaPersonal={showAgendaPersonalState}
+              onCloseAgendaPersonal={() => setShowAgendaPersonalState(false)}
+              onVerDetalles={(cita, fromAgendaPersonal = false) => {
+                setSelectedCitaId(cita.id_cita);
+                setOriginalCitaData(cita);
+                setReturnToView({ menu: "Citas", showAgendaPersonal: fromAgendaPersonal, showAgendaModal: false });
+                setActiveMenu("Detalle Cita");
+              }}
+            />
+          )}
+
+          {/* CONSULTAR CITAS PAGE */}
+          {activeMenu === "Consultar Cita" && (
+            <AgendaCitas
+              onClose={() => setActiveMenu("Citas")}
               dataMaster={dataMaster}
               user={user}
               onVerDetalles={(cita) => {
                 setSelectedCitaId(cita.id_cita);
                 setOriginalCitaData(cita);
-                setReturnToView({
-                  menu: "Consultar Cita",
-                  showAgendaPersonal: false,
-                  showAgendaModal: false,
-                });
+                setReturnToView({ menu: "Consultar Cita", showAgendaPersonal: false, showAgendaModal: false });
                 setActiveMenu("Detalle Cita");
               }}
             />
