@@ -24,3 +24,8 @@ __pycache__/
 #SISTEMA OPERATIVO
 .DS_Store
 Thumbs.db
+
+# ARCHIVOS LOCALES / RESPALDOS
+extracted_fks.sql
+extracted.sql
+respaldo
