@@ -33,6 +33,7 @@ export default function Sidebar({
     inventario: false, // <-- Controla el menú de logística
     pagos: true,
     cuenta: true, 
+    personal: true,
   });
 
   const toggleMenu = (menu) => {
@@ -175,6 +176,8 @@ export default function Sidebar({
             {openMenus.citas && (
               <div className="mt-2 space-y-2">
                 <MenuButton title="Citas" />
+                {Number(userRolId) < 5 && <MenuButton title="Procedimientos" />}
+                {Number(userRolId) < 5 && <MenuButton title="Reportes" />}
               </div>
             )}
           </div>
@@ -239,6 +242,7 @@ export default function Sidebar({
 
               {openMenus.administracion && (
                 <div className="mt-2 space-y-2">
+                  <MenuButton title="Gestión de Personal" />
                   <MenuButton title="Bitácora" />
                 </div>
               )}
