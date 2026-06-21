@@ -56,7 +56,8 @@ export default function ModuloInventario() {
   const [materialToDelete, setMaterialToDelete] = useState(null);
   
   // Estado del Formulario
-  const [form, setForm] = useState({ nombre_material: "", precio: "", expirable: false });
+  const [form, setForm] = useState({ nombre_material: "", precio: "", expirable: false, precio_venta:"" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Función para ocultar mensajes automáticamente
   const autoHideMessages = () => {
@@ -231,13 +232,13 @@ export default function ModuloInventario() {
 
   const handleOpenAdd = () => {
     setEditingMaterial(null);
-    setForm({ nombre_material: "", precio: "", expirable: false });
+    setForm({ nombre_material: "", precio: "", expirable: false, precio_venta:"" });
     setShowModal(true);
   };
 
   const handleOpenEdit = (material) => {
     setEditingMaterial(material);
-    setForm({ nombre_material: material.nombre_material, precio: material.precio, expirable: material.expirable });
+    setForm({ nombre_material: material.nombre_material, precio: material.precio, expirable: material.expirable, precio_venta: material.precio_venta });
     setShowModal(true);
   };
 
@@ -276,12 +277,14 @@ export default function ModuloInventario() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!form.nombre_material || !form.precio) {
       setErrorMsg("Por favor complete todos los campos");
       autoHideMessages();
       return;
     }
-    const payload = { ...form, precio: Number(form.precio) };
+    setIsSubmitting(true);
+    const payload = { ...form, precio: Number(form.precio), precio_venta: Number(form.precio_venta) };
     try {
       const res = editingMaterial
         ? await fetch(`${API_URL}/materiales/${editingMaterial.id_material}`, getFetchConfig("PUT", payload))
@@ -300,6 +303,8 @@ export default function ModuloInventario() {
       console.error(err);
       setErrorMsg("Error al guardar el material");
       autoHideMessages();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -431,13 +436,14 @@ export default function ModuloInventario() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50/70 border-b border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                    <th className="py-4 px-6">ID</th><th className="py-4 px-6">Descripción del Material</th><th className="py-4 px-6">Precio Actual</th><th className="py-4 px-6 text-center">Insumo Expirable</th><th className="py-4 px-6 text-right">Operaciones</th>
+                    <th className="py-4 px-6">LOTE</th><th className="py-4 px-6">Descripción del Material</th><th className="py-4 px-6">Precio de compra</th>
+                    <th className="py-4 px-6 text-center">Insumo Expirable</th><th className="py-4 px-6">Precio de Venta</th><th className="py-4 px-6 text-right">Operaciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 text-xs">
                   {filteredMateriales.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-8 text-gray-400">
+                      <td colSpan="6" className="text-center py-8 text-gray-400">
                         No se encontraron materiales
                       </td>
                     </tr>
@@ -449,6 +455,7 @@ export default function ModuloInventario() {
                           <td className="py-4 px-6 font-bold text-[#2A5C4D] uppercase">{m.nombre_material}</td>
                           <td className="py-4 px-6 font-semibold text-gray-600">Bs. {m.precio.toFixed(2)}</td>
                           <td className="py-4 px-6 text-center"><span className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${m.expirable ? "bg-amber-50 text-amber-600 border border-amber-100" : "bg-blue-50 text-blue-600 border border-blue-100"}`}>{m.expirable ? "SI" : "NO"}</span></td>
+                          <td className="py-4 px-6 font-semibold text-gray-600">Bs. {m.precio_venta.toFixed(2)}</td>
                           <td className="py-4 px-6 text-right space-x-2">
                             <button onClick={() => handleToggleLotes(m.id_material)} className={`font-bold px-3 py-1.5 rounded-xl border transition-all text-[11px] ${expandedMaterialId === m.id_material ? "bg-[#148F77] text-white border-[#148F77]" : "text-[#148F77] hover:bg-emerald-50 border-emerald-100"}`}>{expandedMaterialId === m.id_material ? "✕ OCULTAR" : "VER STOCK"}</button>
                             <button onClick={() => handleOpenEdit(m)} className="text-gray-500 hover:bg-gray-100 font-bold px-3 py-1.5 rounded-xl border border-gray-100 text-[11px]">Editar</button>
@@ -457,7 +464,7 @@ export default function ModuloInventario() {
                         </tr>
                         {expandedMaterialId === m.id_material && (
                           <tr>
-                            <td colSpan="5" className="bg-gray-50/60 px-8 py-5 border-y border-gray-100">
+                            <td colSpan="6" className="bg-gray-50/60 px-8 py-5 border-y border-gray-100">
                               <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-inner space-y-4 animate-fadeIn">
                                 <h4 className="text-[#2A5C4D] font-black text-[10px] uppercase tracking-widest border-b border-gray-50 pb-2">Detalle de Lotes y Existencias</h4>
                                 <div className="overflow-hidden rounded-xl border border-gray-50">
@@ -764,8 +771,12 @@ export default function ModuloInventario() {
                 <input type="text" required placeholder="Ej. RESINA FLUIDA" value={form.nombre_material} onChange={(e) => setForm({ ...form, nombre_material: e.target.value.toUpperCase() })} className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] focus:ring-1 focus:ring-[#148F77] uppercase font-medium transition-all" />
               </div>
               <div className="space-y-1">
-                <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest block">Precio (Bs.) *</label>
+                <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest block">Precio de Compra (Bs.) *</label>
                 <input type="number" required step="0.01" min="0" placeholder="0.00" value={form.precio} onChange={(e) => setForm({ ...form, precio: e.target.value })} className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] focus:ring-1 focus:ring-[#148F77] font-medium transition-all" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-gray-400 font-black text-[9px] uppercase tracking-widest block">Precio de Venta (Bs.) *</label>
+                <input type="number" required step="0.01" min="0" placeholder="0.00" value={form.precio_venta} onChange={(e) => setForm({ ...form, precio_venta: e.target.value })} className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-[#148F77] focus:ring-1 focus:ring-[#148F77] font-medium transition-all" />
               </div>
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-200">
                 <div>

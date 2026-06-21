@@ -27,6 +27,7 @@ import ReporteCitas from "../components/UIs/citas/ReporteCitas";
 import ModuloConsultorios from "../components/UIs/consultorios/ModuloConsultorios";
 import ModuloServicios from "../components/UIs/servicios/ModuloServicios";
 
+import ModuloPagos from "../components/UIs/ModuloPagos";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -276,32 +277,17 @@ export default function Panel() {
           {activeMenu === "Citas" && (
             <ModuloCitas
               openModal={() => setShowModalCita(true)}
-              openAgendaModal={() => {
-                setActiveMenu("Consultar Cita");
-              }}
-              dataMaster={dataMaster}
-              user={user}
-              defaultShowAgendaPersonal={showAgendaPersonalState}
-              onCloseAgendaPersonal={() => setShowAgendaPersonalState(false)}
-              onVerDetalles={(cita, fromAgendaPersonal = false) => {
-                setSelectedCitaId(cita.id_cita);
-                setOriginalCitaData(cita);
-                setReturnToView({ menu: "Citas", showAgendaPersonal: fromAgendaPersonal, showAgendaModal: false });
-                setActiveMenu("Detalle Cita");
-              }}
-            />
-          )}
-
-          {/* CONSULTAR CITAS PAGE */}
-          {activeMenu === "Consultar Cita" && (
-            <AgendaCitas
-              onClose={() => setActiveMenu("Citas")}
+              openAgendaModal={() => setShowAgendaModal(true)}
               dataMaster={dataMaster}
               user={user}
               onVerDetalles={(cita) => {
                 setSelectedCitaId(cita.id_cita);
                 setOriginalCitaData(cita);
-                setReturnToView({ menu: "Consultar Cita", showAgendaPersonal: false, showAgendaModal: false });
+                setReturnToView({
+                  menu: "Consultar Cita",
+                  showAgendaPersonal: false,
+                  showAgendaModal: false,
+                });
                 setActiveMenu("Detalle Cita");
               }}
             />
@@ -332,29 +318,33 @@ export default function Panel() {
             />
           )}
 
-          {/* GESTIÓN DE INVENTARIO */}
-          {activeMenu === "Gestionar Inventario" && userRolId === ROLES.ADMINISTRADOR && (
-            <ModuloInventario />
+          {/* PAGOS */}
+          {activeMenu === "Pagos y Saldos" && (
+            <ModuloPagos dataMaster={dataMaster} user={user} />
           )}
+
+          {/* GESTIÓN DE INVENTARIO */}
+          {activeMenu === "Gestionar Inventario" &&
+            userRolId === ROLES.ADMINISTRADOR && <ModuloInventario />}
 
           {/* REGISTRAR ENTRADAS */}
-          {activeMenu === "Registrar Entradas" && userRolId === ROLES.ADMINISTRADOR && (
-            <RegistrarEntradas />
-          )}
+          {activeMenu === "Registrar Entradas" &&
+            userRolId === ROLES.ADMINISTRADOR && <RegistrarEntradas />}
 
           {/* REGISTRAR SALIDAS */}
-          {activeMenu === "Registrar Salidas" && userRolId === ROLES.ADMINISTRADOR && (
-            <RegistrarSalidas />
-          )}
+          {activeMenu === "Registrar Salidas" &&
+            userRolId === ROLES.ADMINISTRADOR && <RegistrarSalidas />}
 
           {/* AJUSTAR INVENTARIO */}
-          {activeMenu === "Ajustar Inventario" && userRolId === ROLES.ADMINISTRADOR && (
-            <AjustarInventario />
-          )}
+          {activeMenu === "Ajustar Inventario" &&
+            userRolId === ROLES.ADMINISTRADOR && <AjustarInventario />}
 
           {/* PROCEDIMIENTOS */}
           {activeMenu === "Procedimientos" && userRolId < 5 && (
-            <ModuloProcedimientos dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
+            <ModuloProcedimientos
+              dataMaster={dataMaster}
+              onRefresh={() => fetchTodo()}
+            />
           )}
 
           {/* REPORTES */}
@@ -364,19 +354,18 @@ export default function Panel() {
 
           {/* CONSULTORIOS */}
           {activeMenu === "Consultorios" && userRolId < 5 && (
-            <ModuloConsultorios dataMaster={dataMaster} onRefresh={() => fetchTodo()} />
+            <ModuloConsultorios
+              dataMaster={dataMaster}
+              onRefresh={() => fetchTodo()}
+            />
           )}
 
           {/* SERVICIOS */}
-          {activeMenu === "Servicios" && userRolId < 5 && (
-            <ModuloServicios />
-          )}
+          {activeMenu === "Servicios" && userRolId < 5 && <ModuloServicios />}
 
           {/* PERSONAL */}
           {activeMenu === "Gestión de Personal" &&
-          userRolId === ROLES.ADMINISTRADOR && (
-            <ModuloPersonal />
-          )}
+            userRolId === ROLES.ADMINISTRADOR && <ModuloPersonal />}
 
           {/* MÓDULO EN DESARROLLO */}
           {![
@@ -390,13 +379,14 @@ export default function Panel() {
             "Gestionar Inventario",
             "Registrar Entradas",
             "Registrar Salidas", // <-- Adición exclusiva: Desbloqueamos la vista de mermas y bajas
-            "Ajustar Inventario", 
+            "Ajustar Inventario",
             "Procedimientos",
             "Servicios",
             "Reportes",
             "Consultorios",
             "Consultar Cita",
-            "Detalle Cita"
+            "Detalle Cita",
+            "Pagos y Saldos",
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>
@@ -418,8 +408,6 @@ export default function Panel() {
           onRefresh={() => fetchTodo()}
         />
       )}
-
-
     </div>
   );
 }

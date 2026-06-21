@@ -31,6 +31,7 @@ export default function Sidebar({
     pacientes: true,
     administracion: false,
     inventario: false, // <-- Controla el menú de logística
+    pagos: true,
     cuenta: true, 
     personal: true,
   });
@@ -271,6 +272,27 @@ export default function Sidebar({
                   <MenuButton title="Registrar Entradas" />
                   <MenuButton title="Registrar Salidas" /> 
                   <MenuButton title="Ajustar Inventario" /> 
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PAGOS (Visible para Admin, Recepcionista y Paciente) */}
+          {[1, 4, 5, 6].includes(Number(userRolId)) && (
+            <div>
+              <button
+                onClick={() => toggleMenu("pagos")}
+                className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >
+                <span>Facturación</span>
+                <span className="text-lg">
+                  {openMenus.pagos ? "−" : "+"}
+                </span>
+              </button>
+
+              {openMenus.pagos && (
+                <div className="mt-2 space-y-2">
+                  <MenuButton title="Pagos y Saldos" />
                 </div>
               )}
             </div>

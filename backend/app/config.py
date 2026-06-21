@@ -32,6 +32,13 @@ class Config:
     T_USER = 'T_USUARIO'
     T_CITAS = 'T_CITAS'
 
+    # CONFIGURACION DE PAYPAL
+    PAYPAL_CLIENT_ID = os.getenv('PAYPAL_CLIENT_ID', '')
+    PAYPAL_CLIENT_SECRET = os.getenv('PAYPAL_CLIENT_SECRET', '')
+    PAYPAL_MODE = os.getenv('PAYPAL_MODE', 'sandbox')
+    PAYPAL_BASE_URL = os.getenv('PAYPAL_BASE_URL', 'https://api-m.sandbox.paypal.com')
+    PAYPAL_EXCHANGE_RATE = 9.85
+
 db = PostgreSQL(
     Config.DB_HOST,
     Config.DB_PORT,

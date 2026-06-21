@@ -74,9 +74,9 @@ def ejecutar_query_reporte_filtrado(tipo, expirable, estado, f_inicio, f_fin, pa
 @permission_required("visualizar_materiales")
 def consultar_materiales():
     try:
-        query = f"SELECT id_material, nombre_material, precio, expirable FROM {Config.SCHEMA}.t_materiales ORDER BY id_material DESC"
+        query = f"SELECT id_material, nombre_material, precio, expirable, precio_venta FROM {Config.SCHEMA}.t_materiales ORDER BY id_material DESC"
         rows = db.execute_query(query, fetchall=True)
-        data = [{"id_material": r[0], "nombre_material": r[1], "precio": float(r[2]), "expirable": r[3]} for r in (rows or [])]
+        data = [{"id_material": r[0], "nombre_material": r[1], "precio": float(r[2]), "expirable": r[3], "precio_venta":float(r[4])} for r in (rows or [])]
         return jsonify({"success": True, "data": data}), 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -94,12 +94,13 @@ def registrar_material():
         nombre = data.get('nombre_material')
         precio = data.get('precio')
         expirable = data.get('expirable', False)
+        precio_venta=data.get('precio_venta')
 
         if not nombre or precio is None:
             return jsonify({"success": False, "message": "Datos incompletos"}), 400
 
-        query = f"INSERT INTO {Config.SCHEMA}.t_materiales (nombre_material, precio, expirable) VALUES (%s, %s, %s)"
-        db.execute_query(query, (str(nombre), float(precio), bool(expirable)), commit=True)
+        query = f"INSERT INTO {Config.SCHEMA}.t_materiales (nombre_material, precio, expirable,precio_venta) VALUES (%s, %s, %s,%s)"
+        db.execute_query(query, (str(nombre), float(precio), bool(expirable), float(precio_venta)), commit=True)
         Bitacora.registrar("INVENTARIO", "CREATE", f"Material creado: {nombre}")
         return jsonify({"success": True, "message": "Material registrado con éxito"}), 201
     except Exception as e:

@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { useAuthStore } from "../../store/auth_store";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -12,6 +12,7 @@ export default function RegistrarSalidas() {
   const [loadingMateriales, setLoadingMateriales] = useState(true);
   const [loadingLotes, setLoadingLotes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   // Estado de control para el Acordeón del Buscador Izquierdo
   const [selectedMaterialId, setSelectedMaterialId] = useState(null);
@@ -36,6 +37,27 @@ export default function RegistrarSalidas() {
     stock_teorico: null,
     fecha_caducidad: null,
   });
+
+  const formPanelRef = useRef(null);
+  const cantidadInputRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredMateriales = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return materiales;
+    return materiales.filter((m) =>
+      String(m.id_material).toLowerCase().includes(q) || (m.nombre_material || "").toLowerCase().includes(q)
+    );
+  }, [materiales, searchTerm]);
+
+  const displayMateriales = useMemo(() => {
+    if (!selectedMaterialId) return filteredMateriales;
+    const idx = filteredMateriales.findIndex((m) => m.id_material === selectedMaterialId);
+    if (idx === -1) return filteredMateriales;
+    const sel = filteredMateriales[idx];
+    const rest = filteredMateriales.filter((m) => m.id_material !== selectedMaterialId);
+    return [sel, ...rest];
+  }, [filteredMateriales, selectedMaterialId]);
 
   // Configuración de cabeceras seguras estándar de tu proyecto
   const getFetchConfig = (method = "GET", body = null) => {
@@ -130,6 +152,45 @@ export default function RegistrarSalidas() {
     });
   };
 
+  useEffect(() => {
+    if (!selectedMaterialId || !formPanelRef.current) return;
+
+    const scrollToShowBoth = () => {
+      const row = document.querySelector(`[data-material-id="${selectedMaterialId}"]`);
+      const rightEl = formPanelRef.current;
+      if (!row || !rightEl) return;
+
+      const pageOffset = window.pageYOffset || document.documentElement.scrollTop;
+
+      const elems = [row];
+      const next = row.nextElementSibling;
+      if (next && next.querySelector && next.querySelector('div')) elems.push(next);
+
+      const rects = elems.map((el) => el.getBoundingClientRect());
+
+      const leftTop = Math.min(...rects.map((r) => r.top + pageOffset));
+      const leftBottom = Math.max(...rects.map((r) => r.top + pageOffset + r.height));
+
+      const rightRect = rightEl.getBoundingClientRect();
+      const rightTop = rightRect.top + pageOffset;
+      const rightBottom = rightTop + rightRect.height;
+
+      const topMost = Math.min(leftTop, rightTop);
+      const bottomMost = Math.max(leftBottom, rightBottom);
+      const viewportH = window.innerHeight;
+      const padding = 60;
+
+      let targetTop = Math.max(0, Math.floor((topMost + bottomMost - viewportH) / 2));
+      if (targetTop > topMost - padding) targetTop = Math.max(0, topMost - padding);
+
+      window.scrollTo({ top: targetTop, behavior: 'smooth' });
+
+      setTimeout(() => cantidadInputRef.current?.focus(), 350);
+    };
+
+    window.requestAnimationFrame(() => window.requestAnimationFrame(scrollToShowBoth));
+  }, [selectedMaterialId, lotes]);
+
   // 4. ENVÍO DE LA BAJA TRANSACCIONAL (POST)
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -149,6 +210,9 @@ export default function RegistrarSalidas() {
       );
       return;
     }
+
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     try {
       setSubmitting(true);
@@ -181,6 +245,7 @@ export default function RegistrarSalidas() {
       setErrorMsg("Error de comunicación con el Servidor.");
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -229,20 +294,32 @@ export default function RegistrarSalidas() {
             </h3>
           </div>
 
+          <div className="p-3 border-b border-gray-100 bg-white">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por id o nombre..."
+              className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-[#148F77]"
+            />
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-gray-50/40 border-b border-gray-100 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="py-3 px-4">ID</th>
                   <th className="py-3 px-4">Descripción Insumo</th>
                   <th className="py-3 px-4 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {materiales.map((m) => (
+                {displayMateriales.map((m) => (
                   <Fragment key={m.id_material}>
-                    <tr className={`hover:bg-gray-50/40 transition-colors ${selectedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
+                    <tr data-material-id={m.id_material} className={`hover:bg-gray-50/40 transition-colors ${selectedMaterialId === m.id_material ? "bg-emerald-50/10" : ""}`}>
+                      <td className="py-3.5 px-4 font-bold text-[#2A5C4D] uppercase tracking-wide">{m.id_material}</td>
                       <td className="py-3.5 px-4 font-bold text-[#2A5C4D] uppercase tracking-wide">
-                        {m.nombre_material} {m.expirable ? "⏳" : "📦"}
+                        {m.nombre_material} {m.expirable ? "-" : "-"}
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <button
@@ -262,7 +339,7 @@ export default function RegistrarSalidas() {
                     {/* ACORDEÓN DESPLEGABLE DE LOTES CON BALANCES */}
                     {selectedMaterialId === m.id_material && (
                       <tr>
-                        <td colSpan="2" className="bg-gray-50/40 px-4 py-3 border-y border-gray-100">
+                        <td colSpan="3" className="bg-gray-50/40 px-4 py-3 border-y border-gray-100">
                           <div className="bg-white rounded-xl border border-gray-100 p-3 space-y-2 animate-fadeIn shadow-inner">
                             {loadingLotes ? (
                               <div className="text-center py-4 text-[#148F77] font-bold text-[10px] uppercase tracking-widest animate-pulse">
@@ -334,7 +411,7 @@ export default function RegistrarSalidas() {
         {/* =========================================================
             PANEL DERECHO (5 COLUMNAS): FICHA TRANSACCIONAL CONTEXTUAL
             ========================================================= */}
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-5" ref={formPanelRef}>
           {metaSalida.stock_teorico === null ? (
             
             /* ESTADO VACÍO (EMPTY STATE DE INSTRUCCIÓN) */
@@ -416,6 +493,7 @@ export default function RegistrarSalidas() {
                     Cantidad de Unidades a Dar de Baja *
                   </label>
                   <input
+                    ref={cantidadInputRef}
                     type="number"
                     required
                     min="1"
