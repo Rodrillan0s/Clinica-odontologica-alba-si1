@@ -5,6 +5,10 @@ import {
   ESTADO_CITA_LABELS,
   ESTADO_CITA_COLORS,
 } from "../../../constants/enums";
+import MostrarCitaCard from "./detalles_cita/MostrarCitaCard";
+import EditarCitaForm from "./detalles_cita/EditarCitaForm";
+import TabServiciosCita from "./detalles_cita/TabServiciosCita";
+import TabMaterialesCita from "./detalles_cita/TabMaterialesCita";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -675,429 +679,30 @@ export default function DetallesCitas({
             {/* Columna Izquierda: Información General */}
             <div className="lg:col-span-7 space-y-6">
               {isEditing ? (
-                <div className="space-y-6 bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
-                  {saveError && (
-                    <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase">
-                      ⚠️ {saveError}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                        Paciente
-                      </label>
-                      <select
-                        className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                        value={formData.id_paciente}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            id_paciente: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Seleccione Paciente</option>
-                        {pacientesResult.map((p) => (
-                          <option
-                            key={p.id_persona || p.id_usuario || p.id}
-                            value={p.id_persona || p.id_usuario || p.id}
-                          >
-                            {p.nombre}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                        Especialista
-                      </label>
-                      <select
-                        className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                        value={formData.id_personal}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            id_personal: e.target.value,
-                            hora_seleccionada: "",
-                          })
-                        }
-                      >
-                        <option value="">Seleccione Especialista</option>
-                        {dataMaster?.odontologos?.map((o) => (
-                          <option
-                            key={o.id_usuario || o.id_persona || o.id}
-                            value={o.id_usuario || o.id_persona || o.id}
-                          >
-                            {o.nombre}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                        Sala
-                      </label>
-                      <select
-                        className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                        value={formData.id_sala}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            id_sala: e.target.value,
-                            hora_seleccionada: "",
-                          })
-                        }
-                      >
-                        <option value="">Seleccione Sala</option>
-                        {(dataMaster?.salas || [])
-                          .filter(
-                            (s) =>
-                              s.estado_sala === "ACTIVA" ||
-                              s.estado_sala === "DISPONIBLE" ||
-                              s.id_sala == formData.id_sala,
-                          )
-                          .map((s) => (
-                            <option key={s.id_sala} value={s.id_sala}>
-                              {s.nombre}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                        Fecha
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          readOnly
-                          placeholder="DD/MM/AA"
-                          value={
-                            formData.fecha_base
-                              ? (() => {
-                                  const [y, m, d] =
-                                    formData.fecha_base.split("-");
-                                  return `${d}/${m}/${y.slice(-2)}`;
-                                })()
-                              : ""
-                          }
-                          className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 cursor-pointer"
-                          onClick={(e) => e.target.nextSibling.showPicker()}
-                        />
-                        <input
-                          type="date"
-                          className="absolute opacity-0 inset-0 pointer-events-none"
-                          value={formData.fecha_base}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              fecha_base: e.target.value,
-                              hora_seleccionada: "",
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-[2rem] p-6 border border-dashed border-gray-200 min-h-[130px]">
-                    <p className="text-[9px] font-black text-gray-400 uppercase mb-4 tracking-widest">
-                      Horarios Disponibles:
-                    </p>
-                    {loadingSlots ? (
-                      <div className="flex justify-center py-4 space-x-2">
-                        <div className="w-2 h-2 bg-[#148F77] rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-[#148F77] rounded-full animate-bounce delay-75"></div>
-                        <div className="w-2 h-2 bg-[#148F77] rounded-full animate-bounce delay-150"></div>
-                      </div>
-                    ) : slotsDisponibles.length > 0 ? (
-                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                        {slotsDisponibles.map((slot, index) => {
-                          const horaValue = slot.inicio.slice(0, 5);
-                          return (
-                            <button
-                              key={index}
-                              type="button"
-                              className={`p-2 rounded-xl text-xs font-bold transition-all ${
-                                formData.hora_seleccionada === horaValue
-                                  ? "bg-[#148F77] text-white shadow-md transform scale-105"
-                                  : "bg-white text-gray-600 hover:bg-emerald-50 hover:text-[#148F77]"
-                              }`}
-                              onClick={() =>
-                                setFormData({
-                                  ...formData,
-                                  hora_seleccionada: horaValue,
-                                })
-                              }
-                            >
-                              {horaValue}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-center text-gray-400 text-xs italic py-4">
-                        {!formData.id_personal ||
-                        !formData.id_sala ||
-                        !formData.fecha_base
-                          ? "Seleccione Odontólogo, Sala y Fecha para ver horarios"
-                          : "No hay horarios disponibles"}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                        Estado
-                      </label>
-                      <select
-                        className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                        value={formData.estado_cita}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            estado_cita: e.target.value,
-                          })
-                        }
-                      >
-                        <option value={ESTADO_CITA.PROGRAMADA}>
-                          Programada
-                        </option>
-                        <option value={ESTADO_CITA.COMPLETADA}>
-                          Completada
-                        </option>
-                        <option value={ESTADO_CITA.CANCELADA}>Cancelada</option>
-                        <option value={ESTADO_CITA.REPROGRAMADA}>
-                          Reprogramada
-                        </option>
-                        <option value={ESTADO_CITA.NO_ASISTIO}>
-                          No Asistió
-                        </option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                        Tratamiento / Procedimiento
-                      </label>
-                      <select
-                        className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                        value={formData.id_procedimiento || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            id_procedimiento: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Cualquier servicio...</option>
-                        {(dataMaster?.procedimientos || []).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.descripcion}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                      Observaciones
-                    </label>
-                    <textarea
-                      className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-medium border-none outline-none focus:ring-4 focus:ring-emerald-50 resize-none h-24"
-                      value={formData.cita_obs}
-                      onChange={(e) =>
-                        setFormData({ ...formData, cita_obs: e.target.value })
-                      }
-                      placeholder="Detalles adicionales..."
-                    ></textarea>
-                  </div>
-
-                  <div className="pt-4 flex gap-4">
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="flex-1 py-4 bg-[#2A5C4D] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#1f453a] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      {saving ? "Guardando..." : "Guardar Cambios"}
-                    </button>
-                    <button
-                      onClick={() => setIsEditing(false)}
-                      disabled={saving}
-                      className="flex-1 py-4 bg-gray-100 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-2xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : cita ? (
-                <div className="space-y-6 bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
-                  {saveError && (
-                    <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase animate-shake">
-                      ⚠️ {saveError}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Paciente
-                      </p>
-                      <p className="text-sm font-bold text-gray-800">
-                        {cita.nombre_paciente}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Especialista
-                      </p>
-                      <p className="text-sm font-bold text-gray-800">
-                        {cita.nombre_personal}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-emerald-50/50 p-6 rounded-[2rem] border border-emerald-100">
-                      <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">
-                        Fecha Agendada
-                      </p>
-                      <div className="text-xl font-black text-[#2A5C4D]">
-                        {cita.fecha_agendamiento || "Cargando..."}
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Sala
-                      </p>
-                      <p className="text-sm font-bold text-gray-800">
-                        {cita.nombre_sala}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Fecha de Registro
-                      </p>
-                      <p className="text-sm font-bold text-gray-800">
-                        {cita.fecha_registro || "N/A"}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Fecha de Finalización
-                      </p>
-                      <p className="text-sm font-bold text-gray-800">
-                        {cita.fecha_finalizacion || (
-                          <span className="italic opacity-50">Pendiente</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Estado Actual
-                      </p>
-                      {(() => {
-                        const colors =
-                          ESTADO_CITA_COLORS[cita.id_estado_cita] ||
-                          ESTADO_CITA_COLORS[ESTADO_CITA.PROGRAMADA];
-                        const label =
-                          cita.nombre_estado ||
-                          ESTADO_CITA_LABELS[cita.id_estado_cita] ||
-                          `Estado ${cita.id_estado_cita}`;
-                        return (
-                          <span
-                            className={`px-3 py-1 mt-1 inline-block rounded-full text-[10px] font-black uppercase tracking-wider ${colors.badge}`}
-                          >
-                            {label}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Tratamiento / Procedimiento
-                      </p>
-                      <p className="text-sm font-bold text-gray-800">
-                        {cita.nombre_procedimiento || (
-                          <span className="italic opacity-50">
-                            Sin tratamiento asignado
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                      Observaciones
-                    </p>
-                    <p className="text-sm font-medium text-gray-600">
-                      {cita.cita_obs || (
-                        <span className="italic opacity-50">
-                          Sin observaciones registradas.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="pt-6 border-t border-gray-100 space-y-4">
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleStatusUpdate("FINALIZADA")}
-                        disabled={saving}
-                        className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
-                      >
-                        {saving ? "..." : "Finalizar"}
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate("CANCELADA")}
-                        disabled={saving}
-                        className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
-                      >
-                        {saving ? "..." : "Cancelar"}
-                      </button>
-                      <button
-                        onClick={handleReprogramar}
-                        disabled={saving}
-                        className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
-                      >
-                        {saving ? "..." : "Reprogramar"}
-                      </button>
-                    </div>
-
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="flex-1 py-4 bg-[#2A5C4D] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#1f453a] active:scale-95 transition-all cursor-pointer"
-                      >
-                        Modificar Cita
-                      </button>
-                      <button
-                        onClick={onClose}
-                        className="flex-1 py-4 bg-gray-100 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-2xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer"
-                      >
-                        Volver
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+                <EditarCitaForm
+                  formData={formData}
+                  setFormData={setFormData}
+                  pacientesResult={pacientesResult}
+                  dataMaster={dataMaster}
+                  loadingSlots={loadingSlots}
+                  slotsDisponibles={slotsDisponibles}
+                  saving={saving}
+                  saveError={saveError}
+                  handleSave={handleSave}
+                  setIsEditing={setIsEditing}
+                />
+              ) : (
+                <MostrarCitaCard
+                  cita={cita}
+                  saveError={saveError}
+                  saving={saving}
+                  handleStatusUpdate={handleStatusUpdate}
+                  handleReprogramar={handleReprogramar}
+                  setIsEditing={setIsEditing}
+                  onClose={onClose}
+                />
+              )}
             </div>
-
             {/* Columna Derecha: Servicios / Materiales Realizados */}
             <div className="lg:col-span-5">
               <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm space-y-6">
@@ -1130,386 +735,50 @@ export default function DetallesCitas({
 
                 {/* TAB SERVICIOS */}
                 {activeTabDerecha === "servicios" && (
-                  <>
-                    <div className="flex justify-between items-center border-b border-gray-50 pb-4">
-                      <div>
-                        <h4 className="text-lg font-black text-[#2A5C4D] italic tracking-tight">
-                          Servicios Realizados
-                        </h4>
-                        <p className="text-[9px] text-[#148F77] font-black uppercase tracking-widest mt-0.5">
-                          Cargos aplicados
-                        </p>
-                      </div>
-                    </div>
-
-                    {servicesError && (
-                      <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase rounded-r-xl">
-                        ⚠️ {servicesError}
-                      </div>
-                    )}
-
-                    {loadingServicios ? (
-                      <div className="flex justify-center py-6">
-                        <div className="w-6 h-6 border-2 border-[#148F77] border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    ) : serviciosCita.length === 0 ? (
-                      <p className="text-center text-gray-400 text-xs italic py-6">
-                        No se han registrado servicios en esta cita.
-                      </p>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                          {serviciosCita.map((serv) => (
-                            <div
-                              key={serv.id_cita_servicio}
-                              className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/10 transition-colors"
-                            >
-                              <div>
-                                <p className="text-xs font-bold text-gray-700">
-                                  {serv.nombre}
-                                </p>
-                                <p className="text-[9px] text-gray-400 font-medium">
-                                  Registrado: {serv.fecha_creacion}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-black text-[#2A5C4D]">
-                                  Bs {serv.precio.toFixed(2)}
-                                </span>
-                                {!isCitaTerminada && (
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteServicio(serv.id_cita_servicio)
-                                    }
-                                    className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center text-xs transition-colors focus:outline-none cursor-pointer"
-                                    title="Remover de la cita"
-                                  >
-                                    ✕
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="border-t border-gray-100 pt-4 flex justify-between items-center px-2">
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            Total Servicios:
-                          </span>
-                          <span className="text-xl font-black text-[#2A5C4D]">
-                            Bs{" "}
-                            {serviciosCita
-                              .reduce((acc, curr) => acc + curr.precio, 0)
-                              .toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Formulario para agregar servicios */}
-                    {!isCitaTerminada && (
-                      <form
-                        onSubmit={handleAddServicio}
-                        className="border-t border-gray-100 pt-6 space-y-4"
-                      >
-                        <p className="text-[10px] font-black text-[#148F77] uppercase tracking-widest">
-                          Agregar Servicio a la Cita
-                        </p>
-
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                              Servicio
-                            </label>
-                            <select
-                              required
-                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                              value={selectedServicioId}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setSelectedServicioId(val);
-                                // Pre-llenar el precio sugerido
-                                const selected = catalogoServicios.find(
-                                  (s) => String(s.id) === String(val),
-                                );
-                                if (selected) {
-                                  setCustomPrecio(selected.precio);
-                                } else {
-                                  setCustomPrecio("");
-                                }
-                              }}
-                            >
-                              <option value="">Seleccione un servicio...</option>
-                              {catalogoServicios.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.nombre} (Bs {s.precio.toFixed(2)})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                              Precio Cobrado (Bs)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              required
-                              placeholder="0.00"
-                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                              value={customPrecio}
-                              onChange={(e) => setCustomPrecio(e.target.value)}
-                            />
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={addingServicio || !selectedServicioId}
-                            className="w-full py-4 bg-[#148F77] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#0f6b59] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
-                          >
-                            {addingServicio ? "Agregando..." : "+ Agregar Servicio"}
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </>
+                  <TabServiciosCita
+                    isCitaTerminada={isCitaTerminada}
+                    servicesError={servicesError}
+                    loadingServicios={loadingServicios}
+                    serviciosCita={serviciosCita}
+                    catalogoServicios={catalogoServicios}
+                    selectedServicioId={selectedServicioId}
+                    setSelectedServicioId={setSelectedServicioId}
+                    customPrecio={customPrecio}
+                    setCustomPrecio={setCustomPrecio}
+                    addingServicio={addingServicio}
+                    handleAddServicio={handleAddServicio}
+                    handleDeleteServicio={handleDeleteServicio}
+                  />
                 )}
 
                 {/* TAB MATERIALES */}
                 {activeTabDerecha === "materiales" && (
-                  <>
-                    <div className="flex justify-between items-center border-b border-gray-50 pb-4">
-                      <div>
-                        <h4 className="text-lg font-black text-[#2A5C4D] italic tracking-tight">
-                          Materiales Consumidos
-                        </h4>
-                        <p className="text-[9px] text-[#148F77] font-black uppercase tracking-widest mt-0.5">
-                          Insumos clínicos utilizados
-                        </p>
-                      </div>
-                    </div>
-
-                    {materialsError && (
-                      <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-black uppercase rounded-r-xl">
-                        ⚠️ {materialsError}
-                      </div>
-                    )}
-
-                    {loadingMateriales ? (
-                      <div className="flex justify-center py-6">
-                        <div className="w-6 h-6 border-2 border-[#148F77] border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    ) : materialesCita.length === 0 ? (
-                      <p className="text-center text-gray-400 text-xs italic py-6">
-                        No se han registrado materiales en esta cita.
-                      </p>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                          {materialesCita.map((mat) => (
-                            <div
-                              key={mat.id_movimiento}
-                              className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/10 transition-colors"
-                            >
-                              <div>
-                                <p className="text-xs font-bold text-gray-700">
-                                  {mat.nombre_material}
-                                </p>
-                                <p className="text-[9px] text-gray-400 font-medium">
-                                  Lote: #{mat.id_lote} | Cantidad: {mat.cantidad} u
-                                </p>
-                                {(mat.nombre_servicio || mat.codigo_diente || mat.observacion) && (
-                                  <div className="mt-1.5 space-y-0.5 border-t border-gray-100 pt-1">
-                                    {mat.nombre_servicio && (
-                                      <p className="text-[9px] text-emerald-700 font-semibold flex items-center gap-1">
-                                        📋 <span className="font-bold">Servicio:</span> {mat.nombre_servicio}
-                                      </p>
-                                    )}
-                                    {mat.codigo_diente && (
-                                      <p className="text-[9px] text-[#2A5C4D] font-semibold flex items-center gap-1">
-                                        🦷 <span className="font-bold">Diente:</span> {mat.codigo_diente} - {mat.nombre_diente}
-                                      </p>
-                                    )}
-                                    {mat.observacion && (
-                                      <p className="text-[9px] text-gray-500 font-medium italic flex items-center gap-1">
-                                        💬 <span className="font-bold">Obs:</span> {mat.observacion}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-black text-[#2A5C4D]">
-                                  Bs {mat.subtotal.toFixed(2)}
-                                </span>
-                                {!isCitaTerminada && (
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteMaterial(mat.id_movimiento)
-                                    }
-                                    className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center text-xs transition-colors focus:outline-none cursor-pointer"
-                                    title="Remover de la cita"
-                                  >
-                                    ✕
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="border-t border-gray-100 pt-4 flex justify-between items-center px-2">
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            Total Materiales:
-                          </span>
-                          <span className="text-xl font-black text-[#2A5C4D]">
-                            Bs{" "}
-                            {materialesCita
-                              .reduce((acc, curr) => acc + curr.subtotal, 0)
-                              .toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Formulario para agregar materiales */}
-                    {!isCitaTerminada && (
-                      <form
-                        onSubmit={handleAddMaterial}
-                        className="border-t border-gray-100 pt-6 space-y-4"
-                      >
-                        <p className="text-[10px] font-black text-[#148F77] uppercase tracking-widest">
-                          Registrar Consumo de Material
-                        </p>
-
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                              Material
-                            </label>
-                            <select
-                              required
-                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50"
-                              value={selectedMaterialId}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setSelectedMaterialId(val);
-                                setSelectedLoteId("");
-                                fetchLotesMaterial(val);
-                              }}
-                            >
-                              <option value="">Seleccione un material...</option>
-                              {catalogoMateriales.map((m) => (
-                                <option key={m.id_material} value={m.id_material}>
-                                  {m.nombre_material} (Bs {m.precio_venta.toFixed(2)})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                              Lote de Inventario (Stock Disponible)
-                            </label>
-                            <select
-                              required
-                              disabled={!selectedMaterialId}
-                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
-                              value={selectedLoteId}
-                              onChange={(e) => setSelectedLoteId(e.target.value)}
-                            >
-                              <option value="">Seleccione un lote...</option>
-                              {lotesMaterial.map((l) => (
-                                <option key={l.id_lote} value={l.id_lote}>
-                                  Lote #{l.id_lote} (Stock: {l.cantidad_disponible} u) {l.fecha_caducidad ? `| Vence: ${l.fecha_caducidad}` : ""}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                              Cantidad a Consumir
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              required
-                              placeholder="0"
-                              disabled={!selectedLoteId}
-                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
-                              value={cantidadMaterial}
-                              onChange={(e) => setCantidadMaterial(e.target.value)}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                                Servicio Relacionado (Opcional)
-                              </label>
-                              <select
-                                disabled={!selectedLoteId}
-                                className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
-                                value={selectedServicioIdForMaterial}
-                                onChange={(e) => setSelectedServicioIdForMaterial(e.target.value)}
-                              >
-                                <option value="">Ninguno...</option>
-                                {serviciosCita.map((s) => (
-                                  <option key={s.id_cita_servicio} value={s.id_servicio}>
-                                    {s.nombre}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                                Diente Relacionado (Opcional)
-                              </label>
-                              <select
-                                disabled={!selectedLoteId}
-                                className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
-                                value={selectedDienteCodigo}
-                                onChange={(e) => setSelectedDienteCodigo(e.target.value)}
-                              >
-                                <option value="">Ninguno...</option>
-                                {catalogoDientes.map((d) => (
-                                  <option key={d.codigo} value={d.codigo}>
-                                    {d.codigo} - {d.nombre}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">
-                              Observación (Opcional)
-                            </label>
-                            <input
-                              type="text"
-                              maxLength="250"
-                              placeholder="Notas u observaciones sobre el uso de este material..."
-                              disabled={!selectedLoteId}
-                              className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold border-none outline-none focus:ring-4 focus:ring-emerald-50 disabled:opacity-50"
-                              value={materialObservacion}
-                              onChange={(e) => setMaterialObservacion(e.target.value)}
-                            />
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={addingMaterial || !selectedLoteId || !cantidadMaterial}
-                            className="w-full py-4 bg-[#148F77] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#0f6b59] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
-                          >
-                            {addingMaterial ? "Registrando..." : "+ Registrar Consumo"}
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </>
+                  <TabMaterialesCita
+                    isCitaTerminada={isCitaTerminada}
+                    materialsError={materialsError}
+                    loadingMateriales={loadingMateriales}
+                    materialesCita={materialesCita}
+                    catalogoMateriales={catalogoMateriales}
+                    lotesMaterial={lotesMaterial}
+                    selectedMaterialId={selectedMaterialId}
+                    setSelectedMaterialId={setSelectedMaterialId}
+                    selectedLoteId={selectedLoteId}
+                    setSelectedLoteId={setSelectedLoteId}
+                    cantidadMaterial={cantidadMaterial}
+                    setCantidadMaterial={setCantidadMaterial}
+                    selectedServicioIdForMaterial={selectedServicioIdForMaterial}
+                    setSelectedServicioIdForMaterial={setSelectedServicioIdForMaterial}
+                    selectedDienteCodigo={selectedDienteCodigo}
+                    setSelectedDienteCodigo={setSelectedDienteCodigo}
+                    materialObservacion={materialObservacion}
+                    setMaterialObservacion={setMaterialObservacion}
+                    serviciosCita={serviciosCita}
+                    catalogoDientes={catalogoDientes}
+                    addingMaterial={addingMaterial}
+                    handleAddMaterial={handleAddMaterial}
+                    handleDeleteMaterial={handleDeleteMaterial}
+                    fetchLotesMaterial={fetchLotesMaterial}
+                  />
                 )}
               </div>
             </div>
