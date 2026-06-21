@@ -20,6 +20,7 @@ import ModuloInventario from "../components/UIs/ModuloInventario";
 import RegistrarEntradas from "../components/UIs/RegistrarEntradas"; 
 import RegistrarSalidas from "../components/UIs/RegistrarSalidas"; // <-- Adición exclusiva: Importamos el componente del CU27
 import AjustarInventario from "../components/UIs/AjustarInventario"; // <-- Adición exclusiva: Importamos el componente del CU28
+import ModuloPagos from "../components/UIs/ModuloPagos";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = {
@@ -236,6 +237,14 @@ export default function Panel() {
             />
           )}
 
+          {/* PAGOS */}
+          {activeMenu === "Pagos y Saldos" && (
+            <ModuloPagos
+              dataMaster={dataMaster}
+              user={user}
+            />
+          )}
+
           {/* GESTIÓN DE INVENTARIO */}
           {activeMenu === "Gestionar Inventario" && userRolId === ROLES.ADMINISTRADOR && (
             <ModuloInventario />
@@ -268,6 +277,7 @@ export default function Panel() {
             "Registrar Entradas",
             "Registrar Salidas", // <-- Adición exclusiva: Desbloqueamos la vista de mermas y bajas
             "Ajustar Inventario", 
+            "Pagos y Saldos",
           ].includes(activeMenu) && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
               <p className="text-4xl md:text-6xl mb-4">⚙️</p>
