@@ -444,3 +444,48 @@ def registrar_pago_manual():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+@finanzas_routes.route('/api/finanzas/eliminar-pago/<int:id_factura>', methods=['DELETE'])
+@finanzas_routes.route('/api/pagos/eliminar-pago/<int:id_factura>', methods=['DELETE'])
+def revertir_pago(id_factura):
+    try:
+        # 1. Obtener detalles de la factura antes de eliminarla
+        factura = db.execute_query(
+            f"SELECT id_cita, monto_cancelado, metodo_pago FROM {Config.SCHEMA}.t_facturas WHERE id_factura = %s",
+            (id_factura,),
+            fetchone=True
+        )
+        if not factura:
+            return jsonify({"success": False, "message": "El pago no existe"}), 404
+        
+        id_cita = factura[0]
+        monto = float(factura[1]) if factura[1] is not None else 0.0
+        metodo = factura[2]
+
+        # 2. Eliminar la factura
+        db.execute_query(
+            f"DELETE FROM {Config.SCHEMA}.t_facturas WHERE id_factura = %s",
+            (id_factura,),
+            commit=True
+        )
+
+        # 3. Registrar en bitácora
+        try:
+            from ..services.bitacora import Bitacora
+            Bitacora.registrar(
+                "FINANZAS",
+                "REVERTIR_PAGO",
+                f"Pago revertido ID: {id_factura}. Monto: {monto} BOB. Cita ID: {id_cita}. Método: {metodo}"
+            )
+        except Exception as b_err:
+            print("Error al registrar bitacora de reversion:", b_err)
+
+        return jsonify({
+            "success": True, 
+            "message": f"Pago de {monto} BOB revertido exitosamente. El saldo actual de la cita ha sido restaurado."
+        }), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": str(e)}), 500
+

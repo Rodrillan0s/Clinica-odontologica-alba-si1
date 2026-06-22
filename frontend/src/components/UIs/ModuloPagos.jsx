@@ -225,6 +225,31 @@ export default function ModuloPagos({ dataMaster, user }) {
     }
   };
 
+  const handleDeletePayment = async (idFactura, montoBob) => {
+    if (!window.confirm(`¿Está seguro de que desea revertir este pago de ${montoBob.toFixed(2)} BOB? Esta acción es irreversible y restaurará la deuda correspondiente.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/finanzas/eliminar-pago/${idFactura}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Pago revertido con éxito. El saldo de la cita ha sido restaurado.");
+        fetchCitaSaldo(selectedCita.id_cita);
+        fetchCitasSaldos();
+      } else {
+        alert("Error al revertir el pago: " + data.message);
+      }
+    } catch (err) {
+      alert("Error de conexión al intentar revertir el pago.");
+    }
+  };
+
   useEffect(() => {
     if (selectedCita && paymentMode === "paypal" && amountConfirmed) {
       renderPaypalButtons();
@@ -803,6 +828,15 @@ export default function ModuloPagos({ dataMaster, user }) {
                                 >
                                   Ver 📄
                                 </button>
+                                {!isPatient && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeletePayment(f.id_factura, f.monto_bob)}
+                                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black rounded-lg uppercase tracking-widest border border-rose-100 transition-colors"
+                                  >
+                                    Revertir 🗑️
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))}
